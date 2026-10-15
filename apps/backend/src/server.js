@@ -3,6 +3,7 @@ const app = require('./app');
 const config = require('./config/env');
 const { connectDB, disconnectDB } = require('./config/database');
 const { initializeSocketIO } = require('./modules/core/socket/socket.handler');
+const { startTripExpiryWorker, stopTripExpiryWorker } = require('./modules/core/trips/tripExpiry.worker');
 
 const startServer = async () => {
   try {
@@ -16,7 +17,10 @@ const startServer = async () => {
     // Make io instance accessible to Express app if needed
     app.set('io', io);
 
-    // 3. Start listening on configured port
+    // 3. Start background trip expiry worker (every 60s)
+    startTripExpiryWorker({ intervalMs: 60000 });
+
+    // 4. Start listening on configured port
     server.listen(config.port, () => {
       console.log(`===============================================`);
       console.log(`  SafeSafar Backend Core Server Running`);
@@ -29,6 +33,10 @@ const startServer = async () => {
     // Graceful Shutdown handling
     const shutdown = async (signal) => {
       console.log(`\n[Server] Received ${signal}. Gracefully shutting down...`);
+
+      // Stop background worker cleanly
+      stopTripExpiryWorker();
+
       server.close(async () => {
         console.log('[Server] HTTP and WebSocket connections closed.');
         await disconnectDB();

@@ -10,7 +10,7 @@ const healthRouter = require('./modules/core/health/health.router');
 const authRouter = require('./modules/core/auth/auth.router');
 const contactsRouter = require('./modules/core/contacts/contacts.router');
 const tripsRouter = require('./modules/core/trips/trips.router');
-const scoringRouter = require('./modules/scoring/scoring.router');
+const { routesRouter, reportsRouter } = require('./modules/scoring/scoring.router');
 const sosRouter = require('./modules/sos/sos.router');
 
 const app = express();
@@ -38,8 +38,8 @@ app.use('/contacts', contactsRouter);
 app.use('/trips', tripsRouter);
 
 // Teammate Module Mount Points
-app.use('/routes', scoringRouter);
-app.use('/reports', scoringRouter);
+app.use('/routes', routesRouter);
+app.use('/reports', reportsRouter);
 app.use('/sos', sosRouter);
 
 // 404 & Centralized Error Handlers

@@ -12,10 +12,11 @@
 const express = require('express');
 const { requireAuth } = require('../../middleware/auth.middleware');
 
-const router = express.Router();
+const routesRouter = express.Router();
+const reportsRouter = express.Router();
 
 // Contract placeholder for POST /routes/safe
-router.post('/safe', async (req, res) => {
+routesRouter.post('/safe', async (req, res) => {
   const { origin, destination, preferences } = req.body || {};
 
   if (!origin || !destination) {
@@ -55,8 +56,8 @@ router.post('/safe', async (req, res) => {
   });
 });
 
-// Contract placeholder for community incident reports
-router.post('/reports', requireAuth, async (req, res) => {
+// Contract placeholder for POST /reports
+reportsRouter.post('/', requireAuth, async (req, res) => {
   const { type, location, description } = req.body || {};
 
   if (!type || !location || !location.coordinates) {
@@ -83,7 +84,8 @@ router.post('/reports', requireAuth, async (req, res) => {
   });
 });
 
-router.get('/reports', async (req, res) => {
+// Contract placeholder for GET /reports
+reportsRouter.get('/', async (req, res) => {
   return res.status(200).json({
     success: true,
     module: 'scoring',
@@ -93,4 +95,25 @@ router.get('/reports', async (req, res) => {
   });
 });
 
-module.exports = router;
+// Contract placeholder for POST /reports/:id/confirm
+reportsRouter.post('/:id/confirm', requireAuth, async (req, res) => {
+  const { id } = req.params;
+
+  return res.status(200).json({
+    success: true,
+    module: 'scoring',
+    status: 'development_interface',
+    message: 'Community report confirmed for Satej trust decay engine.',
+    data: {
+      reportId: id,
+      confirmedBy: req.user._id,
+      confirmationsCount: 1,
+      timestamp: new Date().toISOString()
+    }
+  });
+});
+
+module.exports = {
+  routesRouter,
+  reportsRouter
+};

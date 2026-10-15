@@ -11,6 +11,10 @@ const registerTripExpiryHook = (callback) => {
   }
 };
 
+const clearTripExpiryHooks = () => {
+  expiryHooks.length = 0;
+};
+
 const notifyExpiryHooks = async (trip) => {
   for (const hook of expiryHooks) {
     try {
@@ -21,12 +25,66 @@ const notifyExpiryHooks = async (trip) => {
   }
 };
 
+/**
+ * Atomically transitions an active overdue trip to 'expired'.
+ * Guarantees that only ONE caller executes the transition and notifies hooks.
+ */
+const expireTripAtomically = async (tripId, referenceTime = new Date()) => {
+  const updatedTrip = await Trip.findOneAndUpdate(
+    {
+      _id: tripId,
+      status: 'active',
+      deadlineAt: { $lt: referenceTime }
+    },
+    {
+      $set: { status: 'expired' }
+    },
+    { new: true }
+  );
+
+  if (updatedTrip) {
+    await notifyExpiryHooks(updatedTrip);
+    return updatedTrip;
+  }
+
+  return null;
+};
+
+/**
+ * Sweeps all active overdue trips and atomically transitions them.
+ */
+const expireOverdueTrips = async (referenceTime = new Date()) => {
+  const overdueActiveTrips = await Trip.find({
+    status: 'active',
+    deadlineAt: { $lt: referenceTime }
+  }).select('_id').lean();
+
+  const results = {
+    checked: overdueActiveTrips.length,
+    expired: 0
+  };
+
+  for (const item of overdueActiveTrips) {
+    const expired = await expireTripAtomically(item._id, referenceTime);
+    if (expired) {
+      results.expired++;
+    }
+  }
+
+  return results;
+};
+
 const reconcileTripStatus = async (trip) => {
   if (trip.status === 'active' && new Date() > trip.deadlineAt) {
-    trip.status = 'expired';
-    await trip.save();
-    // Safely notify internal hooks without firing raw unverified alerts
-    await notifyExpiryHooks(trip);
+    const transitioned = await expireTripAtomically(trip._id);
+    if (transitioned) {
+      trip.status = 'expired';
+    } else {
+      const current = await Trip.findById(trip._id).select('status');
+      if (current) {
+        trip.status = current.status;
+      }
+    }
   }
   return trip;
 };
@@ -238,6 +296,9 @@ module.exports = {
   getTripByTrackingToken,
   updateTripLocation,
   reconcileTripStatus,
+  expireTripAtomically,
+  expireOverdueTrips,
   registerTripExpiryHook,
+  clearTripExpiryHooks,
   formatTripResponse
 };

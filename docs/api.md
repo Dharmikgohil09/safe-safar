@@ -429,7 +429,7 @@ Clients connect to `/` via WebSocket or Polling:
 ## 6. Teammate Module Contracts
 
 ### 6.1 Safety Scoring & Routing (Satej)
-- **Mounted Path:** `/routes/safe` and `/reports`
+- **Mounted Paths:** `/routes/safe`, `/reports`, `/reports/:id/confirm`
 - **POST `/routes/safe`**
   ```json
   {
@@ -460,6 +460,27 @@ Clients connect to `/` via WebSocket or Polling:
     }
   }
   ```
+
+- **GET `/reports`**
+  Returns active community incident reports.
+  - **Auth:** None
+
+- **POST `/reports`**
+  Submits a community incident report.
+  - **Auth:** Bearer Token
+  - **Request Body:**
+    ```json
+    {
+      "type": "dark_street",
+      "location": { "coordinates": [72.8311, 21.1702] },
+      "description": "Street lights broken"
+    }
+    ```
+
+- **POST `/reports/:id/confirm`**
+  Confirms an existing report for Satej's trust decay and verification algorithm.
+  - **Auth:** Bearer Token
+
 
 ### 6.2 SOS & Emergency Module (Kristal)
 - **Mounted Path:** `/sos/trigger` and `/sos/cancel`

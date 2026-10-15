@@ -1,0 +1,288 @@
+[
+  {
+    "id": "surat_pol_01",
+    "name": "Umra Police Station",
+    "type": "police",
+    "coordinates": [
+      72.7935,
+      21.1685
+    ],
+    "address": "Athwa Lines, Umra, Surat, Gujarat 395007",
+    "phone": "+91 261 222 3444",
+    "isOpen24Hours": true,
+    "zone": "Athwa / SVNIT corridor"
+  },
+  {
+    "id": "surat_pol_02",
+    "name": "Adajan Police Station",
+    "type": "police",
+    "coordinates": [
+      72.7952,
+      21.1963
+    ],
+    "address": "Pal-Adajan Road, Near Galaxy Circle, Adajan, Surat 395009",
+    "phone": "+91 261 278 1100",
+    "isOpen24Hours": true,
+    "zone": "Adajan Gam / Pal"
+  },
+  {
+    "id": "surat_pol_03",
+    "name": "Surat Railway Station Police Chowki",
+    "type": "police",
+    "coordinates": [
+      72.8415,
+      21.2052
+    ],
+    "address": "Railway Station Platform 1 West, Varachha, Surat 395003",
+    "phone": "+91 261 242 2200",
+    "isOpen24Hours": true,
+    "zone": "Central Railway Station"
+  },
+  {
+    "id": "surat_pol_04",
+    "name": "Vesu Police Station",
+    "type": "police",
+    "coordinates": [
+      72.7681,
+      21.1412
+    ],
+    "address": "VIP Road, Vesu, Surat 395007",
+    "phone": "+91 261 297 5500",
+    "isOpen24Hours": true,
+    "zone": "Vesu / VIP Road"
+  },
+  {
+    "id": "surat_pol_05",
+    "name": "Khatodara Police Station",
+    "type": "police",
+    "coordinates": [
+      72.8184,
+      21.1738
+    ],
+    "address": "Sosyo Circle, Khatodara, Surat 395002",
+    "phone": "+91 261 263 2100",
+    "isOpen24Hours": true,
+    "zone": "Ring Road South"
+  },
+  {
+    "id": "surat_pol_06",
+    "name": "Piplod Police Chowki",
+    "type": "police",
+    "coordinates": [
+      72.7758,
+      21.1578
+    ],
+    "address": "Gaurav Path, Piplod, Surat 395007",
+    "phone": "+91 261 225 1000",
+    "isOpen24Hours": true,
+    "zone": "Dumas Road / SVNIT West"
+  },
+  {
+    "id": "surat_pol_07",
+    "name": "Salabatpura Police Station",
+    "type": "police",
+    "coordinates": [
+      72.8361,
+      21.1895
+    ],
+    "address": "Ring Road, Salabatpura, Surat 395002",
+    "phone": "+91 261 234 1100",
+    "isOpen24Hours": true,
+    "zone": "Textile Market Area"
+  },
+  {
+    "id": "surat_pol_08",
+    "name": "Athwa Lines Women Police Station",
+    "type": "police",
+    "coordinates": [
+      72.8021,
+      21.1762
+    ],
+    "address": "Police Commissioner Office Campus, Athwa Lines, Surat",
+    "phone": "+91 261 222 7100",
+    "isOpen24Hours": true,
+    "zone": "Athwa / Women Helpdesk"
+  },
+  {
+    "id": "surat_hosp_01",
+    "name": "New Civil Hospital & Trauma Centre",
+    "type": "hospital",
+    "coordinates": [
+      72.8189,
+      21.1712
+    ],
+    "address": "Majura Gate, Ring Road, Surat 395001",
+    "phone": "+91 261 224 4456",
+    "isOpen24Hours": true,
+    "zone": "Majura Gate"
+  },
+  {
+    "id": "surat_hosp_02",
+    "name": "Sunshine Global Hospital",
+    "type": "hospital",
+    "coordinates": [
+      72.7845,
+      21.156
+    ],
+    "address": "Dumas Road, Near Big Bazaar, Piplod, Surat 395007",
+    "phone": "+91 261 408 8888",
+    "isOpen24Hours": true,
+    "zone": "Piplod / SVNIT"
+  },
+  {
+    "id": "surat_hosp_03",
+    "name": "Apple Children & General Hospital",
+    "type": "hospital",
+    "coordinates": [
+      72.8171,
+      21.1852
+    ],
+    "address": "Khatodara, Udhna Darwaja, Surat 395002",
+    "phone": "+91 261 263 5000",
+    "isOpen24Hours": true,
+    "zone": "Ring Road"
+  },
+  {
+    "id": "surat_hosp_04",
+    "name": "BAPS Pramukh Swami Hospital",
+    "type": "hospital",
+    "coordinates": [
+      72.7912,
+      21.1925
+    ],
+    "address": "Anand Mahal Road, Adajan, Surat 395009",
+    "phone": "+91 261 278 8800",
+    "isOpen24Hours": true,
+    "zone": "Adajan"
+  },
+  {
+    "id": "surat_hosp_05",
+    "name": "Care Hospital",
+    "type": "hospital",
+    "coordinates": [
+      72.8078,
+      21.1812
+    ],
+    "address": "Athwagate Circle, Athwa, Surat 395001",
+    "phone": "+91 261 669 0000",
+    "isOpen24Hours": true,
+    "zone": "Athwa Gate"
+  },
+  {
+    "id": "surat_hosp_06",
+    "name": "Kiran Multi Super Speciality Hospital",
+    "type": "hospital",
+    "coordinates": [
+      72.8521,
+      21.2294
+    ],
+    "address": "Near Sumul Dairy, Katargam, Surat 395004",
+    "phone": "+91 261 611 0000",
+    "isOpen24Hours": true,
+    "zone": "Katargam"
+  },
+  {
+    "id": "surat_edu_01",
+    "name": "Sardar Vallabhbhai National Institute of Technology (SVNIT)",
+    "type": "school",
+    "coordinates": [
+      72.7848,
+      21.1648
+    ],
+    "address": "Ichchhanath Circle, Dumas Road, Surat 395007",
+    "phone": "+91 261 225 9571",
+    "isOpen24Hours": true,
+    "zone": "SVNIT Campus Gate & Security Post"
+  },
+  {
+    "id": "surat_edu_02",
+    "name": "Veer Narmad South Gujarat University (VNSGU)",
+    "type": "school",
+    "coordinates": [
+      72.7667,
+      21.1534
+    ],
+    "address": "Udhna - Magdalla Road, Surat 395007",
+    "phone": "+91 261 222 7141",
+    "isOpen24Hours": false,
+    "zone": "University Campus"
+  },
+  {
+    "id": "surat_edu_03",
+    "name": "Delhi Public School (DPS Surat)",
+    "type": "school",
+    "coordinates": [
+      72.7482,
+      21.139
+    ],
+    "address": "Near Silent Zone, Dumas Road, Vesu, Surat 395007",
+    "phone": "+91 261 220 4400",
+    "isOpen24Hours": false,
+    "zone": "Dumas Road"
+  },
+  {
+    "id": "surat_edu_04",
+    "name": "Navyug Commerce & Science College",
+    "type": "school",
+    "coordinates": [
+      72.8015,
+      21.1985
+    ],
+    "address": "Rander Road, Surat 395005",
+    "phone": "+91 261 278 1234",
+    "isOpen24Hours": false,
+    "zone": "Rander / Adajan"
+  },
+  {
+    "id": "surat_edu_05",
+    "name": "MTB Arts & Science College",
+    "type": "school",
+    "coordinates": [
+      72.8052,
+      21.1789
+    ],
+    "address": "Jawaharlal Nehru Marg, Athwa Lines, Surat 395001",
+    "phone": "+91 261 224 0025",
+    "isOpen24Hours": false,
+    "zone": "Athwa Lines"
+  },
+  {
+    "id": "surat_pharm_01",
+    "name": "Apollo Pharmacy 24x7 (Ghod Dod Road)",
+    "type": "pharmacy",
+    "coordinates": [
+      72.8012,
+      21.1718
+    ],
+    "address": "Shop 4, SNS Square, Ghod Dod Road, Surat",
+    "phone": "+91 261 266 1234",
+    "isOpen24Hours": true,
+    "zone": "Ghod Dod Road"
+  },
+  {
+    "id": "surat_pharm_02",
+    "name": "Medkart 24x7 Emergency Chemist",
+    "type": "pharmacy",
+    "coordinates": [
+      72.7915,
+      21.1942
+    ],
+    "address": "Prime Arcade, Anand Mahal Road, Adajan, Surat",
+    "phone": "+91 261 278 9988",
+    "isOpen24Hours": true,
+    "zone": "Adajan"
+  },
+  {
+    "id": "surat_safe_01",
+    "name": "VR Mall Security & Helpdesk",
+    "type": "shelter",
+    "coordinates": [
+      72.7565,
+      21.1442
+    ],
+    "address": "Dumas Road, Magdalla, Surat 395007",
+    "phone": "+91 261 679 5000",
+    "isOpen24Hours": true,
+    "zone": "VR Mall 24/7 Security Booth"
+  }
+]

@@ -1,0 +1,79 @@
+import SmsAndroid from 'react-native-get-sms-android';
+import { hasPermission } from '../permissions';
+import type { Channel, Contact, SosContext } from '../types';
+
+// Sends from the user's own SIM through SmsManager. No internet needed.
+// Android asks the user to confirm after roughly 30 messages in 30 minutes,
+// so follow-up location updates are throttled.
+
+const UPDATE_MIN_MS = 3 * 60 * 1000;
+let lastSentAt = 0;
+
+// Plain ASCII only, so one message stays a single 160-character SMS part.
+function ascii(s: string): string {
+  return s.replace(/[^\x20-\x7E]/g, '').trim();
+}
+
+function mapsLink(ctx: SosContext): string {
+  if (!ctx.coords) return 'location unavailable';
+  return `https://maps.google.com/?q=${ctx.coords.lat.toFixed(5)},${ctx.coords.lng.toFixed(5)}`;
+}
+
+export function buildSosText(ctx: SosContext, kind: 'alert' | 'update' | 'clear'): string {
+  const who = ascii(ctx.userName ?? '') || 'Your contact';
+  switch (kind) {
+    case 'alert':
+      return `SOS from SafeSafar: ${who} needs help. Location: ${mapsLink(ctx)}`;
+    case 'update': {
+      const d = new Date(ctx.coords?.ts ?? Date.now());
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      return `SafeSafar update: ${who} location ${mapsLink(ctx)} (${hh}:${mm})`;
+    }
+    case 'clear':
+      return `SafeSafar: ${who} is safe now. The SOS has ended.`;
+  }
+}
+
+function sendOne(phone: string, text: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    SmsAndroid.autoSend(
+      phone,
+      text,
+      (err) => reject(new Error(String(err))),
+      () => resolve(),
+    );
+  });
+}
+
+async function sendToAll(contacts: Contact[], text: string): Promise<void> {
+  if (contacts.length === 0) throw new Error('no trusted contacts saved');
+  if (!(await hasPermission('SEND_SMS'))) throw new Error('SEND_SMS permission not granted');
+
+  const results = await Promise.allSettled(contacts.map((c) => sendOne(c.phone, text)));
+  const sent = results.filter((r) => r.status === 'fulfilled').length;
+  if (sent === 0) {
+    const first = results.find((r) => r.status === 'rejected') as PromiseRejectedResult | undefined;
+    throw new Error(`all SMS failed: ${first?.reason ?? 'unknown'}`);
+  }
+}
+
+export const smsChannel: Channel = {
+  name: 'sms',
+
+  async onActivate(ctx) {
+    lastSentAt = Date.now();
+    await sendToAll(ctx.contacts, buildSosText(ctx, 'alert'));
+  },
+
+  async onUpdate(ctx) {
+    if (!ctx.coords) return;
+    if (Date.now() - lastSentAt < UPDATE_MIN_MS) return;
+    lastSentAt = Date.now();
+    await sendToAll(ctx.contacts, buildSosText(ctx, 'update'));
+  },
+
+  async onResolve(ctx) {
+    await sendToAll(ctx.contacts, buildSosText(ctx, 'clear'));
+  },
+};

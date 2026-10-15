@@ -1,0 +1,24 @@
+# SafeSafar CODEOWNERS
+# Syntax: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default repository and core integration lead
+* @Dharmikgohil09
+
+# Backend Core, Auth, Contacts, Trips, Socket.io, Deployment, Docs
+/apps/backend/src/modules/core/ @Dharmikgohil09
+/apps/backend/src/config/ @Dharmikgohil09
+/apps/backend/src/middleware/ @Dharmikgohil09
+/apps/backend/src/models/ @Dharmikgohil09
+/docs/api.md @Dharmikgohil09
+
+# Scoring Module - Satej
+/apps/backend/src/modules/scoring/ @Dharmikgohil09
+
+# SOS and Emergency Notifications - Kristal
+/apps/backend/src/modules/sos/ @Dharmikgohil09
+
+# Mobile Application - Harshil (Shell, UI) & Dhruv (Map, Route, Offline)
+/apps/mobile/ @Dharmikgohil09
+
+# Live Web Tracker - Priyavardhan
+/apps/tracker/ @Dharmikgohil09

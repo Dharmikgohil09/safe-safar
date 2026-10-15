@@ -1,0 +1,18 @@
+{
+  "name": "safesafar-monorepo",
+  "version": "1.0.0",
+  "description": "SafeSafar - Android-First Personal Safety Platform Monorepo",
+  "private": true,
+  "scripts": {
+    "backend:dev": "npm --prefix apps/backend run dev",
+    "backend:start": "npm --prefix apps/backend start",
+    "backend:test": "npm --prefix apps/backend test"
+  },
+  "keywords": [
+    "safesafar",
+    "safety",
+    "monorepo"
+  ],
+  "author": "Codecraft",
+  "license": "ISC"
+}

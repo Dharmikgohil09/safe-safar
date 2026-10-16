@@ -11,6 +11,7 @@ export function registerDefaultChannels(): void {
 }
 
 export { sosEngine } from './engine/sosEngine';
+export { sendTestSms } from './channels/sms';
 export { requestEmergencyPermissions } from './permissions';
 export type { EmergencyPermissions } from './permissions';
 export { setContacts, getContacts, setUserName, normalizePhone } from './storage/contacts';

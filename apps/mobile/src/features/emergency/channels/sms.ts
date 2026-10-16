@@ -35,13 +35,27 @@ export function buildSosText(ctx: SosContext, kind: 'alert' | 'update' | 'clear'
   }
 }
 
+// The native side (patched, see patches/) answers within 30 s. This is a second safety net so a
+// stuck native call can never freeze the whole SOS.
+const SEND_TIMEOUT_MS = 35_000;
+
 function sendOne(phone: string, text: string): Promise<void> {
   return new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`no send confirmation after ${SEND_TIMEOUT_MS / 1000}s`)),
+      SEND_TIMEOUT_MS,
+    );
     SmsAndroid.autoSend(
       phone,
       text,
-      (err) => reject(new Error(String(err))),
-      () => resolve(),
+      (err) => {
+        clearTimeout(timer);
+        reject(new Error(String(err)));
+      },
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
     );
   });
 }
@@ -51,11 +65,18 @@ async function sendToAll(contacts: Contact[], text: string): Promise<void> {
   if (!(await hasPermission('SEND_SMS'))) throw new Error('SEND_SMS permission not granted');
 
   const results = await Promise.allSettled(contacts.map((c) => sendOne(c.phone, text)));
-  const sent = results.filter((r) => r.status === 'fulfilled').length;
-  if (sent === 0) {
-    const first = results.find((r) => r.status === 'rejected') as PromiseRejectedResult | undefined;
-    throw new Error(`all SMS failed: ${first?.reason ?? 'unknown'}`);
+  const failed = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+  if (failed.length === results.length) {
+    throw new Error(`all SMS failed: ${failed[0].reason}`);
   }
+  if (failed.length > 0) {
+    console.warn(`[sms] ${failed.length} of ${results.length} messages failed: ${failed[0].reason}`);
+  }
+}
+
+/** Sends one plain test SMS to every saved contact, without starting an SOS. */
+export async function sendTestSms(contacts: Contact[]): Promise<void> {
+  await sendToAll(contacts, 'SafeSafar test message. No emergency, ignore this.');
 }
 
 export const smsChannel: Channel = {

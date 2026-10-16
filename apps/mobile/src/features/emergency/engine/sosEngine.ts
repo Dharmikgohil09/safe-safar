@@ -21,6 +21,7 @@ class SosEngine {
   private ctx?: SosContext;
   private countdownEndsAt?: number;
   private timings: Record<string, number | 'failed'> = {};
+  private errors: Record<string, string> = {};
   private channels: Channel[] = [];
   private listeners = new Set<() => void>();
   private countdownTimer?: ReturnType<typeof setTimeout>;
@@ -52,6 +53,7 @@ class SosEngine {
       startedAt: this.ctx?.startedAt,
       coords: this.ctx?.coords,
       timings: { ...this.timings },
+      errors: { ...this.errors },
     };
   }
 
@@ -82,6 +84,7 @@ class SosEngine {
     this.countdownEndsAt = Date.now() + COUNTDOWN_MS;
     this.ctx = undefined;
     this.timings = {};
+    this.errors = {};
     this.countdownTimer = setTimeout(() => void this.activate(source), COUNTDOWN_MS);
     this.emit();
   }
@@ -129,6 +132,7 @@ class SosEngine {
     const sosId = newId();
     this.state = 'active';
     this.timings = {};
+    this.errors = {};
     this.ctx = { sosId, source, startedAt, contacts: [], coords: null };
     this.emit();
 
@@ -152,6 +156,7 @@ class SosEngine {
           this.timings[ch.name] = Date.now() - startedAt;
         } catch (e) {
           this.timings[ch.name] = 'failed';
+          this.errors[ch.name] = e instanceof Error ? e.message : String(e);
           console.warn(`[sos] channel ${ch.name} failed:`, e);
         }
         this.emit();

@@ -1,0 +1,205 @@
+diff --git a/node_modules/react-native-get-sms-android/android/src/main/java/com/react/SmsModule.java b/node_modules/react-native-get-sms-android/android/src/main/java/com/react/SmsModule.java
+index 7a27616..c8966c6 100644
+--- a/node_modules/react-native-get-sms-android/android/src/main/java/com/react/SmsModule.java
++++ b/node_modules/react-native-get-sms-android/android/src/main/java/com/react/SmsModule.java
+@@ -28,6 +28,9 @@ import android.net.Uri;
+ import android.app.Activity;
+ import android.content.BroadcastReceiver;
+ import android.content.IntentFilter;
++import android.os.Build;
++import android.os.Handler;
++import android.os.Looper;
+ 
+ import android.telephony.SmsManager;
+ import android.telephony.SmsMessage;
+@@ -35,6 +38,8 @@ import android.telephony.SmsMessage;
+ import java.util.HashMap;
+ import java.util.Map;
+ import java.util.ArrayList;
++import java.util.UUID;
++import java.util.concurrent.atomic.AtomicBoolean;
+ 
+ import org.json.JSONArray;
+ import org.json.JSONException;
+@@ -227,78 +232,118 @@ public class SmsModule extends ReactContextBaseJavaModule /*implements LoaderMan
+ 
+     }
+ 
++    /*
++     * SafeSafar patch: autoSend rewritten for Android 12-15.
++     *  - PendingIntents are FLAG_IMMUTABLE (required when targeting Android 12+).
++     *  - The "sent" receiver is registered NOT_EXPORTED on Android 13+, listens for a unique
++     *    action per call, and is always unregistered.
++     *  - Callbacks are per call, so several sends in a row cannot overwrite each other.
++     *  - A timeout makes sure JS always gets an answer.
++     *  - No write to content://sms/sent: only the default SMS app may do that, and the
++     *    SecurityException made every send report a failure after the message was sent.
++     */
++    private class SendWatcher extends BroadcastReceiver implements Runnable {
++        private final AtomicBoolean finished = new AtomicBoolean(false);
++        private final Handler handler = new Handler(Looper.getMainLooper());
++        private final Callback errorCallback;
++        private final Callback successCallback;
++        private final int total;
++        private int sentParts = 0;
++
++        SendWatcher(int total, Callback errorCallback, Callback successCallback) {
++            this.total = total;
++            this.errorCallback = errorCallback;
++            this.successCallback = successCallback;
++        }
++
++        void start(IntentFilter filter) {
++            if (Build.VERSION.SDK_INT >= 33) {
++                context.registerReceiver(this, filter, Context.RECEIVER_NOT_EXPORTED);
++            } else {
++                context.registerReceiver(this, filter);
++            }
++            handler.postDelayed(this, 30000);
++        }
++
++        @Override
++        public void onReceive(Context c, Intent intent) {
++            int code = getResultCode();
++            if (code == Activity.RESULT_OK) {
++                sentParts++;
++                if (sentParts >= total) {
++                    finish(true, "SMS sent");
++                }
++            } else {
++                finish(false, describe(code));
++            }
++        }
++
++        @Override
++        public void run() {
++            finish(false, "Timed out waiting for send confirmation");
++        }
++
++        void finish(boolean ok, String message) {
++            if (!finished.compareAndSet(false, true)) {
++                return;
++            }
++            handler.removeCallbacks(this);
++            try {
++                context.unregisterReceiver(this);
++            } catch (Exception ignored) {
++            }
++            if (ok) {
++                successCallback.invoke(message);
++            } else {
++                errorCallback.invoke(message);
++            }
++        }
++    }
++
++    private static String describe(int code) {
++        switch (code) {
++            case SmsManager.RESULT_ERROR_GENERIC_FAILURE:
++                return "Generic failure";
++            case SmsManager.RESULT_ERROR_NO_SERVICE:
++                return "No service";
++            case SmsManager.RESULT_ERROR_NULL_PDU:
++                return "Null PDU";
++            case SmsManager.RESULT_ERROR_RADIO_OFF:
++                return "Radio off";
++            default:
++                return "SMS send failed (code " + code + ")";
++        }
++    }
+ 
+     @ReactMethod
+     public void autoSend(String phoneNumber, String message, final Callback errorCallback,
+                          final Callback successCallback) {
+-
+-        cb_autoSend_succ = successCallback;
+-        cb_autoSend_err = errorCallback;
+-
++        SendWatcher watcher = null;
+         try {
+-            String SENT = "SMS_SENT";
+-            String DELIVERED = "SMS_DELIVERED";
+-            ArrayList<PendingIntent> sentPendingIntents = new ArrayList<PendingIntent>();
+-            ArrayList<PendingIntent> deliveredPendingIntents = new ArrayList<PendingIntent>();
+-
+-            PendingIntent sentPI = PendingIntent.getBroadcast(context, 0, new Intent(SENT), 0);
+-            PendingIntent deliveredPI = PendingIntent.getBroadcast(context, 0, new Intent(DELIVERED), 0);
+-
+-            //---when the SMS has been sent---
+-            context.registerReceiver(new BroadcastReceiver() {
+-                @Override
+-                public void onReceive(Context arg0, Intent arg1) {
+-                    switch (getResultCode()) {
+-                        case Activity.RESULT_OK:
+-                            sendCallback("SMS sent", true);
+-                            break;
+-                        case SmsManager.RESULT_ERROR_GENERIC_FAILURE:
+-                            sendCallback("Generic failure", false);
+-                            break;
+-                        case SmsManager.RESULT_ERROR_NO_SERVICE:
+-                            sendCallback("No service", false);
+-                            break;
+-                        case SmsManager.RESULT_ERROR_NULL_PDU:
+-                            sendCallback("Null PDU", false);
+-                            break;
+-                        case SmsManager.RESULT_ERROR_RADIO_OFF:
+-                            sendCallback("Radio off", false);
+-                            break;
+-                    }
+-                }
+-            }, new IntentFilter(SENT));
+-
+-            //---when the SMS has been delivered---
+-            context.registerReceiver(new BroadcastReceiver() {
+-                @Override
+-                public void onReceive(Context arg0, Intent arg1) {
+-                    switch (getResultCode()) {
+-                        case Activity.RESULT_OK:
+-                            sendEvent(mReactContext, "sms_onDelivery", "SMS delivered");
+-                            break;
+-                        case Activity.RESULT_CANCELED:
+-                            sendEvent(mReactContext, "sms_onDelivery", "SMS not delivered");
+-                            break;
+-                    }
+-                }
+-            }, new IntentFilter(DELIVERED));
+-
+-            SmsManager sms = SmsManager.getDefault();
++            String action = context.getPackageName() + ".SMS_SENT." + UUID.randomUUID().toString();
++            SmsManager sms = Build.VERSION.SDK_INT >= 31
++                    ? context.getSystemService(SmsManager.class)
++                    : SmsManager.getDefault();
+             ArrayList<String> parts = sms.divideMessage(message);
+ 
++            watcher = new SendWatcher(parts.size(), errorCallback, successCallback);
++            watcher.start(new IntentFilter(action));
++
++            Intent intent = new Intent(action).setPackage(context.getPackageName());
++            PendingIntent sentPI = PendingIntent.getBroadcast(
++                    context, 0, intent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
++            ArrayList<PendingIntent> sentIntents = new ArrayList<PendingIntent>();
+             for (int i = 0; i < parts.size(); i++) {
+-                sentPendingIntents.add(i, sentPI);
+-                deliveredPendingIntents.add(i, deliveredPI);
++                sentIntents.add(sentPI);
+             }
+-            sms.sendMultipartTextMessage(phoneNumber, null, parts, sentPendingIntents, deliveredPendingIntents);
+-
+-            ContentValues values = new ContentValues();
+-            values.put("address", phoneNumber);
+-            values.put("body", message);
+-            context.getContentResolver().insert(Uri.parse("content://sms/sent"), values);
+-
++            sms.sendMultipartTextMessage(phoneNumber, null, parts, sentIntents, null);
+         } catch (Exception e) {
+-            sendCallback(e.getMessage(), false);
++            String msg = String.valueOf(e.getMessage());
++            if (watcher != null) {
++                watcher.finish(false, msg);
++            } else {
++                errorCallback.invoke(msg);
++            }
+         }
+     }
+ }
+\ No newline at end of file

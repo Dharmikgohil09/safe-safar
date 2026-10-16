@@ -1,0 +1,52 @@
+{
+  "name": "@safesafar/mobile",
+  "version": "1.0.0",
+  "description": "SafeSafar Mobile Application (React Native & Expo) - Safe Navigation, Heatmaps, Dead Zones & SOS",
+  "main": "App.tsx",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "test": "node __tests__/run-all-tests.mjs",
+    "test:jest": "jest --verbose"
+  },
+  "dependencies": {
+    "expo": "~51.0.28",
+    "expo-status-bar": "~1.12.1",
+    "react": "18.2.0",
+    "react-native": "0.74.5"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@types/jest": "^29.5.12",
+    "@types/react": "~18.2.45",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
+    "typescript": "~5.3.3"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/__tests__/**/*.test.ts",
+      "**/__tests__/**/*.test.tsx"
+    ],
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "jsx",
+      "json"
+    ],
+    "transform": {
+      "^.+\\.tsx?$": [
+        "ts-jest",
+        {
+          "tsconfig": "tsconfig.json"
+        }
+      ]
+    }
+  },
+  "private": true
+}

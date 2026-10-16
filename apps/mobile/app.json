@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "SafeSafar",
+    "slug": "safesafar",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#1E88E5"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.safesafar.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1E88E5"
+      },
+      "package": "com.safesafar.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

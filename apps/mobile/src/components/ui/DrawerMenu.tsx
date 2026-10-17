@@ -34,14 +34,12 @@ export interface DrawerMenuProps {
   visible: boolean;
   onClose: () => void;
   showMessage?: (feature: string) => void;
-  safetyProfileRoute?: '/profile' | '/onboarding';
 }
 
 export function DrawerMenu({
   visible,
   onClose,
   showMessage,
-  safetyProfileRoute = '/profile',
 }: DrawerMenuProps) {
   const [modalVisible, setModalVisible] = React.useState(visible);
   const [reduceMotion, setReduceMotion] = React.useState(false);
@@ -189,7 +187,7 @@ export function DrawerMenu({
       label: 'Safety Profile',
       icon: 'verified-user',
       action: 'navigate',
-      route: safetyProfileRoute,
+      route: '/onboarding',
     },
     {
       id: 'contacts',

@@ -1,1 +1,1 @@
-export { default } from '../src/features/onboarding/screens/OnboardingScreen';
+﻿export { default } from '../src/features/trip/onboarding/screens/OnboardingScreen';

@@ -1,1 +1,1 @@
-export { default } from '../src/features/auth/screens/AuthContainerScreen';
+﻿export { default } from '../src/features/trip/auth/screens/AuthContainerScreen';

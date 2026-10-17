@@ -20,6 +20,7 @@ import {
   type Contact,
 } from '../../emergency';
 import { getTripContacts, saveTripContacts } from '../storage/contactsStorage';
+import { colors } from '../../../theme';
 import type { ContactFormData, FeedbackNotice, FormValidationErrors } from '../types';
 
 const MAX_CONTACTS = 5;
@@ -214,7 +215,7 @@ export default function ContactsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F5F9F6" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -227,7 +228,7 @@ export default function ContactsScreen() {
             {/* Header Section */}
             <View style={styles.header}>
               <View style={styles.headerBadge}>
-                <MaterialIcons name="security" size={14} color="#146B4B" />
+                <MaterialIcons name="security" size={14} color={colors.primary} />
                 <Text style={styles.headerBadgeText}>On-Device Encrypted • Offline Ready</Text>
               </View>
               <Text style={styles.title}>Trusted Contacts</Text>
@@ -260,7 +261,7 @@ export default function ContactsScreen() {
                       ? '#C83F43'
                       : feedback.type === 'info'
                       ? '#2A6B8A'
-                      : '#146B4B'
+                      : colors.primary
                   }
                 />
                 <Text
@@ -279,7 +280,7 @@ export default function ContactsScreen() {
             <View style={styles.summaryCard}>
               <View style={styles.summaryHeader}>
                 <View style={styles.summaryTitleRow}>
-                  <MaterialIcons name="people" size={20} color="#146B4B" />
+                  <MaterialIcons name="people" size={20} color={colors.primary} />
                   <Text style={styles.summaryTitle}>Safety Circle Status</Text>
                 </View>
                 <View style={styles.countPill}>
@@ -331,14 +332,14 @@ export default function ContactsScreen() {
 
             {isLoading ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#146B4B" />
+                <ActivityIndicator size="large" color={colors.primary} />
                 <Text style={styles.loadingText}>Reading secure local storage...</Text>
               </View>
             ) : contacts.length === 0 ? (
               /* Deliberate Empty State */
               <View style={styles.emptyCard}>
                 <View style={styles.emptyIconCircle}>
-                  <MaterialIcons name="contact-emergency" size={36} color="#146B4B" />
+                  <MaterialIcons name="contact-emergency" size={36} color={colors.primary} />
                 </View>
                 <Text style={styles.emptyTitle}>Build your emergency circle</Text>
                 <Text style={styles.emptyDescription}>
@@ -379,7 +380,7 @@ export default function ContactsScreen() {
                             </Text>
                             {isPrimary ? (
                               <View style={styles.primaryBadge}>
-                                <MaterialIcons name="star" size={11} color="#146B4B" />
+                                <MaterialIcons name="star" size={11} color={colors.primary} />
                                 <Text style={styles.primaryBadgeText}>Primary</Text>
                               </View>
                             ) : (
@@ -526,7 +527,7 @@ export default function ContactsScreen() {
                 <Text style={styles.fieldErrorText}>{formErrors.phone}</Text>
               ) : phonePreview ? (
                 <View style={styles.validPreviewRow}>
-                  <MaterialIcons name="check" size={14} color="#146B4B" />
+                  <MaterialIcons name="check" size={14} color={colors.primary} />
                   <Text style={styles.validPreviewText}>Standardized as: {phonePreview}</Text>
                 </View>
               ) : (
@@ -633,7 +634,7 @@ export default function ContactsScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F9F6',
+    backgroundColor: colors.background,
   },
   keyboardView: {
     flex: 1,
@@ -656,7 +657,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: '#E5F2E9',
+    backgroundColor: colors.primarySoft,
     paddingVertical: 5,
     paddingHorizontal: 10,
     borderRadius: 20,
@@ -666,12 +667,12 @@ const styles = StyleSheet.create({
   headerBadgeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#146B4B',
+    color: colors.primary,
   },
   title: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#18392B',
+    color: colors.textPrimary,
     letterSpacing: -0.5,
   },
   subtitle: {
@@ -724,7 +725,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     ...Platform.select({
       ios: {
-        shadowColor: '#146B4B',
+        shadowColor: colors.primary,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 6,
@@ -751,10 +752,10 @@ const styles = StyleSheet.create({
   summaryTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#18392B',
+    color: colors.textPrimary,
   },
   countPill: {
-    backgroundColor: '#E5F2E9',
+    backgroundColor: colors.primarySoft,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -762,7 +763,7 @@ const styles = StyleSheet.create({
   countPillText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#146B4B',
+    color: colors.primary,
   },
   summaryExplanation: {
     fontSize: 13,
@@ -786,7 +787,7 @@ const styles = StyleSheet.create({
 
   /* Add Contact Button */
   addContactButton: {
-    backgroundColor: '#146B4B',
+    backgroundColor: colors.primary,
     borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 18,
@@ -797,7 +798,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
     ...Platform.select({
       ios: {
-        shadowColor: '#146B4B',
+        shadowColor: colors.primary,
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.2,
         shadowRadius: 4,
@@ -833,7 +834,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#18392B',
+    color: colors.textPrimary,
   },
   sectionSubtitle: {
     fontSize: 13,
@@ -868,7 +869,7 @@ const styles = StyleSheet.create({
     width: 68,
     height: 68,
     borderRadius: 34,
-    backgroundColor: '#E5F2E9',
+    backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -876,7 +877,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#18392B',
+    color: colors.textPrimary,
     marginBottom: 8,
     textAlign: 'center',
   },
@@ -889,7 +890,7 @@ const styles = StyleSheet.create({
     maxWidth: 360,
   },
   emptyActionButton: {
-    backgroundColor: '#146B4B',
+    backgroundColor: colors.primary,
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 20,
@@ -916,7 +917,7 @@ const styles = StyleSheet.create({
     borderColor: '#E1EAE4',
     ...Platform.select({
       ios: {
-        shadowColor: '#146B4B',
+        shadowColor: colors.primary,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.04,
         shadowRadius: 4,
@@ -954,7 +955,7 @@ const styles = StyleSheet.create({
     color: '#2A5D44',
   },
   avatarTextPrimary: {
-    color: '#146B4B',
+    color: colors.primary,
   },
   contactDetails: {
     flex: 1,
@@ -968,12 +969,12 @@ const styles = StyleSheet.create({
   contactName: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#18392B',
+    color: colors.textPrimary,
   },
   primaryBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E5F2E9',
+    backgroundColor: colors.primarySoft,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
@@ -982,7 +983,7 @@ const styles = StyleSheet.create({
   primaryBadgeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#146B4B',
+    color: colors.primary,
   },
   priorityBadge: {
     backgroundColor: '#F0F4F2',
@@ -1097,7 +1098,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#18392B',
+    color: colors.textPrimary,
   },
   modalSubtitle: {
     fontSize: 13,
@@ -1129,7 +1130,7 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#18392B',
+    color: colors.textPrimary,
     marginBottom: 7,
   },
   textInput: {
@@ -1140,7 +1141,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#18392B',
+    color: colors.textPrimary,
   },
   inputError: {
     borderColor: '#C83F43',
@@ -1166,7 +1167,7 @@ const styles = StyleSheet.create({
   validPreviewText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#146B4B',
+    color: colors.primary,
   },
   modalActionButtons: {
     flexDirection: 'row',
@@ -1190,7 +1191,7 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     flex: 2,
-    backgroundColor: '#146B4B',
+    backgroundColor: colors.primary,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
@@ -1248,7 +1249,7 @@ const styles = StyleSheet.create({
   deleteDialogTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#18392B',
+    color: colors.textPrimary,
     marginBottom: 8,
     textAlign: 'center',
   },
@@ -1261,7 +1262,7 @@ const styles = StyleSheet.create({
   },
   boldText: {
     fontWeight: '700',
-    color: '#18392B',
+    color: colors.textPrimary,
   },
   deleteDialogActions: {
     flexDirection: 'row',

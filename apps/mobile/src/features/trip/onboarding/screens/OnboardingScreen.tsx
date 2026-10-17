@@ -733,7 +733,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#E5F2E9',
+    backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -848,7 +848,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   permPillGranted: {
-    backgroundColor: '#E5F2E9',
+    backgroundColor: colors.primarySoft,
   },
   permPillPending: {
     backgroundColor: '#F3F6F4',
@@ -864,7 +864,7 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
   grantPermsButton: {
-    backgroundColor: '#E5F2E9',
+    backgroundColor: colors.primarySoft,
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: 'center',

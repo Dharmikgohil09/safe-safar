@@ -38,7 +38,7 @@ export function ShieldLogo({
 
 const styles = StyleSheet.create({
   circle: {
-    backgroundColor: '#E5F2E9',
+    backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },

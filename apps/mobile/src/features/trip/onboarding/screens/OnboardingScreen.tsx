@@ -1,5 +1,6 @@
-﻿import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  AccessibilityInfo,
   ActivityIndicator,
   Animated,
   Platform,
@@ -14,6 +15,8 @@ import {
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
+import { Card, PrimaryButton, ProgressSteps, ShieldLogo } from '../../../../components/ui';
+import { colors, radius, spacing, typography } from '../../../../theme';
 import { requestEmergencyPermissions } from '../../../emergency';
 import { setOnboardingCompleted } from '../storage/onboardingStorage';
 import type { PermissionStatusState } from '../types';
@@ -26,6 +29,7 @@ interface OnboardingScreenProps {
 export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScreenProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isRequestingPerms, setIsRequestingPerms] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
   const [permStatus, setPermStatus] = useState<PermissionStatusState>({
     location: false,
     background: false,
@@ -34,36 +38,124 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
     mic: false,
   });
 
-  // Animated values for transition
-  const fadeAnim = useRef(new Animated.Value(1)).current;
-  const slideAnim = useRef(new Animated.Value(0)).current;
+  // Animated values for staggered transition
+  const heroFadeAnim = useRef(new Animated.Value(1)).current;
+  const heroSlideAnim = useRef(new Animated.Value(0)).current;
+
+  const titleFadeAnim = useRef(new Animated.Value(1)).current;
+  const titleSlideAnim = useRef(new Animated.Value(0)).current;
+
+  const contentFadeAnim = useRef(new Animated.Value(1)).current;
+  const contentSlideAnim = useRef(new Animated.Value(0)).current;
+
+  const buttonFadeAnim = useRef(new Animated.Value(1)).current;
+  const buttonSlideAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    let isMounted = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((enabled) => {
+        if (isMounted) setReduceMotion(enabled);
+      })
+      .catch(() => {});
+
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', (enabled) => {
+      setReduceMotion(enabled);
+    });
+
+    return () => {
+      isMounted = false;
+      sub?.remove();
+    };
+  }, []);
 
   const transitionToStep = (newStep: number) => {
+    if (reduceMotion) {
+      setCurrentStep(newStep);
+      return;
+    }
+
+    const slideEnter = newStep > currentStep ? 16 : -16;
+
+    // Fade out current step
     Animated.parallel([
-      Animated.timing(fadeAnim, {
+      Animated.timing(heroFadeAnim, {
         toValue: 0,
-        duration: 150,
+        duration: 120,
         useNativeDriver: Platform.OS !== 'web',
       }),
-      Animated.timing(slideAnim, {
-        toValue: newStep > currentStep ? -20 : 20,
-        duration: 150,
+      Animated.timing(titleFadeAnim, {
+        toValue: 0,
+        duration: 120,
+        useNativeDriver: Platform.OS !== 'web',
+      }),
+      Animated.timing(contentFadeAnim, {
+        toValue: 0,
+        duration: 120,
+        useNativeDriver: Platform.OS !== 'web',
+      }),
+      Animated.timing(buttonFadeAnim, {
+        toValue: 0,
+        duration: 120,
         useNativeDriver: Platform.OS !== 'web',
       }),
     ]).start(() => {
       setCurrentStep(newStep);
-      slideAnim.setValue(newStep > currentStep ? 20 : -20);
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 250,
-          useNativeDriver: Platform.OS !== 'web',
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 250,
-          useNativeDriver: Platform.OS !== 'web',
-        }),
+      heroSlideAnim.setValue(slideEnter);
+      titleSlideAnim.setValue(slideEnter);
+      contentSlideAnim.setValue(slideEnter);
+      buttonSlideAnim.setValue(slideEnter);
+
+      // Staggered entrance: logo -> title -> content -> buttons (~80ms apart)
+      Animated.stagger(80, [
+        Animated.parallel([
+          Animated.timing(heroFadeAnim, {
+            toValue: 1,
+            duration: 220,
+            useNativeDriver: Platform.OS !== 'web',
+          }),
+          Animated.timing(heroSlideAnim, {
+            toValue: 0,
+            duration: 220,
+            useNativeDriver: Platform.OS !== 'web',
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(titleFadeAnim, {
+            toValue: 1,
+            duration: 220,
+            useNativeDriver: Platform.OS !== 'web',
+          }),
+          Animated.timing(titleSlideAnim, {
+            toValue: 0,
+            duration: 220,
+            useNativeDriver: Platform.OS !== 'web',
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(contentFadeAnim, {
+            toValue: 1,
+            duration: 220,
+            useNativeDriver: Platform.OS !== 'web',
+          }),
+          Animated.timing(contentSlideAnim, {
+            toValue: 0,
+            duration: 220,
+            useNativeDriver: Platform.OS !== 'web',
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(buttonFadeAnim, {
+            toValue: 1,
+            duration: 220,
+            useNativeDriver: Platform.OS !== 'web',
+          }),
+          Animated.timing(buttonSlideAnim, {
+            toValue: 0,
+            duration: 220,
+            useNativeDriver: Platform.OS !== 'web',
+          }),
+        ]),
       ]).start();
     });
   };
@@ -134,7 +226,7 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F5F9F6" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       <View style={styles.container}>
         {/* Top Bar with Return Arrow, Brand & Done */}
         <View style={styles.topBar}>
@@ -151,10 +243,10 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
             accessibilityRole="button"
             accessibilityLabel="Return to Home"
           >
-            <MaterialIcons name="arrow-back" size={20} color="#146B4B" />
+            <MaterialIcons name="arrow-back" size={20} color={colors.primary} />
           </TouchableOpacity>
           <View style={styles.brandRow}>
-            <MaterialIcons name="security" size={20} color="#146B4B" />
+            <ShieldLogo size={20} />
             <Text style={styles.brandName}>SafeSafar</Text>
           </View>
           <TouchableOpacity
@@ -168,22 +260,9 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
           </TouchableOpacity>
         </View>
 
-        {/* Step Progress Indicators */}
+        {/* Step Progress Row using ProgressSteps */}
         <View style={styles.indicatorsRow}>
-          {[0, 1, 2].map((idx) => {
-            const isActive = currentStep === idx;
-            const isDone = currentStep > idx;
-            return (
-              <View
-                key={idx}
-                style={[
-                  styles.indicatorBar,
-                  isActive && styles.indicatorBarActive,
-                  isDone && styles.indicatorBarDone,
-                ]}
-              />
-            );
-          })}
+          <ProgressSteps total={3} current={currentStep} />
         </View>
 
         {/* Scrollable Step Content */}
@@ -192,144 +271,223 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <Animated.View
-            style={[
-              styles.stepContentWrapper,
-              {
-                opacity: fadeAnim,
-                transform: [{ translateX: slideAnim }],
-              },
-            ]}
-          >
-            {/* Step 1: Safe Route Navigator */}
-            {currentStep === 0 && (
-              <View style={styles.stepContainer}>
+          {/* Step 1: Safe Route Navigator */}
+          {currentStep === 0 && (
+            <View style={styles.stepContainer}>
+              <Animated.View
+                style={[
+                  styles.heroCircleWrapper,
+                  {
+                    opacity: heroFadeAnim,
+                    transform: [{ translateY: heroSlideAnim }],
+                  },
+                ]}
+              >
                 <View style={styles.heroCircle}>
-                  <MaterialIcons name="navigation" size={44} color="#146B4B" />
+                  <MaterialIcons name="navigation" size={44} color={colors.primary} />
                 </View>
                 <View style={styles.stepBadge}>
                   <Text style={styles.stepBadgeText}>Safe Route Navigator</Text>
                 </View>
+              </Animated.View>
+
+              <Animated.View
+                style={[
+                  styles.textHeaderWrapper,
+                  {
+                    opacity: titleFadeAnim,
+                    transform: [{ translateY: titleSlideAnim }],
+                  },
+                ]}
+              >
                 <Text style={styles.stepTitle}>Navigate by Safety, Not Just Speed</Text>
                 <Text style={styles.stepSubtitle}>
                   Travel routes scored by real-time safety factors. Make informed decisions with
                   transparent safety data.
                 </Text>
+              </Animated.View>
 
-                <View style={styles.highlightsContainer}>
-                  <View style={styles.highlightCard}>
-                    <View style={styles.highlightIcon}>
-                      <MaterialIcons name="alt-route" size={22} color="#146B4B" />
-                    </View>
-                    <View style={styles.highlightTextWrap}>
-                      <Text style={styles.highlightTitle}>Color-Coded Route Options</Text>
-                      <Text style={styles.highlightDesc}>
-                        Choose between Green (high safety), Amber (moderate), and avoid Red (flagged) paths.
-                      </Text>
-                    </View>
+              <Animated.View
+                style={[
+                  styles.highlightsContainer,
+                  {
+                    opacity: contentFadeAnim,
+                    transform: [{ translateY: contentSlideAnim }],
+                  },
+                ]}
+              >
+                <Card style={styles.highlightCard}>
+                  <View style={styles.highlightIcon}>
+                    <MaterialIcons name="alt-route" size={22} color={colors.primary} />
                   </View>
-
-                  <View style={styles.highlightCard}>
-                    <View style={styles.highlightIcon}>
-                      <MaterialIcons name="wb-incandescent" size={22} color="#146B4B" />
-                    </View>
-                    <View style={styles.highlightTextWrap}>
-                      <Text style={styles.highlightTitle}>Lighting & Landmark Density</Text>
-                      <Text style={styles.highlightDesc}>
-                        Prioritizes open hospitals, 24/7 pharmacies, police stations, and well-lit roads.
-                      </Text>
-                    </View>
+                  <View style={styles.highlightTextWrap}>
+                    <Text style={styles.highlightTitle}>Color-Coded Route Options</Text>
+                    <Text style={styles.highlightDesc}>
+                      Choose between Green (high safety), Amber (moderate), and avoid Red (flagged) paths.
+                    </Text>
                   </View>
+                </Card>
 
-                  <View style={styles.highlightCard}>
-                    <View style={styles.highlightIcon}>
-                      <MaterialIcons name="verified-user" size={22} color="#146B4B" />
-                    </View>
-                    <View style={styles.highlightTextWrap}>
-                      <Text style={styles.highlightTitle}>Verified Community Reports</Text>
-                      <Text style={styles.highlightDesc}>
-                        Hazards reported by travellers decay naturally over time to keep data fresh and actionable.
-                      </Text>
-                    </View>
+                <Card style={styles.highlightCard}>
+                  <View style={styles.highlightIcon}>
+                    <MaterialIcons name="wb-incandescent" size={22} color={colors.primary} />
                   </View>
-                </View>
-              </View>
-            )}
+                  <View style={styles.highlightTextWrap}>
+                    <Text style={styles.highlightTitle}>Lighting & Landmark Density</Text>
+                    <Text style={styles.highlightDesc}>
+                      Prioritizes open hospitals, 24/7 pharmacies, police stations, and well-lit roads.
+                    </Text>
+                  </View>
+                </Card>
 
-            {/* Step 2: Walk Me Home & Circles */}
-            {currentStep === 1 && (
-              <View style={styles.stepContainer}>
+                <Card style={styles.highlightCard}>
+                  <View style={styles.highlightIcon}>
+                    <MaterialIcons name="verified-user" size={22} color={colors.primary} />
+                  </View>
+                  <View style={styles.highlightTextWrap}>
+                    <Text style={styles.highlightTitle}>Verified Community Reports</Text>
+                    <Text style={styles.highlightDesc}>
+                      Hazards reported by travellers decay naturally over time to keep data fresh and actionable.
+                    </Text>
+                  </View>
+                </Card>
+              </Animated.View>
+            </View>
+          )}
+
+          {/* Step 2: Walk Me Home & Circles */}
+          {currentStep === 1 && (
+            <View style={styles.stepContainer}>
+              <Animated.View
+                style={[
+                  styles.heroCircleWrapper,
+                  {
+                    opacity: heroFadeAnim,
+                    transform: [{ translateY: heroSlideAnim }],
+                  },
+                ]}
+              >
                 <View style={styles.heroCircle}>
-                  <MaterialIcons name="people-alt" size={44} color="#146B4B" />
+                  <MaterialIcons name="people-alt" size={44} color={colors.primary} />
                 </View>
                 <View style={styles.stepBadge}>
                   <Text style={styles.stepBadgeText}>Walk Me Home</Text>
                 </View>
+              </Animated.View>
+
+              <Animated.View
+                style={[
+                  styles.textHeaderWrapper,
+                  {
+                    opacity: titleFadeAnim,
+                    transform: [{ translateY: titleSlideAnim }],
+                  },
+                ]}
+              >
                 <Text style={styles.stepTitle}>Your Trusted People Watch Over You</Text>
                 <Text style={styles.stepSubtitle}>
                   Stay connected during solo commutes with automated countdown check-ins and emergency contact alerts.
                 </Text>
+              </Animated.View>
 
-                <View style={styles.highlightsContainer}>
-                  <View style={styles.highlightCard}>
-                    <View style={styles.highlightIcon}>
-                      <MaterialIcons name="timer" size={22} color="#146B4B" />
-                    </View>
-                    <View style={styles.highlightTextWrap}>
-                      <Text style={styles.highlightTitle}>Automated Countdown Check-Ins</Text>
-                      <Text style={styles.highlightDesc}>
-                        Set trip timers for your journey. If you don&apos;t confirm your arrival, alerts dispatch automatically.
-                      </Text>
-                    </View>
+              <Animated.View
+                style={[
+                  styles.highlightsContainer,
+                  {
+                    opacity: contentFadeAnim,
+                    transform: [{ translateY: contentSlideAnim }],
+                  },
+                ]}
+              >
+                <Card style={styles.highlightCard}>
+                  <View style={styles.highlightIcon}>
+                    <MaterialIcons name="timer" size={22} color={colors.primary} />
                   </View>
-
-                  <View style={styles.highlightCard}>
-                    <View style={styles.highlightIcon}>
-                      <MaterialIcons name="phonelink-ring" size={22} color="#146B4B" />
-                    </View>
-                    <View style={styles.highlightTextWrap}>
-                      <Text style={styles.highlightTitle}>Zero-Install Tracking Links</Text>
-                      <Text style={styles.highlightDesc}>
-                        Your contacts open your live journey link directly in their mobile browserâ€”no app required for them.
-                      </Text>
-                    </View>
+                  <View style={styles.highlightTextWrap}>
+                    <Text style={styles.highlightTitle}>Automated Countdown Check-Ins</Text>
+                    <Text style={styles.highlightDesc}>
+                      Set trip timers for your journey. If you don&apos;t confirm your arrival, alerts dispatch automatically.
+                    </Text>
                   </View>
+                </Card>
 
-                  <View style={styles.highlightCard}>
-                    <View style={styles.highlightIcon}>
-                      <MaterialIcons name="lock-outline" size={22} color="#146B4B" />
-                    </View>
-                    <View style={styles.highlightTextWrap}>
-                      <Text style={styles.highlightTitle}>On-Device Secure Storage</Text>
-                      <Text style={styles.highlightDesc}>
-                        Your contacts are saved securely on-device so SOS works offline even in zero-data dead zones.
-                      </Text>
-                    </View>
+                <Card style={styles.highlightCard}>
+                  <View style={styles.highlightIcon}>
+                    <MaterialIcons name="phonelink-ring" size={22} color={colors.primary} />
                   </View>
-                </View>
-              </View>
-            )}
+                  <View style={styles.highlightTextWrap}>
+                    <Text style={styles.highlightTitle}>Zero-Install Tracking Links</Text>
+                    <Text style={styles.highlightDesc}>
+                      Your contacts open your live journey link directly in their mobile browser, no app required for them.
+                    </Text>
+                  </View>
+                </Card>
 
-            {/* Step 3: Emergency Defense & Permissions */}
-            {currentStep === 2 && (
-              <View style={styles.stepContainer}>
+                <Card style={styles.highlightCard}>
+                  <View style={styles.highlightIcon}>
+                    <MaterialIcons name="lock-outline" size={22} color={colors.primary} />
+                  </View>
+                  <View style={styles.highlightTextWrap}>
+                    <Text style={styles.highlightTitle}>On-Device Secure Storage</Text>
+                    <Text style={styles.highlightDesc}>
+                      Your contacts are saved securely on-device so SOS works offline even in zero-data dead zones.
+                    </Text>
+                  </View>
+                </Card>
+              </Animated.View>
+            </View>
+          )}
+
+          {/* Step 3: Emergency Defense & Permissions */}
+          {currentStep === 2 && (
+            <View style={styles.stepContainer}>
+              <Animated.View
+                style={[
+                  styles.heroCircleWrapper,
+                  {
+                    opacity: heroFadeAnim,
+                    transform: [{ translateY: heroSlideAnim }],
+                  },
+                ]}
+              >
                 <View style={styles.heroCircle}>
-                  <MaterialIcons name="shield" size={44} color="#146B4B" />
+                  <MaterialIcons name="shield" size={44} color={colors.primary} />
                 </View>
                 <View style={styles.stepBadge}>
                   <Text style={styles.stepBadgeText}>4-Channel Alert Engine</Text>
                 </View>
+              </Animated.View>
+
+              <Animated.View
+                style={[
+                  styles.textHeaderWrapper,
+                  {
+                    opacity: titleFadeAnim,
+                    transform: [{ translateY: titleSlideAnim }],
+                  },
+                ]}
+              >
                 <Text style={styles.stepTitle}>Emergency Defense & Permissions</Text>
                 <Text style={styles.stepSubtitle}>
                   SafeSafar requires essential Android hardware permissions to send emergency SMS and auto-dial your contacts.
                 </Text>
+              </Animated.View>
 
+              <Animated.View
+                style={[
+                  styles.highlightsContainer,
+                  {
+                    opacity: contentFadeAnim,
+                    transform: [{ translateY: contentSlideAnim }],
+                  },
+                ]}
+              >
                 {/* Permissions Breakdown Card */}
-                <View style={styles.permissionsEducationCard}>
+                <Card style={styles.permissionsEducationCard}>
                   <Text style={styles.permCardTitle}>Required Safety Permissions</Text>
 
                   <View style={styles.permRow}>
-                    <MaterialIcons name="my-location" size={18} color="#146B4B" />
+                    <MaterialIcons name="my-location" size={18} color={colors.primary} />
                     <View style={styles.permTextWrap}>
                       <Text style={styles.permName}>Location (Foreground & Background)</Text>
                       <Text style={styles.permDesc}>
@@ -354,7 +512,7 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
                   </View>
 
                   <View style={styles.permRow}>
-                    <MaterialIcons name="sms" size={18} color="#146B4B" />
+                    <MaterialIcons name="sms" size={18} color={colors.primary} />
                     <View style={styles.permTextWrap}>
                       <Text style={styles.permName}>Direct SMS (No Internet Required)</Text>
                       <Text style={styles.permDesc}>
@@ -379,7 +537,7 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
                   </View>
 
                   <View style={styles.permRow}>
-                    <MaterialIcons name="phone" size={18} color="#146B4B" />
+                    <MaterialIcons name="phone" size={18} color={colors.primary} />
                     <View style={styles.permTextWrap}>
                       <Text style={styles.permName}>Phone Call Access</Text>
                       <Text style={styles.permDesc}>
@@ -404,7 +562,7 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
                   </View>
 
                   <View style={styles.permRow}>
-                    <MaterialIcons name="mic" size={18} color="#146B4B" />
+                    <MaterialIcons name="mic" size={18} color={colors.primary} />
                     <View style={styles.permTextWrap}>
                       <Text style={styles.permName}>Microphone (Hands-Free Voice Trigger)</Text>
                       <Text style={styles.permDesc}>
@@ -420,7 +578,7 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
                       <Text
                         style={[
                           styles.permPillText,
-                          permStatus.mic ? styles.permPillTextGranted : styles.permPillTextPending,
+                          permStatus.mic ? styles.permPillTextGranted : styles.permPillPending,
                         ]}
                       >
                         {permStatus.mic ? 'Granted' : 'Optional'}
@@ -438,15 +596,15 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
                     accessibilityLabel="Grant safety permissions"
                   >
                     {isRequestingPerms ? (
-                      <ActivityIndicator size="small" color="#146B4B" />
+                      <ActivityIndicator size="small" color={colors.primary} />
                     ) : (
                       <View style={styles.grantPermsInner}>
-                        <MaterialIcons name="verified" size={18} color="#146B4B" />
+                        <MaterialIcons name="verified" size={18} color={colors.primary} />
                         <Text style={styles.grantPermsButtonText}>Grant Device Permissions</Text>
                       </View>
                     )}
                   </TouchableOpacity>
-                </View>
+                </Card>
 
                 {/* Secondary navigation to Sign In */}
                 <View style={styles.authLinkRow}>
@@ -460,13 +618,21 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
                     <Text style={styles.authLinkText}>Sign In</Text>
                   </TouchableOpacity>
                 </View>
-              </View>
-            )}
-          </Animated.View>
+              </Animated.View>
+            </View>
+          )}
         </ScrollView>
 
         {/* Bottom Actions Bar */}
-        <View style={styles.bottomBar}>
+        <Animated.View
+          style={[
+            styles.bottomBar,
+            {
+              opacity: buttonFadeAnim,
+              transform: [{ translateY: buttonSlideAnim }],
+            },
+          ]}
+        >
           {currentStep > 0 ? (
             <TouchableOpacity
               style={styles.backButton}
@@ -475,26 +641,20 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
               accessibilityRole="button"
               accessibilityLabel="Previous step"
             >
-              <MaterialIcons name="arrow-back" size={20} color="#355648" />
+              <MaterialIcons name="arrow-back" size={20} color={colors.textPrimary} />
               <Text style={styles.backButtonText}>Back</Text>
             </TouchableOpacity>
           ) : (
             <View style={styles.backButtonPlaceholder} />
           )}
 
-          <TouchableOpacity
+          <PrimaryButton
+            label={currentStep === 2 ? 'Get Started' : 'Continue'}
             style={styles.primaryActionButton}
             onPress={handleNext}
-            activeOpacity={0.85}
-            accessibilityRole="button"
             accessibilityLabel={currentStep === 2 ? 'Get started' : 'Continue to next step'}
-          >
-            <Text style={styles.primaryActionButtonText}>
-              {currentStep === 2 ? 'Get Started' : 'Continue'}
-            </Text>
-            <MaterialIcons name="arrow-forward" size={18} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
+          />
+        </Animated.View>
       </View>
     </SafeAreaView>
   );
@@ -503,7 +663,7 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F9F6',
+    backgroundColor: colors.background,
   },
   container: {
     flex: 1,
@@ -523,50 +683,36 @@ const styles = StyleSheet.create({
   },
   navBackButton: {
     padding: 6,
-    borderRadius: 12,
+    borderRadius: radius.pill,
     backgroundColor: '#EAF2EC',
   },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   brandName: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#146B4B',
+    color: colors.primary,
     letterSpacing: -0.3,
   },
   skipButton: {
     paddingVertical: 6,
     paddingHorizontal: 12,
-    borderRadius: 14,
+    borderRadius: radius.pill,
     backgroundColor: '#EAF2EC',
   },
   skipButtonText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#345244',
+    color: colors.textPrimary,
   },
 
-  /* Progress Indicators */
+  /* Progress Row */
   indicatorsRow: {
-    flexDirection: 'row',
     paddingHorizontal: 20,
-    gap: 8,
     marginVertical: 14,
-  },
-  indicatorBar: {
-    flex: 1,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#DCE7E1',
-  },
-  indicatorBarActive: {
-    backgroundColor: '#146B4B',
-  },
-  indicatorBarDone: {
-    backgroundColor: '#86BFA7',
   },
 
   /* Scroll Content */
@@ -577,10 +723,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 24,
   },
-  stepContentWrapper: {
-    width: '100%',
-  },
   stepContainer: {
+    alignItems: 'center',
+  },
+  heroCircleWrapper: {
     alignItems: 'center',
   },
   heroCircle: {
@@ -597,27 +743,31 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8F3EC',
     paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: radius.pill,
     marginBottom: 10,
   },
   stepBadgeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#146B4B',
+    color: colors.primary,
+  },
+  textHeaderWrapper: {
+    alignItems: 'center',
+    width: '100%',
   },
   stepTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#18392B',
+    fontSize: typography.title.fontSize,
+    fontWeight: typography.title.fontWeight,
+    color: colors.textPrimary,
     textAlign: 'center',
     letterSpacing: -0.5,
     marginBottom: 8,
     paddingHorizontal: 8,
   },
   stepSubtitle: {
-    fontSize: 13,
+    fontSize: typography.body.fontSize,
     lineHeight: 20,
-    color: '#65766C',
+    color: colors.textSecondary,
     textAlign: 'center',
     paddingHorizontal: 10,
     marginBottom: 20,
@@ -631,11 +781,7 @@ const styles = StyleSheet.create({
   highlightCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
     padding: 14,
-    borderWidth: 1,
-    borderColor: '#E1EAE4',
     gap: 14,
   },
   highlightIcon: {
@@ -653,28 +799,24 @@ const styles = StyleSheet.create({
   highlightTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#18392B',
+    color: colors.textPrimary,
     marginBottom: 3,
   },
   highlightDesc: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#65766C',
+    color: colors.textSecondary,
   },
 
   /* Permissions Card */
   permissionsEducationCard: {
     width: '100%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
     padding: 16,
-    borderWidth: 1,
-    borderColor: '#E1EAE4',
   },
   permCardTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#18392B',
+    color: colors.textPrimary,
     marginBottom: 12,
   },
   permRow: {
@@ -691,12 +833,12 @@ const styles = StyleSheet.create({
   permName: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#18392B',
+    color: colors.textPrimary,
   },
   permDesc: {
     fontSize: 11,
     lineHeight: 16,
-    color: '#65766C',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   permPill: {
@@ -716,10 +858,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   permPillTextGranted: {
-    color: '#146B4B',
+    color: colors.primary,
   },
   permPillTextPending: {
-    color: '#76877E',
+    color: colors.textMuted,
   },
   grantPermsButton: {
     backgroundColor: '#E5F2E9',
@@ -737,7 +879,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   grantPermsButtonText: {
-    color: '#146B4B',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -750,15 +892,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderTopWidth: 1,
-    borderTopColor: '#E6EEE9',
-    backgroundColor: '#F5F9F6',
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
   },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 14,
-    borderRadius: 12,
+    borderRadius: radius.pill,
     gap: 6,
   },
   backButtonPlaceholder: {
@@ -767,36 +909,12 @@ const styles = StyleSheet.create({
   backButtonText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#355648',
+    color: colors.textPrimary,
   },
   primaryActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#146B4B',
-    paddingVertical: 13,
-    paddingHorizontal: 22,
-    borderRadius: 14,
-    gap: 8,
-    minHeight: 48,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#146B4B',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.2,
-        shadowRadius: 5,
-      },
-      android: {
-        elevation: 3,
-      },
-      web: {
-        boxShadow: '0 4px 12px rgba(20, 107, 75, 0.2)',
-      },
-    }),
-  },
-  primaryActionButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
+    minWidth: 140,
+    paddingHorizontal: 20,
+    height: 48,
   },
   authLinkRow: {
     flexDirection: 'row',
@@ -807,11 +925,11 @@ const styles = StyleSheet.create({
   },
   authLinkHint: {
     fontSize: 13,
-    color: '#65766C',
+    color: colors.textSecondary,
   },
   authLinkText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#146B4B',
+    color: colors.primary,
   },
 });

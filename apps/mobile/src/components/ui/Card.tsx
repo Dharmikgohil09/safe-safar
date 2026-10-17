@@ -1,14 +1,14 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   Animated,
   Platform,
   Pressable,
   StyleProp,
   StyleSheet,
-  View,
   ViewStyle,
 } from 'react-native';
 import { colors, radius } from '../../theme';
+import { useReduceMotion } from './useReduceMotion';
 
 export interface CardProps {
   children: React.ReactNode;
@@ -16,6 +16,7 @@ export interface CardProps {
   onPress?: () => void;
   accessibilityLabel?: string;
   testID?: string;
+  disableEntranceAnimation?: boolean;
 }
 
 export function Card({
@@ -24,10 +25,40 @@ export function Card({
   onPress,
   accessibilityLabel,
   testID,
+  disableEntranceAnimation = false,
 }: CardProps) {
+  const reduceMotion = useReduceMotion();
   const scale = useRef(new Animated.Value(1)).current;
+  const opacity = useRef(
+    new Animated.Value(disableEntranceAnimation || reduceMotion ? 1 : 0)
+  ).current;
+  const translateY = useRef(
+    new Animated.Value(disableEntranceAnimation || reduceMotion ? 0 : 12)
+  ).current;
+
+  useEffect(() => {
+    if (disableEntranceAnimation || reduceMotion) {
+      opacity.setValue(1);
+      translateY.setValue(0);
+      return;
+    }
+
+    Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: Platform.OS !== 'web',
+      }),
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: Platform.OS !== 'web',
+      }),
+    ]).start();
+  }, [reduceMotion, disableEntranceAnimation]);
 
   const handlePressIn = () => {
+    if (reduceMotion) return;
     Animated.spring(scale, {
       toValue: 0.97,
       useNativeDriver: Platform.OS !== 'web',
@@ -35,6 +66,7 @@ export function Card({
   };
 
   const handlePressOut = () => {
+    if (reduceMotion) return;
     Animated.spring(scale, {
       toValue: 1,
       friction: 4,
@@ -45,9 +77,19 @@ export function Card({
 
   if (!onPress) {
     return (
-      <View style={[styles.card, style]} testID={testID}>
+      <Animated.View
+        style={[
+          styles.card,
+          style,
+          {
+            opacity,
+            transform: [{ translateY }],
+          },
+        ]}
+        testID={testID}
+      >
         {children}
-      </View>
+      </Animated.View>
     );
   }
 
@@ -65,7 +107,8 @@ export function Card({
           styles.card,
           style,
           {
-            transform: [{ scale }],
+            opacity,
+            transform: [{ translateY }, { scale }],
           },
         ]}
       >

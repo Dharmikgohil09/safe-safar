@@ -12,6 +12,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { colors, radius } from '../../theme';
+import { useReduceMotion } from './useReduceMotion';
 
 export interface PrimaryButtonProps {
   label: string;
@@ -38,11 +39,12 @@ export function PrimaryButton({
   accessibilityLabel,
   testID,
 }: PrimaryButtonProps) {
+  const reduceMotion = useReduceMotion();
   const scale = useRef(new Animated.Value(1)).current;
   const isInteractive = !disabled && !loading;
 
   const handlePressIn = () => {
-    if (!isInteractive) return;
+    if (!isInteractive || reduceMotion) return;
     Animated.spring(scale, {
       toValue: 0.97,
       useNativeDriver: Platform.OS !== 'web',
@@ -50,7 +52,7 @@ export function PrimaryButton({
   };
 
   const handlePressOut = () => {
-    if (!isInteractive) return;
+    if (!isInteractive || reduceMotion) return;
     Animated.spring(scale, {
       toValue: 1,
       friction: 4,

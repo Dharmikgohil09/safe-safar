@@ -1,0 +1,39 @@
+import { registerDefaultChannels } from '../channels/defaults';
+import { sosEngine } from '../engine/sosEngine';
+import { hasPins, verifyPin } from './pins';
+
+export type PinOutcome = 'real' | 'duress' | 'wrong' | 'not-set';
+
+/**
+ * What happens when a PIN is entered (on the decoy calculator, or any PIN prompt):
+ *
+ *  real PIN   -> the SOS ends normally and the contacts get the all-clear.
+ *  duress PIN -> the screen can show "all safe", but the SOS keeps running silently:
+ *                - SOS already active: left alone, no all-clear is sent
+ *                - countdown running:  cancelled and replaced by a silent SOS (SMS only, no call
+ *                                      that would put a dialer on screen)
+ *                - nothing running:    a silent SOS starts
+ *  wrong PIN  -> nothing happens.
+ *
+ * The caller decides what the screen shows. For a duress PIN it must look like the real one.
+ */
+export async function submitPin(pin: string): Promise<PinOutcome> {
+  if (!(await hasPins())) return 'not-set';
+
+  const check = await verifyPin(pin);
+
+  if (check === 'real') {
+    void sosEngine.resolve(); // do not wait: the all-clear SMS can take a while to send
+    return 'real';
+  }
+
+  if (check === 'duress') {
+    registerDefaultChannels();
+    const state = sosEngine.getSnapshot().state;
+    if (state === 'countdown') sosEngine.cancelCountdown();
+    if (state !== 'active') sosEngine.trigger('duress');
+    return 'duress';
+  }
+
+  return 'wrong';
+}

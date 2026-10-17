@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import {
   Alert,
+  Animated,
+  Platform,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -11,13 +13,16 @@ import {
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
-import { Card, PrimaryButton } from '../../../components/ui';
+import { Card, PrimaryButton, useReduceMotion } from '../../../components/ui';
 import { colors, radius, spacing, typography } from '../../../theme';
 import { mockShareContacts, MockShareContact } from '../mock/mockData';
 
 const DURATION_OPTIONS = ['15 min', '1 hour', '8 hours', 'Until I stop'];
 
 export default function LiveLocationScreen() {
+  const reduceMotion = useReduceMotion();
+  const pulseAnim = React.useRef(new Animated.Value(1)).current;
+
   const [selectedContactIds, setSelectedContactIds] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
     mockShareContacts.forEach((c) => {
@@ -29,6 +34,20 @@ export default function LiveLocationScreen() {
   const [selectedDuration, setSelectedDuration] = useState<string>('1 hour');
 
   const showMessage = (feature: string) => {
+    if (!reduceMotion && feature === 'Live location sharing preview') {
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.03,
+          duration: 150,
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+      ]).start();
+    }
     Alert.alert(feature, 'This feature will be connected during development.');
   };
 
@@ -189,6 +208,7 @@ export default function LiveLocationScreen() {
 
         {/* Start Sharing Button */}
         <View style={styles.actionContainer}>
+          <Animated.View style={{ transform: [{ scale: pulseAnim }], width: '100%' }}>
           <PrimaryButton
             variant="accent"
             label="Start Sharing"
@@ -196,6 +216,7 @@ export default function LiveLocationScreen() {
             icon={<MaterialIcons name="near-me" size={20} color={colors.primaryDark} />}
             style={styles.shareButton}
           />
+          </Animated.View>
         </View>
       </ScrollView>
     </SafeAreaView>

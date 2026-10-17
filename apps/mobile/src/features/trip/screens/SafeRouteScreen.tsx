@@ -106,7 +106,7 @@ export default function SafeRouteScreen() {
         </View>
 
         {/* Route Cards from mockData */}
-        {mockRoutes.map((route: MockRoute) => {
+        {mockRoutes.map((route: MockRoute, index: number) => {
           const isSelected = route.id === selectedRouteId;
           const isSafer = route.colorType === 'safer';
 
@@ -123,6 +123,7 @@ export default function SafeRouteScreen() {
                   styles.routeCard,
                   isSelected && styles.routeCardSelected,
                 ]}
+                entranceDelay={index * 100}
               >
                 {/* Top Row: Dot, Name, Tag & Score */}
                 <View style={styles.routeCardTop}>

@@ -111,15 +111,15 @@ export default function HomeScreen() {
 
           {/* Tile 2: Share Live Location */}
           <Card
-            onPress={() => showMessage('Walk Me Home')}
+            onPress={() => showMessage('Share Live Location')}
             style={styles.shareTile}
             accessibilityLabel="Share Live Location"
           >
             <View style={styles.shareIconCircle}>
-              <MaterialIcons name="directions-walk" size={26} color={colors.accent} />
+              <MaterialIcons name="share-location" size={26} color={colors.accent} />
             </View>
             <Text style={styles.tileTitle}>Share Live Location</Text>
-            <Text style={styles.tileSubtitle}>Walk Me Home tracking</Text>
+            <Text style={styles.tileSubtitle}>Real-time tracking link</Text>
           </Card>
         </View>
 
@@ -166,20 +166,40 @@ export default function HomeScreen() {
             </View>
           </Card>
 
-          {/* Card 3: Learn How It Works */}
+          {/* Card 3: Walk Me Home */}
           <Card
-            onPress={() => showMessage('Report an Unsafe Location')}
+            onPress={() => showMessage('Walk Me Home')}
             style={styles.exploreCard}
-            accessibilityLabel="Learn How It Works"
+            accessibilityLabel="Walk Me Home"
           >
             <View style={styles.exploreCardInner}>
               <View style={styles.exploreIconCircle}>
-                <MaterialIcons name="info-outline" size={22} color={colors.primary} />
+                <MaterialIcons name="directions-walk" size={22} color={colors.primary} />
               </View>
               <View style={styles.exploreTextGroup}>
-                <Text style={styles.exploreCardTitle}>Learn How It Works</Text>
+                <Text style={styles.exploreCardTitle}>Walk Me Home</Text>
                 <Text style={styles.exploreCardDesc}>
-                  Discover real-time hazard decay and safety-scored routing.
+                  Automated journey timer and emergency contact check-ins.
+                </Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
+            </View>
+          </Card>
+
+          {/* Card 4: Report an unsafe location */}
+          <Card
+            onPress={() => showMessage('Report an Unsafe Location')}
+            style={styles.exploreCard}
+            accessibilityLabel="Report an unsafe location"
+          >
+            <View style={styles.exploreCardInner}>
+              <View style={styles.exploreIconCircle}>
+                <MaterialIcons name="flag" size={22} color={colors.primary} />
+              </View>
+              <View style={styles.exploreTextGroup}>
+                <Text style={styles.exploreCardTitle}>Report an unsafe location</Text>
+                <Text style={styles.exploreCardDesc}>
+                  Help other travellers make informed decisions.
                 </Text>
               </View>
               <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />

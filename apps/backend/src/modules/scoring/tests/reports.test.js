@@ -293,8 +293,10 @@ describe('Reports API (/reports)', () => {
     });
 
     test('calculates lower decay weight for an older report (7 days old)', async () => {
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      await Report.updateOne({ _id: activeReportId }, { $set: { createdAt: sevenDaysAgo } });
+      await Report.collection.updateOne(
+        { _id: new mongoose.Types.ObjectId(activeReportId) },
+        { $set: { createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } }
+      );
 
       const res = await request(app).get('/reports');
       expect(res.status).toBe(200);

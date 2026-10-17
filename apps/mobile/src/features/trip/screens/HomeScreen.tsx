@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
-import { Card, ShieldLogo } from '../../../components/ui';
+import { Card, DarkHeader, PrimaryButton, ShieldLogo } from '../../../components/ui';
 import { colors, radius, typography } from '../../../theme';
 
 export default function HomeScreen() {
@@ -19,164 +19,185 @@ export default function HomeScreen() {
     Alert.alert(feature, 'This feature will be connected during development.');
   };
 
-  const getGreeting = (): string => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
-  };
-
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+
+      {/* DarkHeader with brand, tagline, logo, bell, and avatar */}
+      <DarkHeader
+        title="SafeSafar"
+        subtitle="Safer routes. Brighter journeys."
+        leftSlot={<ShieldLogo size={24} />}
+        rightSlot={
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              onPress={() => showMessage('Notifications')}
+              style={styles.iconButton}
+              accessibilityRole="button"
+              accessibilityLabel="Notifications"
+            >
+              <MaterialIcons name="notifications-none" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push('/auth')}
+              style={styles.avatarCircle}
+              accessibilityRole="button"
+              accessibilityLabel="User profile or sign in"
+            >
+              <Text style={styles.avatarText}>HB</Text>
+            </TouchableOpacity>
+          </View>
+        }
+      />
+
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Header Row */}
-        <View style={styles.headerRow}>
-          <View style={styles.headerBrandGroup}>
-            <ShieldLogo size={32} />
-            <View style={styles.headerTitles}>
-              <Text style={styles.brand}>SafeSafar</Text>
-              <Text style={styles.subtitle}>Your safety, your journey.</Text>
+        {/* Slate Greeting Card */}
+        <Card style={styles.greetingCard}>
+          <View style={styles.greetingContent}>
+            <Text style={styles.greetingTitle}>Hi there!</Text>
+            <Text style={styles.greetingSubtitle}>Travel safer, every day.</Text>
+          </View>
+          <View style={styles.shieldBadge}>
+            <MaterialIcons name="verified-user" size={22} color={colors.accent} />
+          </View>
+        </Card>
+
+        {/* Plan a Safe Route Card */}
+        <Card style={styles.planRouteCard}>
+          <View style={styles.planRouteHeader}>
+            <MaterialIcons name="map" size={22} color={colors.primary} />
+            <Text style={styles.planRouteTitle}>Plan a Safe Route</Text>
+          </View>
+          <Text style={styles.planRouteSubtitle}>
+            Find streets scored by lighting, landmarks, and real-time safety.
+          </Text>
+
+          {/* Presentational input fields */}
+          <View style={styles.inputsWrapper}>
+            <View style={styles.inputRow}>
+              <MaterialIcons name="my-location" size={20} color={colors.accent} />
+              <Text style={styles.inputText}>Your Current Location</Text>
+            </View>
+            <View style={styles.inputDivider} />
+            <View style={styles.inputRow}>
+              <MaterialIcons name="place" size={20} color={colors.danger} />
+              <Text style={styles.inputText}>Choose Destination</Text>
             </View>
           </View>
+
+          <PrimaryButton
+            variant="accent"
+            label="Find Safe Route"
+            onPress={() => showMessage('Plan a Safe Route')}
+            icon={<MaterialIcons name="search" size={20} color={colors.primaryDark} />}
+            style={styles.findRouteButton}
+          />
+        </Card>
+
+        {/* Two Tiles Side by Side: Emergency SOS & Share Live Location */}
+        <View style={styles.tilesRow}>
+          {/* Tile 1: Emergency SOS */}
+          <Card
+            onPress={() => showMessage('SOS preview')}
+            style={styles.sosTile}
+            accessibilityLabel="Emergency SOS"
+          >
+            <View style={styles.sosIconCircle}>
+              <MaterialIcons name="warning" size={26} color={colors.sosRed} />
+            </View>
+            <Text style={styles.tileTitle}>Emergency SOS</Text>
+            <Text style={styles.tileSubtitle}>Instant 4-channel alert</Text>
+          </Card>
+
+          {/* Tile 2: Share Live Location */}
+          <Card
+            onPress={() => showMessage('Walk Me Home')}
+            style={styles.shareTile}
+            accessibilityLabel="Share Live Location"
+          >
+            <View style={styles.shareIconCircle}>
+              <MaterialIcons name="directions-walk" size={26} color={colors.accent} />
+            </View>
+            <Text style={styles.tileTitle}>Share Live Location</Text>
+            <Text style={styles.tileSubtitle}>Walk Me Home tracking</Text>
+          </Card>
+        </View>
+
+        {/* Section: Explore SafeSafar */}
+        <Text style={styles.sectionTitle}>Explore SafeSafar</Text>
+        <View style={styles.exploreList}>
+          {/* Card 1: Complete your Safety Profile */}
+          <Card
+            onPress={() => router.push('/onboarding')}
+            style={styles.exploreCard}
+            accessibilityLabel="Complete your Safety Profile"
+          >
+            <View style={styles.exploreCardInner}>
+              <View style={styles.exploreIconCircle}>
+                <MaterialIcons name="shield" size={22} color={colors.primary} />
+              </View>
+              <View style={styles.exploreTextGroup}>
+                <Text style={styles.exploreCardTitle}>Complete your Safety Profile</Text>
+                <Text style={styles.exploreCardDesc}>
+                  Configure automated countdowns and hardware safety permissions.
+                </Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
+            </View>
+          </Card>
+
+          {/* Card 2: Trusted Contacts */}
+          <Card
+            onPress={() => router.push('/contacts')}
+            style={styles.exploreCard}
+            accessibilityLabel="Trusted Contacts"
+          >
+            <View style={styles.exploreCardInner}>
+              <View style={styles.exploreIconCircle}>
+                <MaterialIcons name="group" size={22} color={colors.primary} />
+              </View>
+              <View style={styles.exploreTextGroup}>
+                <Text style={styles.exploreCardTitle}>Trusted Contacts</Text>
+                <Text style={styles.exploreCardDesc}>
+                  Manage the guardian network alerted when you need assistance.
+                </Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
+            </View>
+          </Card>
+
+          {/* Card 3: Learn How It Works */}
+          <Card
+            onPress={() => showMessage('Report an Unsafe Location')}
+            style={styles.exploreCard}
+            accessibilityLabel="Learn How It Works"
+          >
+            <View style={styles.exploreCardInner}>
+              <View style={styles.exploreIconCircle}>
+                <MaterialIcons name="info-outline" size={22} color={colors.primary} />
+              </View>
+              <View style={styles.exploreTextGroup}>
+                <Text style={styles.exploreCardTitle}>Learn How It Works</Text>
+                <Text style={styles.exploreCardDesc}>
+                  Discover real-time hazard decay and safety-scored routing.
+                </Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
+            </View>
+          </Card>
+        </View>
+
+        {/* Footer Sign In Row */}
+        <View style={styles.footerRow}>
+          <Text style={styles.footerText}>Already have an account? </Text>
           <TouchableOpacity
-            style={styles.signInButton}
             onPress={() => router.push('/auth')}
-            activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel="Sign in or register"
           >
-            <Text style={styles.signInButtonText}>Sign In</Text>
+            <Text style={styles.footerLink}>Sign In</Text>
           </TouchableOpacity>
         </View>
-
-        {/* Welcome Section */}
-        <View style={styles.welcome}>
-          <Text style={styles.greeting}>{getGreeting()}</Text>
-          <Text style={styles.description}>Stay safe, explore freely.</Text>
-        </View>
-
-        {/* SOS Card */}
-        <TouchableOpacity
-          style={styles.sosButton}
-          onPress={() => showMessage('SOS preview')}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-          accessibilityLabel="SOS Emergency button"
-        >
-          <Text style={styles.sosTitle}>SOS</Text>
-          <Text style={styles.sosSubtitle}>Emergency assistance preview</Text>
-        </TouchableOpacity>
-
-        {/* Safety Tools Section */}
-        <Text style={styles.sectionTitle}>Your safety tools</Text>
-
-        <View style={styles.cardsList}>
-          {/* 1. Set up your safety profile */}
-          <Card
-            onPress={() => router.push('/onboarding')}
-            style={styles.setupCard}
-            accessibilityLabel="Set up your safety profile"
-          >
-            <View style={styles.cardContent}>
-              <View style={styles.iconCircle}>
-                <MaterialIcons name="shield" size={24} color={colors.primary} />
-              </View>
-              <View style={styles.featureText}>
-                <Text style={styles.cardTitle}>Set up your safety profile</Text>
-                <Text style={styles.cardDescription}>
-                  Explore SafeSafar features and configure emergency permissions.
-                </Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={24} color="#438568" />
-            </View>
-          </Card>
-
-          {/* 2. Plan a Safe Route */}
-          <Card
-            onPress={() => showMessage('Plan a Safe Route')}
-            style={styles.toolCard}
-            accessibilityLabel="Plan a Safe Route"
-          >
-            <View style={styles.cardContent}>
-              <View style={styles.iconCircle}>
-                <MaterialIcons name="map" size={24} color={colors.primary} />
-              </View>
-              <View style={styles.featureText}>
-                <Text style={styles.cardTitle}>Plan a Safe Route</Text>
-                <Text style={styles.cardDescription}>
-                  Find a safer way to your destination.
-                </Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={24} color="#438568" />
-            </View>
-          </Card>
-
-          {/* 3. Walk Me Home */}
-          <Card
-            onPress={() => showMessage('Walk Me Home')}
-            style={styles.toolCard}
-            accessibilityLabel="Walk Me Home"
-          >
-            <View style={styles.cardContent}>
-              <View style={styles.iconCircle}>
-                <MaterialIcons name="directions-walk" size={24} color={colors.primary} />
-              </View>
-              <View style={styles.featureText}>
-                <Text style={styles.cardTitle}>Walk Me Home</Text>
-                <Text style={styles.cardDescription}>
-                  Stay connected while travelling.
-                </Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={24} color="#438568" />
-            </View>
-          </Card>
-
-          {/* 4. Trusted Contacts */}
-          <Card
-            onPress={() => router.push('/contacts')}
-            style={styles.toolCard}
-            accessibilityLabel="Trusted Contacts"
-          >
-            <View style={styles.cardContent}>
-              <View style={styles.iconCircle}>
-                <MaterialIcons name="group" size={24} color={colors.primary} />
-              </View>
-              <View style={styles.featureText}>
-                <Text style={styles.cardTitle}>Trusted Contacts</Text>
-                <Text style={styles.cardDescription}>
-                  Manage the people you rely on.
-                </Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={24} color="#438568" />
-            </View>
-          </Card>
-
-          {/* 5. Report an unsafe location */}
-          <Card
-            onPress={() => showMessage('Report an Unsafe Location')}
-            style={styles.reportCard}
-            accessibilityLabel="Report an unsafe location"
-          >
-            <View style={styles.cardContent}>
-              <View style={styles.iconCircleReport}>
-                <MaterialIcons name="flag" size={24} color={colors.primaryDark} />
-              </View>
-              <View style={styles.featureText}>
-                <Text style={styles.cardTitle}>Report an unsafe location</Text>
-                <Text style={styles.cardDescription}>
-                  Help other travellers make informed decisions.
-                </Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={24} color="#438568" />
-            </View>
-          </Card>
-        </View>
-
-        {/* Footer */}
-        <Text style={styles.footer}>
-          Stay aware. Stay connected. Travel safely.
-        </Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -188,151 +209,223 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   container: {
-    padding: 22,
+    paddingHorizontal: 20,
     paddingTop: 18,
-    paddingBottom: 36,
+    paddingBottom: 32,
   },
-  headerRow: {
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  iconButton: {
+    padding: 6,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  avatarCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.primaryDark,
+  },
+
+  /* Greeting Slate Card */
+  greetingCard: {
+    backgroundColor: colors.primaryDark,
+    borderColor: colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    padding: 18,
+    marginBottom: 16,
   },
-  headerBrandGroup: {
-    flexDirection: 'row',
+  greetingContent: {
+    flex: 1,
+  },
+  greetingTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+  },
+  greetingSubtitle: {
+    fontSize: 13,
+    color: '#94A3B8',
+    marginTop: 4,
+  },
+  shieldBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
     alignItems: 'center',
-    gap: 12,
-  },
-  headerTitles: {
     justifyContent: 'center',
   },
-  brand: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: colors.primary,
-    letterSpacing: -0.5,
+
+  /* Plan Route Card */
+  planRouteCard: {
+    padding: 18,
+    marginBottom: 16,
   },
-  subtitle: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  signInButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primarySoft,
-    borderWidth: 1,
-    borderColor: '#CBE0D4',
-  },
-  signInButtonText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.primary,
-  },
-  welcome: {
-    marginTop: 8,
-    marginBottom: 22,
-  },
-  greeting: {
-    fontSize: typography.title.fontSize,
-    fontWeight: typography.title.fontWeight,
-    color: colors.textPrimary,
-  },
-  description: {
-    fontSize: typography.body.fontSize,
-    lineHeight: 21,
-    color: colors.textSecondary,
-    marginTop: 6,
-  },
-  sosButton: {
-    backgroundColor: colors.sosRed,
-    borderRadius: radius.cardLarge,
-    padding: 23,
+  planRouteHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 30,
-    elevation: 3,
-    shadowColor: colors.sosRed,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
+    gap: 8,
+    marginBottom: 4,
   },
-  sosTitle: {
-    fontSize: 30,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: 1,
-  },
-  sosSubtitle: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    marginTop: 5,
-  },
-  sectionTitle: {
+  planRouteTitle: {
     fontSize: typography.heading.fontSize,
     fontWeight: typography.heading.fontWeight,
     color: colors.textPrimary,
+  },
+  planRouteSubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
     marginBottom: 14,
+    lineHeight: 18,
   },
-  cardsList: {
-    gap: 12,
-  },
-  setupCard: {
-    backgroundColor: colors.primarySoft,
+  inputsWrapper: {
+    backgroundColor: colors.background,
+    borderRadius: radius.card,
+    borderWidth: 1,
     borderColor: colors.border,
-    borderWidth: 1.5,
-    padding: 16,
+    marginBottom: 14,
+    overflow: 'hidden',
   },
-  toolCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    padding: 16,
-  },
-  reportCard: {
-    backgroundColor: colors.primarySoft,
-    borderColor: '#CDE2D4',
-    padding: 16,
-  },
-  cardContent: {
+  inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
   },
-  iconCircle: {
+  inputDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginHorizontal: 14,
+  },
+  inputText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  findRouteButton: {
+    height: 48,
+  },
+
+  /* Quick Action Tiles */
+  tilesRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  sosTile: {
+    flex: 1,
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+    padding: 16,
+    alignItems: 'flex-start',
+  },
+  sosIconCircle: {
     width: 44,
     height: 44,
     borderRadius: 22,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  shareTile: {
+    flex: 1,
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+    padding: 16,
+    alignItems: 'flex-start',
+  },
+  shareIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  tileTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  tileSubtitle: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+
+  /* Explore Section */
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    marginBottom: 12,
+  },
+  exploreList: {
+    gap: 10,
+    marginBottom: 24,
+  },
+  exploreCard: {
+    padding: 14,
+  },
+  exploreCardInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  exploreIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
   },
-  iconCircleReport: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#D8EADB',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
-  featureText: {
+  exploreTextGroup: {
     flex: 1,
   },
-  cardTitle: {
+  exploreCardTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: colors.primaryDark,
+    color: colors.textPrimary,
+    marginBottom: 2,
   },
-  cardDescription: {
-    fontSize: typography.caption.fontSize,
-    lineHeight: 18,
-    color: colors.textMuted,
-    marginTop: 4,
+  exploreCardDesc: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    lineHeight: 16,
   },
-  footer: {
-    textAlign: 'center',
-    color: colors.textMuted,
-    fontSize: typography.caption.fontSize,
-    marginTop: 28,
+
+  /* Footer */
+  footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  footerText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  footerLink: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.accent,
   },
 });

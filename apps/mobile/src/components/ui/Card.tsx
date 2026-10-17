@@ -17,6 +17,7 @@ export interface CardProps {
   accessibilityLabel?: string;
   testID?: string;
   disableEntranceAnimation?: boolean;
+  entranceDelay?: number;
 }
 
 export function Card({
@@ -26,6 +27,7 @@ export function Card({
   accessibilityLabel,
   testID,
   disableEntranceAnimation = false,
+  entranceDelay = 0,
 }: CardProps) {
   const reduceMotion = useReduceMotion();
   const scale = useRef(new Animated.Value(1)).current;
@@ -43,7 +45,7 @@ export function Card({
       return;
     }
 
-    Animated.parallel([
+    const anim = Animated.parallel([
       Animated.timing(opacity, {
         toValue: 1,
         duration: 250,
@@ -54,8 +56,14 @@ export function Card({
         duration: 250,
         useNativeDriver: Platform.OS !== 'web',
       }),
-    ]).start();
-  }, [reduceMotion, disableEntranceAnimation]);
+    ]);
+
+    if (entranceDelay > 0) {
+      Animated.sequence([Animated.delay(entranceDelay), anim]).start();
+    } else {
+      anim.start();
+    }
+  }, [reduceMotion, disableEntranceAnimation, entranceDelay]);
 
   const handlePressIn = () => {
     if (reduceMotion) return;

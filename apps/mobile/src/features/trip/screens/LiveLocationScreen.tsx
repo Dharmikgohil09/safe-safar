@@ -91,7 +91,7 @@ export default function LiveLocationScreen() {
         </View>
 
         <View style={styles.contactsList}>
-          {mockShareContacts.map((contact: MockShareContact) => {
+          {mockShareContacts.map((contact: MockShareContact, index: number) => {
             const isChecked = !!selectedContactIds[contact.id];
 
             return (
@@ -108,6 +108,7 @@ export default function LiveLocationScreen() {
                     styles.contactCard,
                     isChecked && styles.contactCardChecked,
                   ]}
+                  entranceDelay={index * 60}
                 >
                   <View style={styles.checkboxContainer}>
                     <MaterialIcons

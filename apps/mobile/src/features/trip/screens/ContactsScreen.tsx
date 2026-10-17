@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -15,6 +16,7 @@ import {
   View,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useReduceMotion } from '../../../components/ui';
 import {
   normalizePhone,
   type Contact,
@@ -25,7 +27,50 @@ import type { ContactFormData, FeedbackNotice, FormValidationErrors } from '../t
 
 const MAX_CONTACTS = 5;
 
+function AnimatedContactRow({
+  children,
+  index,
+  reduceMotion,
+}: {
+  children: React.ReactNode;
+  index: number;
+  reduceMotion: boolean;
+}) {
+  const opacity = React.useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
+  const translateY = React.useRef(new Animated.Value(reduceMotion ? 0 : 10)).current;
+
+  React.useEffect(() => {
+    if (reduceMotion) {
+      opacity.setValue(1);
+      translateY.setValue(0);
+      return;
+    }
+    Animated.sequence([
+      Animated.delay(index * 60),
+      Animated.parallel([
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+        Animated.timing(translateY, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+      ]),
+    ]).start();
+  }, [reduceMotion, index]);
+
+  return (
+    <Animated.View style={{ opacity, transform: [{ translateY }] }}>
+      {children}
+    </Animated.View>
+  );
+}
+
 export default function ContactsScreen() {
+  const reduceMotion = useReduceMotion();
   const [contacts, setLocalContacts] = useState<Contact[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -363,7 +408,8 @@ export default function ContactsScreen() {
                 {contacts.map((contact, index) => {
                   const isPrimary = index === 0;
                   return (
-                    <View key={contact.id} style={styles.contactCard}>
+                    <AnimatedContactRow key={contact.id} index={index} reduceMotion={reduceMotion}>
+                    <View style={styles.contactCard}>
                       <View style={styles.cardMainRow}>
                         {/* Avatar */}
                         <View style={[styles.avatar, isPrimary && styles.avatarPrimary]}>
@@ -422,6 +468,7 @@ export default function ContactsScreen() {
                         </TouchableOpacity>
                       </View>
                     </View>
+                    </AnimatedContactRow>
                   );
                 })}
               </View>

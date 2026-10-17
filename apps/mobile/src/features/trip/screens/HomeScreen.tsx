@@ -74,7 +74,7 @@ export default function HomeScreen() {
 
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {/* Slate Greeting Card */}
-        <Card style={styles.greetingCard}>
+        <Card style={styles.greetingCard} entranceDelay={0}>
           <View style={styles.greetingContent}>
             <Text style={styles.greetingTitle}>Hi there!</Text>
             <Text style={styles.greetingSubtitle}>Travel safer, every day.</Text>
@@ -85,7 +85,7 @@ export default function HomeScreen() {
         </Card>
 
         {/* Plan a Safe Route Card */}
-        <Card style={styles.planRouteCard}>
+        <Card style={styles.planRouteCard} entranceDelay={60}>
           <View style={styles.planRouteHeader}>
             <MaterialIcons name="map" size={22} color={colors.primary} />
             <Text style={styles.planRouteTitle}>Plan a Safe Route</Text>
@@ -123,6 +123,7 @@ export default function HomeScreen() {
             onPress={() => showMessage('SOS preview')}
             style={styles.sosTile}
             accessibilityLabel="Emergency SOS"
+            entranceDelay={120}
           >
             <View style={styles.sosIconCircle}>
               <MaterialIcons name="warning" size={26} color={colors.sosRed} />
@@ -136,6 +137,7 @@ export default function HomeScreen() {
             onPress={() => showMessage('Share Live Location')}
             style={styles.shareTile}
             accessibilityLabel="Share Live Location"
+            entranceDelay={180}
           >
             <View style={styles.shareIconCircle}>
               <MaterialIcons name="share-location" size={26} color={colors.accent} />
@@ -153,6 +155,7 @@ export default function HomeScreen() {
             onPress={() => router.push('/onboarding')}
             style={styles.exploreCard}
             accessibilityLabel="Complete your Safety Profile"
+            entranceDelay={240}
           >
             <View style={styles.exploreCardInner}>
               <View style={styles.exploreIconCircle}>
@@ -173,6 +176,7 @@ export default function HomeScreen() {
             onPress={() => router.push('/contacts')}
             style={styles.exploreCard}
             accessibilityLabel="Trusted Contacts"
+            entranceDelay={300}
           >
             <View style={styles.exploreCardInner}>
               <View style={styles.exploreIconCircle}>
@@ -193,6 +197,7 @@ export default function HomeScreen() {
             onPress={() => showMessage('Walk Me Home')}
             style={styles.exploreCard}
             accessibilityLabel="Walk Me Home"
+            entranceDelay={360}
           >
             <View style={styles.exploreCardInner}>
               <View style={styles.exploreIconCircle}>
@@ -213,6 +218,7 @@ export default function HomeScreen() {
             onPress={() => showMessage('Report an Unsafe Location')}
             style={styles.exploreCard}
             accessibilityLabel="Report an unsafe location"
+            entranceDelay={420}
           >
             <View style={styles.exploreCardInner}>
               <View style={styles.exploreIconCircle}>

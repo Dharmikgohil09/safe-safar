@@ -11,10 +11,12 @@ import {
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
-import { Card, DarkHeader, PrimaryButton, ShieldLogo } from '../../../components/ui';
+import { Card, DarkHeader, DrawerMenu, PrimaryButton, ShieldLogo } from '../../../components/ui';
 import { colors, radius, typography } from '../../../theme';
 
 export default function HomeScreen() {
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
+
   const showMessage = (feature: string) => {
     Alert.alert(feature, 'This feature will be connected during development.');
   };
@@ -23,11 +25,31 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
 
-      {/* DarkHeader with brand, tagline, logo, bell, and avatar */}
+      {/* Navigation Drawer */}
+      <DrawerMenu
+        visible={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        showMessage={showMessage}
+      />
+
+      {/* DarkHeader with menu icon, brand, tagline, logo, bell, and avatar */}
       <DarkHeader
         title="SafeSafar"
         subtitle="Safer routes. Brighter journeys."
-        leftSlot={<ShieldLogo size={24} />}
+        leftSlot={
+          <View style={styles.headerLeftGroup}>
+            <TouchableOpacity
+              onPress={() => setDrawerOpen(true)}
+              style={styles.menuButton}
+              accessibilityRole="button"
+              accessibilityLabel="Open navigation menu"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MaterialIcons name="menu" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <ShieldLogo size={24} />
+          </View>
+        }
         rightSlot={
           <View style={styles.headerActions}>
             <TouchableOpacity
@@ -232,6 +254,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 18,
     paddingBottom: 32,
+  },
+  headerLeftGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  menuButton: {
+    padding: 6,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerActions: {
     flexDirection: 'row',

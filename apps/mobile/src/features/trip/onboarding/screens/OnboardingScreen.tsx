@@ -15,8 +15,8 @@ import {
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
-import { Card, PrimaryButton, ProgressSteps, ShieldLogo } from '../../../../components/ui';
-import { colors, radius, spacing, typography } from '../../../../theme';
+import { Card, PrimaryButton, ShieldLogo } from '../../../../components/ui';
+import { colors, radius, typography } from '../../../../theme';
 import { requestEmergencyPermissions } from '../../../emergency';
 import { setOnboardingCompleted } from '../storage/onboardingStorage';
 import type { PermissionStatusState } from '../types';
@@ -243,7 +243,7 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
             accessibilityRole="button"
             accessibilityLabel="Return to Home"
           >
-            <MaterialIcons name="arrow-back" size={20} color={colors.primary} />
+            <MaterialIcons name="arrow-back" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
           <View style={styles.brandRow}>
             <ShieldLogo size={20} />
@@ -260,9 +260,20 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
           </TouchableOpacity>
         </View>
 
-        {/* Step Progress Row using ProgressSteps */}
-        <View style={styles.indicatorsRow}>
-          <ProgressSteps total={3} current={currentStep} />
+        {/* Amber Dot Progress Indicators */}
+        <View style={styles.dotsRow}>
+          {[0, 1, 2].map((idx) => {
+            const isActive = currentStep === idx;
+            return (
+              <View
+                key={idx}
+                style={[
+                  styles.dot,
+                  isActive ? styles.dotActive : styles.dotInactive,
+                ]}
+              />
+            );
+          })}
         </View>
 
         {/* Scrollable Step Content */}
@@ -284,7 +295,7 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
                 ]}
               >
                 <View style={styles.heroCircle}>
-                  <MaterialIcons name="navigation" size={44} color={colors.primary} />
+                  <MaterialIcons name="navigation" size={44} color={colors.accent} />
                 </View>
                 <View style={styles.stepBadge}>
                   <Text style={styles.stepBadgeText}>Safe Route Navigator</Text>
@@ -300,7 +311,9 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
                   },
                 ]}
               >
-                <Text style={styles.stepTitle}>Navigate by Safety, Not Just Speed</Text>
+                <Text style={styles.stepTitle}>
+                  Welcome to <Text style={styles.titleAmber}>SafeSafar</Text>
+                </Text>
                 <Text style={styles.stepSubtitle}>
                   Travel routes scored by real-time safety factors. Make informed decisions with
                   transparent safety data.
@@ -318,7 +331,7 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
               >
                 <Card style={styles.highlightCard}>
                   <View style={styles.highlightIcon}>
-                    <MaterialIcons name="alt-route" size={22} color={colors.primary} />
+                    <MaterialIcons name="alt-route" size={22} color={colors.accent} />
                   </View>
                   <View style={styles.highlightTextWrap}>
                     <Text style={styles.highlightTitle}>Color-Coded Route Options</Text>
@@ -330,7 +343,7 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
 
                 <Card style={styles.highlightCard}>
                   <View style={styles.highlightIcon}>
-                    <MaterialIcons name="wb-incandescent" size={22} color={colors.primary} />
+                    <MaterialIcons name="wb-incandescent" size={22} color={colors.accent} />
                   </View>
                   <View style={styles.highlightTextWrap}>
                     <Text style={styles.highlightTitle}>Lighting & Landmark Density</Text>
@@ -342,7 +355,7 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
 
                 <Card style={styles.highlightCard}>
                   <View style={styles.highlightIcon}>
-                    <MaterialIcons name="verified-user" size={22} color={colors.primary} />
+                    <MaterialIcons name="verified-user" size={22} color={colors.accent} />
                   </View>
                   <View style={styles.highlightTextWrap}>
                     <Text style={styles.highlightTitle}>Verified Community Reports</Text>
@@ -368,7 +381,7 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
                 ]}
               >
                 <View style={styles.heroCircle}>
-                  <MaterialIcons name="people-alt" size={44} color={colors.primary} />
+                  <MaterialIcons name="people-alt" size={44} color={colors.accent} />
                 </View>
                 <View style={styles.stepBadge}>
                   <Text style={styles.stepBadgeText}>Walk Me Home</Text>
@@ -384,7 +397,9 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
                   },
                 ]}
               >
-                <Text style={styles.stepTitle}>Your Trusted People Watch Over You</Text>
+                <Text style={styles.stepTitle}>
+                  Welcome to <Text style={styles.titleAmber}>SafeSafar</Text>
+                </Text>
                 <Text style={styles.stepSubtitle}>
                   Stay connected during solo commutes with automated countdown check-ins and emergency contact alerts.
                 </Text>
@@ -401,7 +416,7 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
               >
                 <Card style={styles.highlightCard}>
                   <View style={styles.highlightIcon}>
-                    <MaterialIcons name="timer" size={22} color={colors.primary} />
+                    <MaterialIcons name="timer" size={22} color={colors.accent} />
                   </View>
                   <View style={styles.highlightTextWrap}>
                     <Text style={styles.highlightTitle}>Automated Countdown Check-Ins</Text>
@@ -413,7 +428,7 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
 
                 <Card style={styles.highlightCard}>
                   <View style={styles.highlightIcon}>
-                    <MaterialIcons name="phonelink-ring" size={22} color={colors.primary} />
+                    <MaterialIcons name="phonelink-ring" size={22} color={colors.accent} />
                   </View>
                   <View style={styles.highlightTextWrap}>
                     <Text style={styles.highlightTitle}>Zero-Install Tracking Links</Text>
@@ -425,7 +440,7 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
 
                 <Card style={styles.highlightCard}>
                   <View style={styles.highlightIcon}>
-                    <MaterialIcons name="lock-outline" size={22} color={colors.primary} />
+                    <MaterialIcons name="lock-outline" size={22} color={colors.accent} />
                   </View>
                   <View style={styles.highlightTextWrap}>
                     <Text style={styles.highlightTitle}>On-Device Secure Storage</Text>
@@ -451,7 +466,7 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
                 ]}
               >
                 <View style={styles.heroCircle}>
-                  <MaterialIcons name="shield" size={44} color={colors.primary} />
+                  <MaterialIcons name="shield" size={44} color={colors.accent} />
                 </View>
                 <View style={styles.stepBadge}>
                   <Text style={styles.stepBadgeText}>4-Channel Alert Engine</Text>
@@ -467,7 +482,9 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
                   },
                 ]}
               >
-                <Text style={styles.stepTitle}>Emergency Defense & Permissions</Text>
+                <Text style={styles.stepTitle}>
+                  Welcome to <Text style={styles.titleAmber}>SafeSafar</Text>
+                </Text>
                 <Text style={styles.stepSubtitle}>
                   SafeSafar requires essential Android hardware permissions to send emergency SMS and auto-dial your contacts.
                 </Text>
@@ -487,7 +504,9 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
                   <Text style={styles.permCardTitle}>Required Safety Permissions</Text>
 
                   <View style={styles.permRow}>
-                    <MaterialIcons name="my-location" size={18} color={colors.primary} />
+                    <View style={styles.permIconCircle}>
+                      <MaterialIcons name="my-location" size={18} color={colors.accent} />
+                    </View>
                     <View style={styles.permTextWrap}>
                       <Text style={styles.permName}>Location (Foreground & Background)</Text>
                       <Text style={styles.permDesc}>
@@ -512,7 +531,9 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
                   </View>
 
                   <View style={styles.permRow}>
-                    <MaterialIcons name="sms" size={18} color={colors.primary} />
+                    <View style={styles.permIconCircle}>
+                      <MaterialIcons name="sms" size={18} color={colors.accent} />
+                    </View>
                     <View style={styles.permTextWrap}>
                       <Text style={styles.permName}>Direct SMS (No Internet Required)</Text>
                       <Text style={styles.permDesc}>
@@ -537,7 +558,9 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
                   </View>
 
                   <View style={styles.permRow}>
-                    <MaterialIcons name="phone" size={18} color={colors.primary} />
+                    <View style={styles.permIconCircle}>
+                      <MaterialIcons name="phone" size={18} color={colors.accent} />
+                    </View>
                     <View style={styles.permTextWrap}>
                       <Text style={styles.permName}>Phone Call Access</Text>
                       <Text style={styles.permDesc}>
@@ -562,7 +585,9 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
                   </View>
 
                   <View style={styles.permRow}>
-                    <MaterialIcons name="mic" size={18} color={colors.primary} />
+                    <View style={styles.permIconCircle}>
+                      <MaterialIcons name="mic" size={18} color={colors.accent} />
+                    </View>
                     <View style={styles.permTextWrap}>
                       <Text style={styles.permName}>Microphone (Hands-Free Voice Trigger)</Text>
                       <Text style={styles.permDesc}>
@@ -578,7 +603,7 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
                       <Text
                         style={[
                           styles.permPillText,
-                          permStatus.mic ? styles.permPillTextGranted : styles.permPillPending,
+                          permStatus.mic ? styles.permPillTextGranted : styles.permPillTextPending,
                         ]}
                       >
                         {permStatus.mic ? 'Granted' : 'Optional'}
@@ -596,10 +621,10 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
                     accessibilityLabel="Grant safety permissions"
                   >
                     {isRequestingPerms ? (
-                      <ActivityIndicator size="small" color={colors.primary} />
+                      <ActivityIndicator size="small" color={colors.accent} />
                     ) : (
                       <View style={styles.grantPermsInner}>
-                        <MaterialIcons name="verified" size={18} color={colors.primary} />
+                        <MaterialIcons name="verified" size={18} color={colors.accent} />
                         <Text style={styles.grantPermsButtonText}>Grant Device Permissions</Text>
                       </View>
                     )}
@@ -649,6 +674,7 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
           )}
 
           <PrimaryButton
+            variant="accent"
             label={currentStep === 2 ? 'Get Started' : 'Continue'}
             style={styles.primaryActionButton}
             onPress={handleNext}
@@ -684,7 +710,7 @@ const styles = StyleSheet.create({
   navBackButton: {
     padding: 6,
     borderRadius: radius.pill,
-    backgroundColor: '#EAF2EC',
+    backgroundColor: colors.primarySoft,
   },
   brandRow: {
     flexDirection: 'row',
@@ -694,14 +720,14 @@ const styles = StyleSheet.create({
   brandName: {
     fontSize: 17,
     fontWeight: '800',
-    color: colors.primary,
+    color: colors.primaryDark,
     letterSpacing: -0.3,
   },
   skipButton: {
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: radius.pill,
-    backgroundColor: '#EAF2EC',
+    backgroundColor: colors.primarySoft,
   },
   skipButtonText: {
     fontSize: 13,
@@ -709,10 +735,25 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
 
-  /* Progress Row */
-  indicatorsRow: {
-    paddingHorizontal: 20,
+  /* Dot Progress Indicators */
+  dotsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginVertical: 14,
+    gap: 6,
+  },
+  dot: {
+    height: 8,
+    borderRadius: 4,
+  },
+  dotActive: {
+    width: 24,
+    backgroundColor: colors.accent,
+  },
+  dotInactive: {
+    width: 8,
+    backgroundColor: colors.border,
   },
 
   /* Scroll Content */
@@ -730,26 +771,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   heroCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.primarySoft,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderWidth: 2,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
     marginTop: 8,
   },
   stepBadge: {
-    backgroundColor: '#E8F3EC',
+    backgroundColor: '#FEF3C7',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: radius.pill,
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
   },
   stepBadgeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.primary,
+    color: colors.primaryDark,
   },
   textHeaderWrapper: {
     alignItems: 'center',
@@ -763,6 +808,9 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     marginBottom: 8,
     paddingHorizontal: 8,
+  },
+  titleAmber: {
+    color: colors.accent,
   },
   stepSubtitle: {
     fontSize: typography.body.fontSize,
@@ -788,7 +836,9 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: '#EBF4EE',
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
@@ -824,8 +874,17 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F4F2',
+    borderBottomColor: colors.border,
     gap: 10,
+  },
+  permIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
   },
   permTextWrap: {
     flex: 1,
@@ -848,30 +907,30 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   permPillGranted: {
-    backgroundColor: colors.primarySoft,
+    backgroundColor: '#FEF3C7',
   },
   permPillPending: {
-    backgroundColor: '#F3F6F4',
+    backgroundColor: colors.border,
   },
   permPillText: {
     fontSize: 11,
     fontWeight: '700',
   },
   permPillTextGranted: {
-    color: colors.primary,
+    color: colors.primaryDark,
   },
   permPillTextPending: {
     color: colors.textMuted,
   },
   grantPermsButton: {
-    backgroundColor: colors.primarySoft,
+    backgroundColor: '#FEF3C7',
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 14,
     borderWidth: 1,
-    borderColor: '#CBE0D4',
+    borderColor: '#FDE68A',
   },
   grantPermsInner: {
     flexDirection: 'row',
@@ -879,7 +938,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   grantPermsButtonText: {
-    color: colors.primary,
+    color: colors.primaryDark,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -930,6 +989,6 @@ const styles = StyleSheet.create({
   authLinkText: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.primary,
+    color: colors.accent,
   },
 });

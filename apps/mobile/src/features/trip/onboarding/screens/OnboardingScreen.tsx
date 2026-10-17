@@ -15,7 +15,7 @@ import {
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
-import { Card, PrimaryButton, ShieldLogo } from '../../../../components/ui';
+import { Card, PrimaryButton, ShieldLogo, useReduceMotion } from '../../../../components/ui';
 import { colors, radius, typography } from '../../../../theme';
 import { requestEmergencyPermissions } from '../../../emergency';
 import { setOnboardingCompleted } from '../storage/onboardingStorage';
@@ -27,9 +27,9 @@ interface OnboardingScreenProps {
 }
 
 export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScreenProps) {
+  const reduceMotion = useReduceMotion();
   const [currentStep, setCurrentStep] = useState(0);
   const [isRequestingPerms, setIsRequestingPerms] = useState(false);
-  const [reduceMotion, setReduceMotion] = useState(false);
   const [permStatus, setPermStatus] = useState<PermissionStatusState>({
     location: false,
     background: false,
@@ -51,27 +51,17 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
   const buttonFadeAnim = useRef(new Animated.Value(1)).current;
   const buttonSlideAnim = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    let isMounted = true;
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then((enabled) => {
-        if (isMounted) setReduceMotion(enabled);
-      })
-      .catch(() => {});
-
-    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', (enabled) => {
-      setReduceMotion(enabled);
-    });
-
-    return () => {
-      isMounted = false;
-      sub?.remove();
-    };
-  }, []);
-
   const transitionToStep = (newStep: number) => {
     if (reduceMotion) {
       setCurrentStep(newStep);
+      heroFadeAnim.setValue(1);
+      heroSlideAnim.setValue(0);
+      titleFadeAnim.setValue(1);
+      titleSlideAnim.setValue(0);
+      contentFadeAnim.setValue(1);
+      contentSlideAnim.setValue(0);
+      buttonFadeAnim.setValue(1);
+      buttonSlideAnim.setValue(0);
       return;
     }
 

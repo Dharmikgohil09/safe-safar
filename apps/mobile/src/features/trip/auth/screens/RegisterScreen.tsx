@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -14,7 +14,7 @@ import {
   View,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { normalizePhone } from '../../emergency';
+import { normalizePhone } from '../../../emergency';
 import { authService } from '../services/authService';
 import type { AuthValidationErrors, RegisterCredentials } from '../types';
 

@@ -1,6 +1,6 @@
-import { Platform } from 'react-native';
+﻿import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
-import { normalizePhone } from '../../emergency';
+import { normalizePhone } from '../../../emergency';
 import type { AuthCredentials, AuthResponse, AuthUser, RegisterCredentials } from '../types';
 
 const TOKEN_KEY = 'safesafar.auth_token.v1';

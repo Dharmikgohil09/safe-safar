@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+﻿import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -14,7 +14,7 @@ import {
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
-import { requestEmergencyPermissions } from '../../emergency';
+import { requestEmergencyPermissions } from '../../../emergency';
 import { setOnboardingCompleted } from '../storage/onboardingStorage';
 import type { PermissionStatusState } from '../types';
 
@@ -290,7 +290,7 @@ export default function OnboardingScreen({ onComplete, onSkip }: OnboardingScree
                     <View style={styles.highlightTextWrap}>
                       <Text style={styles.highlightTitle}>Zero-Install Tracking Links</Text>
                       <Text style={styles.highlightDesc}>
-                        Your contacts open your live journey link directly in their mobile browser—no app required for them.
+                        Your contacts open your live journey link directly in their mobile browserâ€”no app required for them.
                       </Text>
                     </View>
                   </View>

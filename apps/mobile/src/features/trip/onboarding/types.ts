@@ -1,4 +1,4 @@
-import type { EmergencyPermissions } from '../emergency';
+﻿import type { EmergencyPermissions } from '../../emergency';
 
 export interface OnboardingStep {
   id: number;

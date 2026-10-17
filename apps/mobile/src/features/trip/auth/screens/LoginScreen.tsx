@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -14,7 +14,7 @@ import {
   View,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { normalizePhone } from '../../emergency';
+import { normalizePhone } from '../../../emergency';
 import { authService } from '../services/authService';
 import type { AuthCredentials, AuthValidationErrors } from '../types';
 
@@ -148,7 +148,7 @@ export default function LoginScreen({
                 <View style={styles.mockBadge}>
                   <MaterialIcons name="info-outline" size={13} color="#2A6B4B" />
                   <Text style={styles.mockBadgeText}>
-                    Demo Mode • Try: <Text style={styles.boldText}>9876543210</Text> | PIN:{' '}
+                    Demo Mode â€¢ Try: <Text style={styles.boldText}>9876543210</Text> | PIN:{' '}
                     <Text style={styles.boldText}>1234</Text>
                   </Text>
                 </View>

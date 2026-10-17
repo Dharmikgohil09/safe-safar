@@ -1,6 +1,5 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Animated,
   KeyboardAvoidingView,
   Platform,
@@ -14,6 +13,8 @@ import {
   View,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { Card, PrimaryButton, ShieldLogo } from '../../../../components/ui';
+import { colors, radius, typography } from '../../../../theme';
 import { normalizePhone } from '../../../emergency';
 import { authService } from '../services/authService';
 import type { AuthCredentials, AuthValidationErrors } from '../types';
@@ -99,7 +100,7 @@ export default function LoginScreen({
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F5F9F6" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -127,7 +128,7 @@ export default function LoginScreen({
                   accessibilityRole="button"
                   accessibilityLabel="Return to Home"
                 >
-                  <MaterialIcons name="arrow-back" size={18} color="#146B4B" />
+                  <MaterialIcons name="arrow-back" size={18} color={colors.primary} />
                   <Text style={styles.navBackText}>Home</Text>
                 </TouchableOpacity>
               </View>
@@ -135,20 +136,18 @@ export default function LoginScreen({
 
             {/* Header / Brand */}
             <View style={styles.header}>
-              <View style={styles.brandIconWrapper}>
-                <MaterialIcons name="security" size={28} color="#146B4B" />
+              <View style={styles.shieldLogoWrapper}>
+                <ShieldLogo size={56} />
               </View>
-              <Text style={styles.brandTitle}>SafeSafar</Text>
+              <Text style={styles.brandTitle}>SAFESAFAR</Text>
               <Text style={styles.title}>Welcome Back</Text>
-              <Text style={styles.subtitle}>
-                Sign in with your phone and secure PIN to access your routes and safety circle.
-              </Text>
+              <Text style={styles.subtitle}>Safer Travel, Brighter Futures.</Text>
 
               {isMock && (
                 <View style={styles.mockBadge}>
                   <MaterialIcons name="info-outline" size={13} color="#2A6B4B" />
                   <Text style={styles.mockBadgeText}>
-                    Demo Mode â€¢ Try: <Text style={styles.boldText}>9876543210</Text> | PIN:{' '}
+                    Demo Mode · Try: <Text style={styles.boldText}>9876543210</Text> | PIN:{' '}
                     <Text style={styles.boldText}>1234</Text>
                   </Text>
                 </View>
@@ -158,13 +157,13 @@ export default function LoginScreen({
             {/* General Error Banner */}
             {errors.general && (
               <View style={styles.generalErrorBanner}>
-                <MaterialIcons name="error-outline" size={18} color="#C83F43" />
+                <MaterialIcons name="error-outline" size={18} color={colors.danger} />
                 <Text style={styles.generalErrorText}>{errors.general}</Text>
               </View>
             )}
 
             {/* Form Fields Card */}
-            <View style={styles.card}>
+            <Card style={styles.card}>
               {/* Phone Field */}
               <View style={styles.fieldGroup}>
                 <Text style={styles.label}>Mobile Phone Number</Text>
@@ -214,7 +213,6 @@ export default function LoginScreen({
                     placeholderTextColor="#9CAEA4"
                     value={credentials.pin}
                     onChangeText={(val) => {
-                      // Only allow digits
                       const clean = val.replace(/[^\d]/g, '').slice(0, 6);
                       setCredentials((prev) => ({ ...prev, pin: clean }));
                       if (errors.pin) setErrors((prev) => ({ ...prev, pin: undefined }));
@@ -237,29 +235,22 @@ export default function LoginScreen({
                     <MaterialIcons
                       name={showPin ? 'visibility-off' : 'visibility'}
                       size={20}
-                      color="#64756C"
+                      color={colors.textSecondary}
                     />
                   </TouchableOpacity>
                 </View>
                 {errors.pin && <Text style={styles.fieldErrorText}>{errors.pin}</Text>}
               </View>
 
-              {/* Submit Button */}
-              <TouchableOpacity
-                style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
+              {/* PrimaryButton */}
+              <PrimaryButton
+                label="Sign In"
                 onPress={handleLogin}
+                loading={isLoading}
                 disabled={isLoading}
-                activeOpacity={0.85}
-                accessibilityRole="button"
                 accessibilityLabel="Sign In"
-              >
-                {isLoading ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.primaryButtonText}>Sign In</Text>
-                )}
-              </TouchableOpacity>
-            </View>
+              />
+            </Card>
 
             {/* Footer Navigation */}
             <View style={styles.footer}>
@@ -284,7 +275,7 @@ export default function LoginScreen({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F9F6',
+    backgroundColor: colors.background,
   },
   keyboardView: {
     flex: 1,
@@ -309,14 +300,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 6,
     paddingHorizontal: 12,
-    borderRadius: 14,
+    borderRadius: radius.pill,
     backgroundColor: '#EAF2EC',
     gap: 4,
   },
   navBackText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#146B4B',
+    color: colors.primary,
   },
 
   /* Header */
@@ -324,34 +315,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
-  brandIconWrapper: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: '#E5F2E9',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
+  shieldLogoWrapper: {
+    marginBottom: 12,
   },
   brandTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
-    color: '#146B4B',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+    color: colors.primary,
+    letterSpacing: 1.5,
     marginBottom: 4,
   },
   title: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#18392B',
+    fontSize: typography.title.fontSize,
+    fontWeight: typography.title.fontWeight,
+    color: colors.textPrimary,
     letterSpacing: -0.5,
     marginBottom: 6,
   },
   subtitle: {
     fontSize: 13,
     lineHeight: 19,
-    color: '#65766C',
+    color: colors.textSecondary,
     textAlign: 'center',
     paddingHorizontal: 12,
   },
@@ -359,7 +343,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#EDF5F0',
-    borderRadius: 20,
+    borderRadius: radius.cardLarge,
     paddingVertical: 5,
     paddingHorizontal: 12,
     marginTop: 12,
@@ -391,32 +375,14 @@ const styles = StyleSheet.create({
   generalErrorText: {
     fontSize: 12,
     lineHeight: 17,
-    color: '#C83F43',
+    color: colors.danger,
     fontWeight: '600',
     flex: 1,
   },
 
   /* Card */
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
     padding: 22,
-    borderWidth: 1,
-    borderColor: '#E1EAE4',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#146B4B',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 2,
-      },
-      web: {
-        boxShadow: '0 4px 16px rgba(20, 107, 75, 0.06)',
-      },
-    }),
   },
   fieldGroup: {
     marginBottom: 18,
@@ -424,7 +390,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#18392B',
+    color: colors.textPrimary,
     marginBottom: 7,
   },
   inputContainer: {
@@ -438,11 +404,11 @@ const styles = StyleSheet.create({
     height: 48,
   },
   inputFocused: {
-    borderColor: '#146B4B',
-    backgroundColor: '#FFFFFF',
+    borderColor: colors.primary,
+    backgroundColor: colors.surface,
   },
   inputError: {
-    borderColor: '#C83F43',
+    borderColor: colors.danger,
     backgroundColor: '#FFF8F8',
   },
   prefixWrapper: {
@@ -450,7 +416,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRightWidth: 1,
-    borderRightColor: '#E1EAE4',
+    borderRightColor: colors.border,
     backgroundColor: '#F3F7F4',
     height: '100%',
   },
@@ -463,14 +429,14 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 12,
     fontSize: 15,
-    color: '#18392B',
+    color: colors.textPrimary,
     height: '100%',
   },
   inputWithIcon: {
     flex: 1,
     paddingHorizontal: 14,
     fontSize: 15,
-    color: '#18392B',
+    color: colors.textPrimary,
     height: '100%',
   },
   eyeButton: {
@@ -481,42 +447,9 @@ const styles = StyleSheet.create({
   },
   fieldErrorText: {
     fontSize: 11,
-    color: '#C83F43',
+    color: colors.danger,
     fontWeight: '600',
     marginTop: 5,
-  },
-
-  /* Buttons */
-  primaryButton: {
-    backgroundColor: '#146B4B',
-    borderRadius: 14,
-    height: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#146B4B',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.2,
-        shadowRadius: 5,
-      },
-      android: {
-        elevation: 3,
-      },
-      web: {
-        boxShadow: '0 4px 12px rgba(20, 107, 75, 0.2)',
-      },
-    }),
-  },
-  buttonDisabled: {
-    backgroundColor: '#A0BCB0',
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: 0.3,
   },
 
   /* Footer */
@@ -529,7 +462,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 13,
-    color: '#65766C',
+    color: colors.textSecondary,
   },
   footerLinkButton: {
     paddingVertical: 4,
@@ -537,6 +470,6 @@ const styles = StyleSheet.create({
   footerLinkText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#146B4B',
+    color: colors.primary,
   },
 });

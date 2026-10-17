@@ -16,6 +16,7 @@ import { colors, radius } from '../../theme';
 export interface PrimaryButtonProps {
   label: string;
   onPress: () => void;
+  variant?: 'accent' | 'primary';
   disabled?: boolean;
   loading?: boolean;
   icon?: React.ReactNode;
@@ -28,6 +29,7 @@ export interface PrimaryButtonProps {
 export function PrimaryButton({
   label,
   onPress,
+  variant = 'accent',
   disabled = false,
   loading = false,
   icon,
@@ -57,6 +59,8 @@ export function PrimaryButton({
     }).start();
   };
 
+  const isAccent = variant === 'accent';
+
   return (
     <Pressable
       onPress={isInteractive ? onPress : undefined}
@@ -70,7 +74,8 @@ export function PrimaryButton({
     >
       <Animated.View
         style={[
-          styles.button,
+          styles.buttonBase,
+          isAccent ? styles.buttonAccent : styles.buttonPrimary,
           disabled && styles.buttonDisabled,
           style,
           {
@@ -79,11 +84,21 @@ export function PrimaryButton({
         ]}
       >
         {loading ? (
-          <ActivityIndicator size="small" color="#FFFFFF" />
+          <ActivityIndicator
+            size="small"
+            color={isAccent ? colors.primaryDark : '#FFFFFF'}
+          />
         ) : (
           <View style={styles.contentRow}>
             {icon ? <View style={styles.iconWrapper}>{icon}</View> : null}
-            <Text style={[styles.text, disabled && styles.textDisabled, textStyle]}>
+            <Text
+              style={[
+                styles.textBase,
+                isAccent ? styles.textAccent : styles.textPrimary,
+                disabled && styles.textDisabled,
+                textStyle,
+              ]}
+            >
               {label}
             </Text>
           </View>
@@ -94,13 +109,32 @@ export function PrimaryButton({
 }
 
 const styles = StyleSheet.create({
-  button: {
-    backgroundColor: colors.primary,
+  buttonBase: {
     borderRadius: radius.pill,
     height: 48,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 18,
+  },
+  buttonAccent: {
+    backgroundColor: colors.accent,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.accent,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.25,
+        shadowRadius: 5,
+      },
+      android: {
+        elevation: 3,
+      },
+      web: {
+        boxShadow: '0 4px 12px rgba(245, 158, 11, 0.25)',
+      },
+    }),
+  },
+  buttonPrimary: {
+    backgroundColor: colors.primary,
     ...Platform.select({
       ios: {
         shadowColor: colors.primary,
@@ -112,12 +146,12 @@ const styles = StyleSheet.create({
         elevation: 3,
       },
       web: {
-        boxShadow: '0 4px 12px rgba(20, 107, 75, 0.2)',
+        boxShadow: '0 4px 12px rgba(51, 65, 85, 0.2)',
       },
     }),
   },
   buttonDisabled: {
-    backgroundColor: '#A0BCB0',
+    backgroundColor: colors.border,
     elevation: 0,
     shadowOpacity: 0,
   },
@@ -129,13 +163,18 @@ const styles = StyleSheet.create({
   iconWrapper: {
     marginRight: 8,
   },
-  text: {
-    color: '#FFFFFF',
+  textBase: {
     fontSize: 15,
     fontWeight: '700',
     letterSpacing: 0.2,
   },
+  textAccent: {
+    color: colors.primaryDark,
+  },
+  textPrimary: {
+    color: '#FFFFFF',
+  },
   textDisabled: {
-    color: '#EAF2EC',
+    color: colors.textMuted,
   },
 });

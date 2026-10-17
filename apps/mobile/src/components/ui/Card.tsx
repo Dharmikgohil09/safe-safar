@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
         elevation: 2,
       },
       web: {
-        boxShadow: '0 2px 8px rgba(24, 57, 43, 0.06)',
+        boxShadow: '0 2px 8px rgba(30, 41, 59, 0.06)',
       },
     }),
   },

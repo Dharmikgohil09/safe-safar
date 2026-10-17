@@ -1,1 +1,1 @@
-export { default } from '../../src/features/trip/screens/placeholders/ProfilePlaceholder';
+export { default } from '../../src/features/trip/screens/ProfileScreen';

@@ -1,1 +1,1 @@
-export { default } from '../../src/features/trip/screens/placeholders/SosPlaceholder';
+export { default } from '../../src/features/trip/screens/SosScreen';

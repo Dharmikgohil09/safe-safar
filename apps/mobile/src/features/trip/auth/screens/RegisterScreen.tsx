@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
   KeyboardAvoidingView,
   Platform,
@@ -31,18 +32,16 @@ export default function RegisterScreen({
   onClose,
 }: RegisterScreenProps) {
   const [data, setData] = useState<RegisterCredentials>({
-    name: '',
     phone: '',
     pin: '',
     confirmPin: '',
+    name: '',
   });
   const [showPin, setShowPin] = useState(false);
   const [showConfirmPin, setShowConfirmPin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<AuthValidationErrors>({});
-  const [focusedField, setFocusedField] = useState<'name' | 'phone' | 'pin' | 'confirmPin' | null>(
-    null
-  );
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   // Entrance animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -52,12 +51,12 @@ export default function RegisterScreen({
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 380,
+        duration: 300,
         useNativeDriver: Platform.OS !== 'web',
       }),
       Animated.timing(slideAnim, {
         toValue: 0,
-        duration: 380,
+        duration: 300,
         useNativeDriver: Platform.OS !== 'web',
       }),
     ]).start();
@@ -65,30 +64,30 @@ export default function RegisterScreen({
 
   const validate = (): boolean => {
     const errs: AuthValidationErrors = {};
-    const norm = normalizePhone(data.phone);
 
     if (!data.name.trim()) {
-      errs.name = 'Please enter your full name.';
+      errs.name = 'Full name is required.';
     } else if (data.name.trim().length < 2) {
-      errs.name = 'Name must be at least 2 characters.';
+      errs.name = 'Please enter a valid full name.';
     }
 
+    const norm = normalizePhone(data.phone);
     if (!data.phone.trim()) {
-      errs.phone = 'Please enter your phone number.';
+      errs.phone = 'Phone number is required.';
     } else if (!norm) {
-      errs.phone = 'Please enter a valid 10-digit Indian phone number.';
+      errs.phone = 'Enter a valid 10-digit Indian phone number.';
     }
 
     if (!data.pin) {
-      errs.pin = 'Create a 4-digit security PIN.';
+      errs.pin = 'Security PIN is required.';
     } else if (data.pin.length < 4) {
       errs.pin = 'PIN must be at least 4 digits.';
     }
 
     if (!data.confirmPin) {
-      errs.confirmPin = 'Confirm your security PIN.';
+      errs.confirmPin = 'Please confirm your PIN.';
     } else if (data.pin !== data.confirmPin) {
-      errs.confirmPin = 'PINs do not match. Please re-enter.';
+      errs.confirmPin = 'PIN codes do not match.';
     }
 
     setErrors(errs);
@@ -97,20 +96,22 @@ export default function RegisterScreen({
 
   const handleRegister = async () => {
     if (!validate()) return;
+    setIsLoading(true);
+    setErrors({});
 
     try {
-      setIsLoading(true);
-      setErrors({});
       const res = await authService.register(data);
-
-      if (!res.success) {
+      if (res.success) {
+        if (onSuccess) {
+          onSuccess();
+        } else if (onClose) {
+          onClose();
+        }
+      } else {
         setErrors({ general: res.error || 'Registration failed. Please try again.' });
-        return;
       }
-
-      onSuccess?.();
     } catch {
-      setErrors({ general: 'Connection error during registration. Please try again.' });
+      setErrors({ general: 'Network error. Please check your connection and try again.' });
     } finally {
       setIsLoading(false);
     }
@@ -157,9 +158,30 @@ export default function RegisterScreen({
               <View style={styles.shieldLogoWrapper}>
                 <ShieldLogo size={56} />
               </View>
-              <Text style={styles.brandTitle}>SAFESAFAR</Text>
-              <Text style={styles.title}>Create Account</Text>
-              <Text style={styles.subtitle}>Safer Travel, Brighter Futures.</Text>
+              <Text style={styles.brandTitle}>SafeSafar</Text>
+              <Text style={styles.subtitle}>Safer Routes. Brighter Journeys.</Text>
+            </View>
+
+            {/* Segmented Tab Row */}
+            <View style={styles.tabRow}>
+              <TouchableOpacity
+                style={styles.tabButton}
+                onPress={onNavigateToLogin}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Switch to Login"
+              >
+                <Text style={styles.tabButtonText}>Login</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tabButton, styles.activeTabButton]}
+                activeOpacity={1}
+                accessibilityRole="button"
+                accessibilityLabel="Register tab"
+              >
+                <Text style={[styles.tabButtonText, styles.activeTabButtonText]}>Register</Text>
+                <View style={styles.activeUnderline} />
+              </TouchableOpacity>
             </View>
 
             {/* General Error Banner */}
@@ -179,87 +201,94 @@ export default function RegisterScreen({
                   style={[
                     styles.inputContainer,
                     focusedField === 'name' && styles.inputFocused,
-                    errors.name ? styles.inputError : null,
+                    !!errors.name && styles.inputError,
                   ]}
                 >
+                  <View style={styles.inputLeftIcon}>
+                    <MaterialIcons name="person-outline" size={20} color={colors.textSecondary} />
+                  </View>
                   <TextInput
-                    style={styles.input}
-                    placeholder="e.g. Diya Patel"
-                    placeholderTextColor="#9CAEA4"
+                    style={styles.inputWithIcon}
+                    placeholder="Enter your legal or preferred name"
+                    placeholderTextColor={colors.textMuted}
                     value={data.name}
                     onChangeText={(val) => {
-                      setData((prev) => ({ ...prev, name: val }));
-                      if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
+                      setData((prev: RegisterCredentials) => ({ ...prev, name: val }));
+                      if (errors.name) setErrors((prev: AuthValidationErrors) => ({ ...prev, name: undefined }));
                     }}
                     onFocus={() => setFocusedField('name')}
                     onBlur={() => setFocusedField(null)}
-                    autoCapitalize="words"
-                    returnKeyType="next"
+                    editable={!isLoading}
                     accessibilityLabel="Full name"
                   />
                 </View>
                 {errors.name && <Text style={styles.fieldErrorText}>{errors.name}</Text>}
               </View>
 
-              {/* Phone Field */}
+              {/* Mobile Phone Number */}
               <View style={styles.fieldGroup}>
                 <Text style={styles.label}>Mobile Phone Number</Text>
                 <View
                   style={[
                     styles.inputContainer,
                     focusedField === 'phone' && styles.inputFocused,
-                    errors.phone ? styles.inputError : null,
+                    !!errors.phone && styles.inputError,
                   ]}
                 >
                   <View style={styles.prefixWrapper}>
+                    <MaterialIcons name="phone" size={18} color={colors.textSecondary} />
                     <Text style={styles.prefixText}>+91</Text>
                   </View>
                   <TextInput
-                    style={styles.inputWithPrefix}
-                    placeholder="98765 43210"
-                    placeholderTextColor="#9CAEA4"
+                    style={styles.input}
+                    placeholder="10-digit mobile number"
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="phone-pad"
+                    maxLength={13}
                     value={data.phone}
                     onChangeText={(val) => {
-                      setData((prev) => ({ ...prev, phone: val }));
-                      if (errors.phone) setErrors((prev) => ({ ...prev, phone: undefined }));
+                      setData((prev: RegisterCredentials) => ({ ...prev, phone: val }));
+                      if (errors.phone) setErrors((prev: AuthValidationErrors) => ({ ...prev, phone: undefined }));
                     }}
                     onFocus={() => setFocusedField('phone')}
                     onBlur={() => setFocusedField(null)}
-                    keyboardType="phone-pad"
-                    autoComplete="tel"
-                    returnKeyType="next"
+                    editable={!isLoading}
                     accessibilityLabel="Mobile phone number"
                   />
                 </View>
                 {errors.phone && <Text style={styles.fieldErrorText}>{errors.phone}</Text>}
               </View>
 
-              {/* PIN Field */}
+              {/* Set Security PIN */}
               <View style={styles.fieldGroup}>
-                <Text style={styles.label}>Create 4-Digit PIN</Text>
+                <Text style={styles.label}>Create 4-Digit Security PIN</Text>
                 <View
                   style={[
                     styles.inputContainer,
                     focusedField === 'pin' && styles.inputFocused,
-                    errors.pin ? styles.inputError : null,
+                    !!errors.pin && styles.inputError,
                   ]}
                 >
+                  <View style={styles.inputLeftIcon}>
+                    <MaterialIcons name="lock-outline" size={20} color={colors.textSecondary} />
+                  </View>
                   <TextInput
                     style={styles.inputWithIcon}
-                    placeholder="e.g. 2468"
-                    placeholderTextColor="#9CAEA4"
+                    placeholder="4 to 6 digit numerical PIN"
+                    placeholderTextColor={colors.textMuted}
                     value={data.pin}
                     onChangeText={(val) => {
                       const clean = val.replace(/[^\d]/g, '').slice(0, 6);
-                      setData((prev) => ({ ...prev, pin: clean }));
-                      if (errors.pin) setErrors((prev) => ({ ...prev, pin: undefined }));
+                      setData((prev: RegisterCredentials) => ({ ...prev, pin: clean }));
+                      if (errors.pin) setErrors((prev: AuthValidationErrors) => ({ ...prev, pin: undefined }));
                     }}
                     onFocus={() => setFocusedField('pin')}
                     onBlur={() => setFocusedField(null)}
-                    keyboardType="number-pad"
                     secureTextEntry={!showPin}
-                    returnKeyType="next"
-                    accessibilityLabel="Create 4-digit PIN"
+                    keyboardType="numeric"
+                    maxLength={6}
+                    editable={!isLoading}
+                    accessibilityLabel="Create PIN"
                   />
                   <TouchableOpacity
                     style={styles.eyeButton}
@@ -275,47 +304,47 @@ export default function RegisterScreen({
                     />
                   </TouchableOpacity>
                 </View>
-                {errors.pin ? (
-                  <Text style={styles.fieldErrorText}>{errors.pin}</Text>
-                ) : (
-                  <Text style={styles.helperText}>Used for fast sign-in and travel check-in confirmations.</Text>
-                )}
+                {errors.pin && <Text style={styles.fieldErrorText}>{errors.pin}</Text>}
               </View>
 
-              {/* Confirm PIN Field */}
+              {/* Confirm Security PIN */}
               <View style={styles.fieldGroup}>
                 <Text style={styles.label}>Confirm Security PIN</Text>
                 <View
                   style={[
                     styles.inputContainer,
                     focusedField === 'confirmPin' && styles.inputFocused,
-                    errors.confirmPin ? styles.inputError : null,
+                    !!errors.confirmPin && styles.inputError,
                   ]}
                 >
+                  <View style={styles.inputLeftIcon}>
+                    <MaterialIcons name="lock-outline" size={20} color={colors.textSecondary} />
+                  </View>
                   <TextInput
                     style={styles.inputWithIcon}
-                    placeholder="Re-enter 4-digit PIN"
-                    placeholderTextColor="#9CAEA4"
+                    placeholder="Re-enter your PIN"
+                    placeholderTextColor={colors.textMuted}
                     value={data.confirmPin}
                     onChangeText={(val) => {
                       const clean = val.replace(/[^\d]/g, '').slice(0, 6);
-                      setData((prev) => ({ ...prev, confirmPin: clean }));
-                      if (errors.confirmPin) setErrors((prev) => ({ ...prev, confirmPin: undefined }));
+                      setData((prev: RegisterCredentials) => ({ ...prev, confirmPin: clean }));
+                      if (errors.confirmPin)
+                        setErrors((prev: AuthValidationErrors) => ({ ...prev, confirmPin: undefined }));
                     }}
                     onFocus={() => setFocusedField('confirmPin')}
                     onBlur={() => setFocusedField(null)}
-                    keyboardType="number-pad"
                     secureTextEntry={!showConfirmPin}
-                    returnKeyType="done"
-                    onSubmitEditing={handleRegister}
-                    accessibilityLabel="Confirm Security PIN"
+                    keyboardType="numeric"
+                    maxLength={6}
+                    editable={!isLoading}
+                    accessibilityLabel="Confirm PIN"
                   />
                   <TouchableOpacity
                     style={styles.eyeButton}
                     onPress={() => setShowConfirmPin(!showConfirmPin)}
                     activeOpacity={0.7}
                     accessibilityRole="button"
-                    accessibilityLabel={showConfirmPin ? 'Hide PIN' : 'Show PIN'}
+                    accessibilityLabel={showConfirmPin ? 'Hide confirm PIN' : 'Show confirm PIN'}
                   >
                     <MaterialIcons
                       name={showConfirmPin ? 'visibility-off' : 'visibility'}
@@ -331,12 +360,49 @@ export default function RegisterScreen({
 
               {/* PrimaryButton */}
               <PrimaryButton
+                variant="accent"
                 label="Create Account"
                 onPress={handleRegister}
                 loading={isLoading}
                 disabled={isLoading}
                 accessibilityLabel="Create Account"
               />
+
+              {/* Divider "OR" */}
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>OR</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              {/* Presentational Social Login Buttons */}
+              <View style={styles.socialButtonsContainer}>
+                <TouchableOpacity
+                  style={styles.socialButton}
+                  onPress={() =>
+                    Alert.alert('Google Sign-In', 'Social sign-in will be connected during backend integration.')
+                  }
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Continue with Google"
+                >
+                  <MaterialIcons name="g-mobiledata" size={24} color={colors.textPrimary} />
+                  <Text style={styles.socialButtonText}>Continue with Google</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.socialButton}
+                  onPress={() =>
+                    Alert.alert('Apple Sign-In', 'Social sign-in will be connected during backend integration.')
+                  }
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Continue with Apple"
+                >
+                  <MaterialIcons name="apple" size={20} color={colors.textPrimary} />
+                  <Text style={styles.socialButtonText}>Continue with Apple</Text>
+                </TouchableOpacity>
+              </View>
             </Card>
 
             {/* Footer Navigation */}
@@ -347,7 +413,7 @@ export default function RegisterScreen({
                 activeOpacity={0.7}
                 style={styles.footerLinkButton}
                 accessibilityRole="button"
-                accessibilityLabel="Sign in"
+                accessibilityLabel="Sign in to your account"
               >
                 <Text style={styles.footerLinkText}>Sign In</Text>
               </TouchableOpacity>
@@ -388,7 +454,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: radius.pill,
-    backgroundColor: '#EAF2EC',
+    backgroundColor: colors.primarySoft,
     gap: 4,
   },
   navBackText: {
@@ -406,18 +472,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   brandTitle: {
-    fontSize: 13,
+    fontSize: 24,
     fontWeight: '800',
-    color: colors.primary,
-    letterSpacing: 1.5,
-    marginBottom: 4,
-  },
-  title: {
-    fontSize: typography.title.fontSize,
-    fontWeight: typography.title.fontWeight,
-    color: colors.textPrimary,
+    color: colors.primaryDark,
     letterSpacing: -0.5,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   subtitle: {
     fontSize: 13,
@@ -427,15 +486,56 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
 
-  /* Error Banner */
+  /* Segmented Tab Row */
+  tabRow: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  activeTabButton: {
+    backgroundColor: '#FFFBEB',
+  },
+  tabButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  activeTabButtonText: {
+    fontWeight: '800',
+    color: colors.primaryDark,
+  },
+  activeUnderline: {
+    position: 'absolute',
+    bottom: 0,
+    left: '20%',
+    right: '20%',
+    height: 3,
+    backgroundColor: colors.accent,
+    borderTopLeftRadius: 2,
+    borderTopRightRadius: 2,
+  },
+
+  /* General Error */
   generalErrorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FDECEC',
+    backgroundColor: '#FFF5F5',
     borderWidth: 1,
-    borderColor: '#F5C6CB',
+    borderColor: '#FED7D7',
     borderRadius: 12,
-    padding: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     marginBottom: 16,
     gap: 8,
   },
@@ -463,20 +563,23 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FAFCFA',
-    borderWidth: 1.2,
-    borderColor: '#D4E2D9',
+    backgroundColor: colors.background,
     borderRadius: 12,
-    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
     height: 48,
   },
   inputFocused: {
-    borderColor: colors.primary,
+    borderColor: colors.accent,
     backgroundColor: colors.surface,
   },
   inputError: {
     borderColor: colors.danger,
     backgroundColor: '#FFF8F8',
+  },
+  inputLeftIcon: {
+    paddingLeft: 12,
+    paddingRight: 4,
   },
   input: {
     flex: 1,
@@ -486,29 +589,22 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   prefixWrapper: {
-    paddingHorizontal: 12,
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 10,
+    gap: 4,
     borderRightWidth: 1,
     borderRightColor: colors.border,
-    backgroundColor: '#F3F7F4',
     height: '100%',
   },
   prefixText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#345244',
-  },
-  inputWithPrefix: {
-    flex: 1,
-    paddingHorizontal: 12,
-    fontSize: 15,
     color: colors.textPrimary,
-    height: '100%',
   },
   inputWithIcon: {
     flex: 1,
-    paddingHorizontal: 14,
+    paddingHorizontal: 8,
     fontSize: 15,
     color: colors.textPrimary,
     height: '100%',
@@ -525,10 +621,44 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 5,
   },
-  helperText: {
-    fontSize: 11,
-    color: '#76877E',
-    marginTop: 5,
+
+  /* Divider */
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 18,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textMuted,
+  },
+
+  /* Social Buttons */
+  socialButtonsContainer: {
+    gap: 10,
+  },
+  socialButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 44,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    gap: 8,
+  },
+  socialButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textPrimary,
   },
 
   /* Footer */
@@ -549,6 +679,6 @@ const styles = StyleSheet.create({
   footerLinkText: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.primary,
+    color: colors.accent,
   },
 });

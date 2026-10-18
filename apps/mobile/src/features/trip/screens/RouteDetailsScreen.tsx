@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Alert,
   SafeAreaView,
@@ -11,12 +11,22 @@ import {
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
-import { Card, PrimaryButton } from '../../../components/ui';
+import { Card, PrimaryButton, StateView } from '../../../components/ui';
 import { colors, radius, spacing, typography } from '../../../theme';
 import { mockRoutes, mockSafetyFactors, MockSafetyFactor, MockRouteInsight } from '../mock/mockData';
 
 export default function RouteDetailsScreen() {
   const routeData = mockRoutes[0]; // Primary "Safer Route"
+  const [previewStatus, setPreviewStatus] = useState<'ready' | 'loading' | 'empty' | 'error'>('ready');
+
+  const cyclePreviewStatus = () => {
+    setPreviewStatus((prev) => {
+      if (prev === 'ready') return 'loading';
+      if (prev === 'loading') return 'empty';
+      if (prev === 'empty') return 'error';
+      return 'ready';
+    });
+  };
 
   const showMessage = (feature: string) => {
     Alert.alert(feature, 'This feature will be connected during development.');
@@ -140,14 +150,47 @@ export default function RouteDetailsScreen() {
 
         {/* Safety Insights List from mockData */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Safety Insights</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={styles.sectionTitle}>Safety Insights</Text>
+            {__DEV__ && (
+              <TouchableOpacity
+                onPress={cyclePreviewStatus}
+                style={styles.previewChip}
+                accessibilityRole="button"
+                accessibilityLabel="Preview states"
+              >
+                <Text style={styles.previewChipText}>Preview: {previewStatus}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
           <Text style={styles.sectionSubtitle}>
             Tap any insight for verified corridor intelligence
           </Text>
         </View>
 
-        <View style={styles.insightsList}>
-          {routeData.insights.map((insight: MockRouteInsight) => {
+        {previewStatus === 'loading' ? (
+          <StateView
+            kind="loading"
+            title="Analyzing route intelligence"
+            message="Aggregating crowd reports, camera coverage, and lighting data..."
+          />
+        ) : previewStatus === 'empty' ? (
+          <StateView
+            kind="empty"
+            title="No insights available"
+            message="No specific incident reports or advisories for this route segment."
+          />
+        ) : previewStatus === 'error' ? (
+          <StateView
+            kind="error"
+            title="Failed to load safety insights"
+            message="Could not connect to the route intelligence feed. Please retry."
+            actionLabel="Retry"
+            onAction={() => setPreviewStatus('ready')}
+          />
+        ) : (
+          <View style={styles.insightsList}>
+            {routeData.insights.map((insight: MockRouteInsight) => {
             const isWarning = insight.type === 'warning';
             const isInfo = insight.type === 'info';
 
@@ -190,6 +233,7 @@ export default function RouteDetailsScreen() {
             );
           })}
         </View>
+        )}
 
         {/* Start Guided Navigation Button */}
         <View style={styles.actionContainer}>
@@ -529,5 +573,18 @@ const styles = StyleSheet.create({
   },
   navButton: {
     height: 50,
+  },
+  previewChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  previewChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#B45309',
   },
 });

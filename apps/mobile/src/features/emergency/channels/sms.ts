@@ -1,6 +1,12 @@
+import { Linking } from 'react-native';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import SmsAndroid from 'react-native-get-sms-android';
 import { hasPermission } from '../permissions';
 import type { Channel, Contact, SosContext } from '../types';
+
+const isExpoGo =
+  Constants.executionEnvironment === ExecutionEnvironment.StoreClient ||
+  (Constants as any).appOwnership === 'expo';
 
 // Sends from the user's own SIM through SmsManager. No internet needed.
 // Android asks the user to confirm after roughly 30 messages in 30 minutes,
@@ -40,6 +46,12 @@ export function buildSosText(ctx: SosContext, kind: 'alert' | 'update' | 'clear'
 const SEND_TIMEOUT_MS = 35_000;
 
 function sendOne(phone: string, text: string): Promise<void> {
+  if (isExpoGo || !SmsAndroid || typeof (SmsAndroid as any).autoSend !== 'function') {
+    console.log(`[SafeSafar Expo Go] Simulated / External SMS to ${phone}: ${text}`);
+    Linking.openURL(`sms:${phone}?body=${encodeURIComponent(text)}`).catch(() => {});
+    return Promise.resolve();
+  }
+
   return new Promise((resolve, reject) => {
     const timer = setTimeout(
       () => reject(new Error(`no send confirmation after ${SEND_TIMEOUT_MS / 1000}s`)),
@@ -62,7 +74,7 @@ function sendOne(phone: string, text: string): Promise<void> {
 
 async function sendToAll(contacts: Contact[], text: string): Promise<void> {
   if (contacts.length === 0) throw new Error('no trusted contacts saved');
-  if (!(await hasPermission('SEND_SMS'))) throw new Error('SEND_SMS permission not granted');
+  if (!isExpoGo && !(await hasPermission('SEND_SMS'))) throw new Error('SEND_SMS permission not granted');
 
   const results = await Promise.allSettled(contacts.map((c) => sendOne(c.phone, text)));
   const failed = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');

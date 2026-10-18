@@ -1,3 +1,5 @@
+import { Linking } from 'react-native';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as ImmediateCall from 'react-native-immediate-phone-call';
 import { runCallChain } from '../services/callChain';
 import type { ChainOutcome } from '../services/callChain';
@@ -5,6 +7,10 @@ import { findOutgoingCall, getCallState } from '../services/telephony';
 import { hasPermission } from '../permissions';
 import { SILENT_SOURCES } from '../types';
 import type { Channel, Contact } from '../types';
+
+const isExpoGo =
+  Constants.executionEnvironment === ExecutionEnvironment.StoreClient ||
+  (Constants as any).appOwnership === 'expo';
 
 // Calls the trusted contacts one after another until somebody answers (see services/callChain.ts).
 // Needs CALL_PHONE to dial. READ_PHONE_STATE and READ_CALL_LOG let it tell "answered" from "not
@@ -22,24 +28,30 @@ let stopRequested = false;
 let running = false;
 
 function resolveDialer(): (phone: string) => void {
-  // Depending on how the package exports itself, the function is either a named
-  // export or on the default export. Handle both.
-  const ns = ImmediateCall as any;
-  const fn = ns.immediatePhoneCall ?? ns.default?.immediatePhoneCall;
-  if (typeof fn !== 'function') {
-    throw new Error('react-native-immediate-phone-call: immediatePhoneCall not found');
-  }
-  return fn;
+  try {
+    const ns = ImmediateCall as any;
+    const fn = ns?.immediatePhoneCall ?? ns?.default?.immediatePhoneCall;
+    if (typeof fn === 'function') {
+      return fn;
+    }
+  } catch (_) {}
+
+  // Expo Go safe fallback
+  return (phone: string) => {
+    console.log(`[SafeSafar Expo Go] Calling via system dialer: ${phone}`);
+    Linking.openURL(`tel:${phone}`).catch(() => {});
+  };
 }
 
 export async function callContact(contact: Contact): Promise<void> {
-  if (!(await hasPermission('CALL_PHONE'))) throw new Error('CALL_PHONE permission not granted');
+  if (!isExpoGo && !(await hasPermission('CALL_PHONE'))) throw new Error('CALL_PHONE permission not granted');
   resolveDialer()(contact.phone);
 }
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 async function canDetectAnswer(): Promise<boolean> {
+  if (isExpoGo) return false;
   try {
     const [state, log] = await Promise.all([hasPermission('READ_PHONE_STATE'), hasPermission('READ_CALL_LOG')]);
     if (!state || !log) return false;

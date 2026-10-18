@@ -55,3 +55,4 @@ safesafar/
 3. **Module Boundaries**:
    - Never overwrite another developer's module files.
    - Core provides stable mount points and interfaces for `/routes`, `/reports`, and `/sos`.
+

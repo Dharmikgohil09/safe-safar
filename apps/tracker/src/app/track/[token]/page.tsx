@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import SafetyMap from '../../../components/Map/SafetyMap';
 import TrackerHeader from '../../../components/TrackerHeader';
 import TrackerStatusCard from '../../../components/TrackerStatusCard';
+import SosStateBanner from '../../../components/SosStateBanner';
 import LoadingState from '../../../components/LoadingState';
 import ErrorState from '../../../components/ErrorState';
 import MockModeBadge from '../../../components/MockModeBadge';
@@ -13,6 +14,7 @@ import {
   TrackingSession,
   ConnectionStatus,
   LocationPayload,
+  SosState,
 } from '../../../types/tracker';
 import { config } from '../../../config/env';
 import { createTrackerSocketConnection, TrackerConnectionHandle } from '../../../services/socketAdapter';
@@ -30,7 +32,9 @@ export default function TrackPage() {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isStale, setIsStale] = useState<boolean>(false);
-  const [isSos, setIsSos] = useState<boolean>(false);
+
+  // Day 3–4: 3-State SOS Tracking ('normal' | 'active' | 'resolved')
+  const [sosState, setSosState] = useState<SosState>('normal');
 
   // Mock State Controls
   const [isPaused, setIsPaused] = useState<boolean>(false);
@@ -54,18 +58,19 @@ export default function TrackPage() {
       const newPt: [number, number] = [valid.latitude, valid.longitude];
       if (prev.length === 0) return [newPt];
       const last = prev[prev.length - 1];
-      // Avoid duplicate points
+      // Avoid duplicate coordinates
       if (Math.abs(last[0] - newPt[0]) < 0.00001 && Math.abs(last[1] - newPt[1]) < 0.00001) {
         return prev;
       }
       return [...prev, newPt];
     });
 
+    // Only update timestamp if incoming payload contains a genuine timestamp
     setSession((prev) => {
       if (!prev) return null;
       return {
         ...prev,
-        lastUpdated: valid.timestamp,
+        lastUpdated: valid.timestamp !== null && valid.timestamp !== undefined ? valid.timestamp : prev.lastUpdated,
         batteryLevel: valid.batteryLevel !== undefined ? valid.batteryLevel : prev.batteryLevel,
       };
     });
@@ -92,6 +97,20 @@ export default function TrackPage() {
       try {
         const mockSess = getMockSession(token);
         setSession(mockSess);
+
+        // Determine SOS state from mock session
+        if (mockSess.sosState) {
+          setSosState(mockSess.sosState);
+        } else if (mockSess.status === 'sos') {
+          setSosState('active');
+        } else if (mockSess.status === 'resolved') {
+          setSosState('resolved');
+        } else {
+          setSosState('normal');
+        }
+
+        const isNoTimestamp = token === 'no-timestamp';
+
         if (mockSess.currentLocation) {
           handleLocationUpdate({
             latitude: mockSess.currentLocation.latitude,
@@ -99,12 +118,12 @@ export default function TrackPage() {
             accuracy: mockSess.currentLocation.accuracy,
             speed: mockSess.currentLocation.speed,
             heading: mockSess.currentLocation.heading,
-            timestamp: mockSess.lastUpdated || Date.now(),
+            timestamp: isNoTimestamp ? null : (mockSess.lastUpdated !== undefined ? mockSess.lastUpdated : Date.now()),
             batteryLevel: mockSess.batteryLevel || undefined,
           });
         }
 
-        const emitter = createMockEmitter();
+        const emitter = createMockEmitter(3500, { omitTimestamp: isNoTimestamp });
         mockEmitterRef.current = emitter;
         emitter.start((locationPayload) => {
           handleLocationUpdate(locationPayload);
@@ -132,7 +151,15 @@ export default function TrackPage() {
     const handle = createTrackerSocketConnection(token, config.socketUrl, {
       onSessionInit: (sess) => {
         setSession(sess);
-        if (sess.status === 'sos') setIsSos(true);
+        if (sess.sosState) {
+          setSosState(sess.sosState);
+        } else if (sess.status === 'sos') {
+          setSosState('active');
+        } else if (sess.status === 'resolved') {
+          setSosState('resolved');
+        } else {
+          setSosState('normal');
+        }
       },
       onLocationUpdate: (loc) => {
         handleLocationUpdate(loc);
@@ -140,6 +167,9 @@ export default function TrackPage() {
       onStatusChange: (status, message) => {
         setConnectionStatus(status);
         if (message) setErrorMessage(message);
+      },
+      onSosStateChange: (state) => {
+        setSosState(state);
       },
       onStaleStateChange: (stale) => {
         setIsStale(stale);
@@ -166,8 +196,8 @@ export default function TrackPage() {
     }
   };
 
-  const handleToggleSos = () => {
-    setIsSos((prev) => !prev);
+  const handleSetSosState = (state: SosState) => {
+    setSosState(state);
   };
 
   const handleManualRefresh = () => {
@@ -227,9 +257,15 @@ export default function TrackPage() {
       <TrackerHeader
         status={connectionStatus}
         isMock={config.isMockMode}
-        isSos={isSos}
+        isSos={sosState === 'active'}
+        sosState={sosState}
         onRefresh={handleManualRefresh}
       />
+
+      {/* Day 3–4: SOS State Banner (Normal / SOS Active / Resolved) */}
+      <div className="sos-banner-container">
+        <SosStateBanner sosState={sosState} userName={session?.userName} />
+      </div>
 
       {/* Main Map View Area */}
       <div className="map-viewport-section">
@@ -240,7 +276,7 @@ export default function TrackPage() {
             currentLocation={currentLocation}
             destination={session?.destination}
             breadcrumbs={breadcrumbs}
-            isSosActive={isSos}
+            isSosActive={sosState === 'active'}
             isStale={isStale}
             tileUrl={config.mapTileUrl}
             attribution={config.mapAttribution}
@@ -248,21 +284,23 @@ export default function TrackPage() {
         )}
       </div>
 
-      {/* Demo Floating Badge with live simulator controls */}
+      {/* Demo Floating Badge with 3-state SOS simulator controls */}
       <MockModeBadge
         isMockActive={config.isMockMode}
         isPaused={isPaused}
-        isSos={isSos}
+        sosState={sosState}
+        isSos={sosState === 'active'}
         onTogglePause={handleTogglePause}
-        onToggleSos={handleToggleSos}
+        onSetSosState={handleSetSosState}
       />
 
-      {/* Bottom Floating Telemetry & Safety Actions Panel */}
+      {/* Bottom Floating Telemetry & Destination Panel */}
       <TrackerStatusCard
         session={session}
         currentLocation={currentLocation}
         isStale={isStale}
-        isSos={isSos}
+        isSos={sosState === 'active'}
+        sosState={sosState}
       />
     </main>
   );

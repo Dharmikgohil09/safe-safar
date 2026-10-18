@@ -1,26 +1,41 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Info, Play, Pause, AlertOctagon, Sparkles } from 'lucide-react';
+import { Play, Pause, AlertOctagon, Sparkles, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { SosState } from '../types/tracker';
 
 interface MockModeBadgeProps {
   isMockActive: boolean;
   isPaused: boolean;
-  isSos: boolean;
+  sosState?: SosState;
+  isSos?: boolean;
   onTogglePause: () => void;
-  onToggleSos: () => void;
+  onSetSosState?: (state: SosState) => void;
+  onToggleSos?: () => void;
 }
 
 export default function MockModeBadge({
   isMockActive,
   isPaused,
-  isSos,
+  sosState = 'normal',
+  isSos = false,
   onTogglePause,
+  onSetSosState,
   onToggleSos,
 }: MockModeBadgeProps) {
   const [expanded, setExpanded] = useState(false);
 
   if (!isMockActive) return null;
+
+  const currentSosState: SosState = sosState || (isSos ? 'active' : 'normal');
+
+  const handleStateSelect = (state: SosState) => {
+    if (onSetSosState) {
+      onSetSosState(state);
+    } else if (onToggleSos) {
+      onToggleSos();
+    }
+  };
 
   return (
     <aside className="mock-floating-panel" aria-label="Mock Telemetry Controls">
@@ -34,28 +49,55 @@ export default function MockModeBadge({
         <div className="mock-details-box">
           <div className="mock-header">
             <Sparkles size={16} className="text-teal" />
-            <strong>IEEE Day 1-2 Demo Simulator</strong>
+            <strong>IEEE Day 3–4 Demo Simulator</strong>
           </div>
           <p className="mock-desc">
-            Simulating live GPS telemetry (28-35 km/h along Connaught Place to Lodhi Colony corridor).
-            Distinguished from real production GPS data.
+            Simulating live telemetry with switchable SOS states (Normal, SOS Active, and Resolved).
           </p>
 
-          <div className="mock-controls-grid">
+          {/* SOS 3-State Simulator Controls */}
+          <div className="mock-sos-selector">
+            <span className="mock-selector-title">Test SOS Banner State:</span>
+            <div className="mock-sos-btn-group">
+              <button
+                type="button"
+                onClick={() => handleStateSelect('normal')}
+                className={`mock-sos-btn ${currentSosState === 'normal' ? 'btn-active-normal' : ''}`}
+                title="Normal Trip (No SOS)"
+              >
+                <ShieldCheck size={13} />
+                <span>Normal</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleStateSelect('active')}
+                className={`mock-sos-btn ${currentSosState === 'active' ? 'btn-active-sos' : ''}`}
+                title="Trigger Emergency SOS"
+              >
+                <AlertOctagon size={13} />
+                <span>SOS Active</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleStateSelect('resolved')}
+                className={`mock-sos-btn ${currentSosState === 'resolved' ? 'btn-active-resolved' : ''}`}
+                title="Resolve SOS (All Clear)"
+              >
+                <CheckCircle2 size={13} />
+                <span>Resolved</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="mock-stream-control">
             <button
               onClick={onTogglePause}
               className={`mock-ctrl-action ${isPaused ? 'paused' : ''}`}
             >
               {isPaused ? <Play size={14} /> : <Pause size={14} />}
-              <span>{isPaused ? 'Resume Stream' : 'Pause Stream'}</span>
-            </button>
-
-            <button
-              onClick={onToggleSos}
-              className={`mock-ctrl-action ${isSos ? 'active-sos' : ''}`}
-            >
-              <AlertOctagon size={14} />
-              <span>{isSos ? 'Clear SOS' : 'Simulate SOS'}</span>
+              <span>{isPaused ? 'Resume Telemetry' : 'Pause Telemetry'}</span>
             </button>
           </div>
         </div>

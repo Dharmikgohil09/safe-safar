@@ -23,12 +23,17 @@ function toRad(degrees: number): number {
 
 /**
  * Formats relative time since timestamp (e.g., "Just now", "42s ago", "2m ago")
+ * Handles missing or invalid timestamps safely without fabricating timestamps.
  */
 export function formatRelativeTime(timestamp: string | number | null | undefined): string {
-  if (!timestamp) return 'No data yet';
+  if (timestamp === null || timestamp === undefined || timestamp === '') {
+    return 'No update timestamp available';
+  }
 
   const time = typeof timestamp === 'string' ? new Date(timestamp).getTime() : timestamp;
-  if (isNaN(time)) return 'Unknown';
+  if (isNaN(time) || !Number.isFinite(time)) {
+    return 'Timestamp unavailable';
+  }
 
   const now = Date.now();
   const diffSec = Math.max(0, Math.floor((now - time) / 1000));
@@ -38,15 +43,19 @@ export function formatRelativeTime(timestamp: string | number | null | undefined
   const diffMin = Math.floor(diffSec / 60);
   if (diffMin < 60) return `${diffMin}m ago`;
   const diffHours = Math.floor(diffMin / 60);
-  return `${diffHours}h ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return `${Math.floor(diffHours / 24)}d ago`;
 }
 
 /**
- * Formats absolute time string (e.g., "17:15:32 IST")
+ * Formats absolute time string (e.g., "11:05:32 AM")
+ * Safely handles missing timestamps.
  */
 export function formatTime(timestamp: string | number | null | undefined): string {
-  if (!timestamp) return '--:--';
+  if (timestamp === null || timestamp === undefined || timestamp === '') {
+    return 'Time unavailable';
+  }
   const date = typeof timestamp === 'string' ? new Date(timestamp) : new Date(timestamp);
-  if (isNaN(date.getTime())) return '--:--';
+  if (isNaN(date.getTime())) return 'Time unavailable';
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }

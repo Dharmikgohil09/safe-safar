@@ -230,6 +230,12 @@ body {
   color: #7dd3fc;
 }
 
+.status-resolved {
+  background: rgba(14, 165, 233, 0.2);
+  border: 1px solid rgba(14, 165, 233, 0.45);
+  color: #7dd3fc;
+}
+
 .pill-dot {
   width: 7px;
   height: 7px;
@@ -1285,6 +1291,341 @@ body {
   gap: 8px;
   font-size: 12px;
   color: var(--text-muted);
+}
+
+/* ==========================================================
+   DAY 3–4: SOS STATE BANNER (Normal / Active / Resolved)
+   ========================================================== */
+
+.sos-banner-container {
+  position: absolute;
+  top: 76px;
+  left: 14px;
+  right: 14px;
+  z-index: 98;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.sos-state-banner {
+  pointer-events: auto;
+  width: 100%;
+  max-width: 620px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.banner-icon-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.banner-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.banner-headline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+  flex-wrap: wrap;
+}
+
+.banner-badge {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.banner-title {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+  margin: 0;
+}
+
+.banner-description {
+  font-size: 11px;
+  line-height: 1.35;
+  margin: 0;
+}
+
+/* State A: Normal Trip */
+.banner-state-normal {
+  background: rgba(14, 22, 40, 0.92);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #f8fafc;
+}
+
+.banner-state-normal .banner-icon-box {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.banner-state-normal .badge-normal {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.banner-state-normal .banner-title {
+  color: #e2e8f0;
+}
+
+.banner-state-normal .banner-description {
+  color: #94a3b8;
+}
+
+/* State B: SOS Active */
+.banner-state-active {
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.96) 0%, rgba(185, 28, 28, 0.96) 100%);
+  border: 1px solid rgba(254, 202, 202, 0.6);
+  color: #ffffff;
+  box-shadow: 0 8px 32px rgba(220, 38, 38, 0.55), 0 0 24px rgba(239, 68, 68, 0.45);
+  animation: sos-banner-pulse 1.8s infinite;
+}
+
+.banner-state-active .banner-icon-box {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.banner-state-active .badge-active {
+  background: #ffffff;
+  color: #dc2626;
+  font-weight: 900;
+}
+
+.banner-state-active .banner-title {
+  color: #ffffff;
+}
+
+.banner-state-active .banner-description {
+  color: #fee2e2;
+  font-weight: 500;
+}
+
+.banner-actions {
+  flex-shrink: 0;
+}
+
+.banner-emergency-call {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  background: #ffffff;
+  color: #dc2626;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 8px;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease;
+}
+
+.banner-emergency-call:hover {
+  transform: scale(1.04);
+}
+
+@keyframes sos-banner-pulse {
+  0% { transform: scale(1); box-shadow: 0 8px 32px rgba(220, 38, 38, 0.55), 0 0 20px rgba(239, 68, 68, 0.4); }
+  50% { transform: scale(1.01); box-shadow: 0 10px 40px rgba(220, 38, 38, 0.75), 0 0 30px rgba(239, 68, 68, 0.6); }
+  100% { transform: scale(1); box-shadow: 0 8px 32px rgba(220, 38, 38, 0.55), 0 0 20px rgba(239, 68, 68, 0.4); }
+}
+
+/* State C: SOS Resolved */
+.banner-state-resolved {
+  background: rgba(14, 22, 40, 0.94);
+  border: 1px solid rgba(14, 165, 233, 0.4);
+  color: #f8fafc;
+}
+
+.banner-state-resolved .banner-icon-box {
+  background: rgba(14, 165, 233, 0.18);
+  color: #38bdf8;
+}
+
+.banner-state-resolved .badge-resolved {
+  background: rgba(14, 165, 233, 0.25);
+  color: #7dd3fc;
+  border: 1px solid rgba(14, 165, 233, 0.4);
+}
+
+.banner-state-resolved .banner-title {
+  color: #e0f2fe;
+}
+
+.banner-state-resolved .banner-description {
+  color: #94a3b8;
+}
+
+/* Persistent Trip Info Strip (Destination + Last Updated) */
+.persistent-trip-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-bottom: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  font-size: 11px;
+}
+
+.trip-strip-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.trip-strip-dest {
+  flex: 1.2;
+}
+
+.trip-strip-time {
+  flex: 1;
+}
+
+.trip-strip-divider {
+  color: rgba(255, 255, 255, 0.2);
+  font-size: 11px;
+}
+
+.strip-icon {
+  flex-shrink: 0;
+}
+
+.strip-label {
+  color: var(--text-dim);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.4px;
+}
+
+.strip-val {
+  color: #f1f5f9;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-sos-tag {
+  background: rgba(239, 68, 68, 0.25) !important;
+  color: #fca5a5 !important;
+  border: 1px solid rgba(239, 68, 68, 0.5) !important;
+  font-weight: 800;
+}
+
+.status-resolved-tag {
+  background: rgba(14, 165, 233, 0.2) !important;
+  color: #7dd3fc !important;
+  border: 1px solid rgba(14, 165, 233, 0.4) !important;
+  font-weight: 800;
+}
+
+.panel-resolved {
+  border-top-color: rgba(14, 165, 233, 0.5);
+}
+
+.avatar-resolved {
+  border-color: #38bdf8 !important;
+  background: linear-gradient(135deg, #075985 0%, #0369a1 100%) !important;
+}
+
+.dest-missing {
+  background: rgba(100, 116, 139, 0.15) !important;
+  color: #94a3b8 !important;
+}
+
+/* Mock Demo 3-State SOS Switcher */
+.mock-sos-selector {
+  margin-bottom: 10px;
+}
+
+.mock-selector-title {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #fbbf24;
+  margin-bottom: 5px;
+}
+
+.mock-sos-btn-group {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.mock-sos-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mock-sos-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.mock-sos-btn.btn-active-normal {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: #10b981;
+  color: #34d399;
+}
+
+.mock-sos-btn.btn-active-sos {
+  background: rgba(239, 68, 68, 0.35);
+  border-color: #ef4444;
+  color: #fca5a5;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+}
+
+.mock-sos-btn.btn-active-resolved {
+  background: rgba(14, 165, 233, 0.25);
+  border-color: #0ea5e9;
+  color: #7dd3fc;
+}
+
+.mock-stream-control {
+  margin-top: 6px;
+}
+
+.text-cyan {
+  color: var(--accent-cyan);
 }
 
 /* ==========================================================

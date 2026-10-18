@@ -2,12 +2,13 @@
 
 import React from 'react';
 import { Shield, Radio, AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react';
-import { ConnectionStatus } from '../types/tracker';
+import { ConnectionStatus, SosState } from '../types/tracker';
 
 interface TrackerHeaderProps {
   status: ConnectionStatus;
   isMock: boolean;
   isSos?: boolean;
+  sosState?: SosState;
   onRefresh?: () => void;
 }
 
@@ -15,14 +16,27 @@ export default function TrackerHeader({
   status,
   isMock,
   isSos = false,
+  sosState = 'normal',
   onRefresh,
 }: TrackerHeaderProps) {
+  const isEmergency = isSos || sosState === 'active';
+  const isResolved = sosState === 'resolved';
+
   const getStatusBadge = () => {
-    if (isSos) {
+    if (isEmergency) {
       return (
         <span className="status-pill status-sos">
           <span className="pill-dot blink-fast"></span>
           SOS EMERGENCY
+        </span>
+      );
+    }
+
+    if (isResolved) {
+      return (
+        <span className="status-pill status-resolved">
+          <CheckCircle2 size={12} />
+          SOS RESOLVED
         </span>
       );
     }
@@ -93,7 +107,7 @@ export default function TrackerHeader({
 
       <div className="header-right">
         {isMock && (
-          <div className="mock-badge-header" title="This view is using simulated telemetry (Day 1-2 Demo Mode)">
+          <div className="mock-badge-header" title="This view is using simulated telemetry (Day 3-4 Demo Mode)">
             <span className="mock-dot"></span>
             <span className="mock-text">DEMO / MOCK DATA</span>
           </div>

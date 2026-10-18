@@ -5,11 +5,9 @@ import {
   User,
   Clock,
   Battery,
-  BatteryCharging,
   Gauge,
   Navigation,
   MapPin,
-  ShieldAlert,
   AlertCircle,
   Share2,
   PhoneCall,
@@ -17,7 +15,7 @@ import {
   ChevronUp,
   ChevronDown,
 } from 'lucide-react';
-import { Coordinates, Destination, TrackingSession } from '../types/tracker';
+import { Coordinates, Destination, TrackingSession, SosState } from '../types/tracker';
 import { calculateDistanceKm, formatRelativeTime, formatTime } from '../utils/geo';
 
 interface TrackerStatusCardProps {
@@ -25,6 +23,7 @@ interface TrackerStatusCardProps {
   currentLocation: Coordinates | null;
   isStale: boolean;
   isSos?: boolean;
+  sosState?: SosState;
 }
 
 export default function TrackerStatusCard({
@@ -32,12 +31,16 @@ export default function TrackerStatusCard({
   currentLocation,
   isStale,
   isSos = false,
+  sosState = 'normal',
 }: TrackerStatusCardProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [copied, setCopied] = useState(false);
   const [, setTick] = useState(0);
 
-  // Re-render relative time every 5 seconds
+  const effectiveSos = isSos || sosState === 'active';
+  const effectiveResolved = sosState === 'resolved';
+
+  // Periodic tick to keep relative times live
   useEffect(() => {
     const timer = setInterval(() => {
       setTick((t) => t + 1);
@@ -45,14 +48,23 @@ export default function TrackerStatusCard({
     return () => clearInterval(timer);
   }, []);
 
+  // Distance calculation to destination using Haversine formula
   const distanceKm =
-    currentLocation && session?.destination
+    currentLocation && session?.destination?.latitude && session?.destination?.longitude
       ? calculateDistanceKm(
           currentLocation.latitude,
           currentLocation.longitude,
           session.destination.latitude,
           session.destination.longitude
         )
+      : null;
+
+  // Safe timestamp determination: prioritize latest received telemetry timestamp, then session initial timestamp
+  const latestTimestamp =
+    (currentLocation as any)?.timestamp !== undefined && (currentLocation as any)?.timestamp !== null
+      ? (currentLocation as any).timestamp
+      : session?.lastUpdated !== undefined && session?.lastUpdated !== null
+      ? session.lastUpdated
       : null;
 
   const handleShare = async () => {
@@ -96,8 +108,26 @@ export default function TrackerStatusCard({
     );
   };
 
+  const getStatusBadge = () => {
+    if (effectiveSos) {
+      return <span className="journey-status-tag status-sos-tag">🚨 SOS EMERGENCY</span>;
+    }
+    if (effectiveResolved) {
+      return <span className="journey-status-tag status-resolved-tag">✅ SOS RESOLVED</span>;
+    }
+    return (
+      <span className={`journey-status-tag ${session?.status || 'active'}`}>
+        {session?.status ? session.status.toUpperCase() : 'IN TRANSIT'}
+      </span>
+    );
+  };
+
   return (
-    <div className={`tracker-bottom-panel ${collapsed ? 'collapsed' : ''} ${isSos ? 'panel-sos' : ''}`}>
+    <div
+      className={`tracker-bottom-panel ${collapsed ? 'collapsed' : ''} ${
+        effectiveSos ? 'panel-sos' : effectiveResolved ? 'panel-resolved' : ''
+      }`}
+    >
       {/* Drag / Toggle bar */}
       <button
         onClick={() => setCollapsed(!collapsed)}
@@ -120,10 +150,14 @@ export default function TrackerStatusCard({
         </div>
       )}
 
-      {/* Main Person & Status Row */}
+      {/* Persistent Summary Row — Always visible on desktop & mobile */}
       <div className="person-info-row">
         <div className="person-avatar-block">
-          <div className={`avatar-circle ${isSos ? 'avatar-sos' : ''}`}>
+          <div
+            className={`avatar-circle ${
+              effectiveSos ? 'avatar-sos' : effectiveResolved ? 'avatar-resolved' : ''
+            }`}
+          >
             <User size={22} />
           </div>
           <div className="person-meta">
@@ -131,15 +165,30 @@ export default function TrackerStatusCard({
             <div className="person-submeta">
               <span className="phone-mask">{session?.userPhoneMasked || 'Protected Contact'}</span>
               <span className="meta-separator">•</span>
-              <span className={`journey-status-tag ${session?.status || 'active'}`}>
-                {isSos ? '🚨 SOS Emergency' : (session?.status ? session.status.toUpperCase() : 'IN TRANSIT')}
-              </span>
+              {getStatusBadge()}
             </div>
           </div>
         </div>
 
         <div className="quick-battery-time">
           {getBatteryIcon(session?.batteryLevel ?? (currentLocation as any)?.batteryLevel)}
+        </div>
+      </div>
+
+      {/* Persistent Destination & Last Update Bar (Always visible) */}
+      <div className="persistent-trip-strip">
+        <div className="trip-strip-item trip-strip-dest">
+          <MapPin size={13} className="strip-icon text-teal" />
+          <span className="strip-label">Dest:</span>
+          <span className="strip-val" title={session?.destination?.name || 'No destination specified'}>
+            {session?.destination?.name ? session.destination.name : 'Not specified'}
+          </span>
+        </div>
+        <div className="trip-strip-divider">|</div>
+        <div className="trip-strip-item trip-strip-time">
+          <Clock size={13} className="strip-icon text-cyan" />
+          <span className="strip-label">Updated:</span>
+          <span className="strip-val">{formatRelativeTime(latestTimestamp)}</span>
         </div>
       </div>
 
@@ -154,12 +203,8 @@ export default function TrackerStatusCard({
               </div>
               <div className="telemetry-text">
                 <span className="telemetry-label">Last Updated</span>
-                <span className="telemetry-value">
-                  {formatRelativeTime(session?.lastUpdated || (currentLocation as any)?.timestamp)}
-                </span>
-                <span className="telemetry-sub">
-                  {formatTime(session?.lastUpdated || (currentLocation as any)?.timestamp)}
-                </span>
+                <span className="telemetry-value">{formatRelativeTime(latestTimestamp)}</span>
+                <span className="telemetry-sub">{formatTime(latestTimestamp)}</span>
               </div>
             </div>
 
@@ -194,28 +239,32 @@ export default function TrackerStatusCard({
             </div>
           </div>
 
-          {/* Destination & Route Info */}
-          {session?.destination && (
-            <div className="destination-banner">
-              <div className="dest-icon-circle">
-                <MapPin size={18} />
-              </div>
-              <div className="dest-details">
-                <div className="dest-header-line">
-                  <span className="dest-title">Destination</span>
-                  {distanceKm !== null && (
-                    <span className="dest-distance">
-                      {distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m away` : `${distanceKm.toFixed(1)} km away`}
-                    </span>
-                  )}
-                </div>
-                <div className="dest-name">{session.destination.name}</div>
-                {session.destination.address && (
-                  <div className="dest-addr">{session.destination.address}</div>
+          {/* Destination & Route Info Card — Gracefully handles missing destinations */}
+          <div className="destination-banner">
+            <div className={`dest-icon-circle ${!session?.destination ? 'dest-missing' : ''}`}>
+              <MapPin size={18} />
+            </div>
+            <div className="dest-details">
+              <div className="dest-header-line">
+                <span className="dest-title">Trip Destination</span>
+                {distanceKm !== null && (
+                  <span className="dest-distance">
+                    {distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m away` : `${distanceKm.toFixed(1)} km away`}
+                  </span>
                 )}
               </div>
+              <div className="dest-name">
+                {session?.destination?.name ? session.destination.name : 'No Destination Specified'}
+              </div>
+              <div className="dest-addr">
+                {session?.destination?.address
+                  ? session.destination.address
+                  : session?.destination?.name
+                  ? 'Address coordinates loaded'
+                  : 'Trip navigation active without a fixed end point'}
+              </div>
             </div>
-          )}
+          </div>
 
           {/* Action Buttons Row */}
           <div className="action-buttons-group">

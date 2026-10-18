@@ -62,25 +62,37 @@ export default function HomePage() {
 
         {/* Test Scenarios for IEEE Evaluation */}
         <div className="demo-scenarios-section">
-          <span className="scenarios-title">IEEE QA & Demo Quick Links:</span>
+          <span className="scenarios-title">IEEE Day 3–4 QA & Demo Quick Links:</span>
           <div className="scenario-chips">
             <button
               onClick={() => router.push('/track/safesafar-live-session-2026')}
               className="chip-btn chip-live"
             >
-              🟢 Active Journey (Simulated Live)
+              🟢 State A: Normal Trip (No SOS Active)
+            </button>
+            <button
+              onClick={() => router.push('/track/sos-active')}
+              className="chip-btn chip-error"
+            >
+              🚨 State B: SOS Active (Emergency Triggered)
+            </button>
+            <button
+              onClick={() => router.push('/track/sos-resolved')}
+              className="chip-btn chip-ended"
+            >
+              ✅ State C: SOS Resolved (All-Clear Signal)
+            </button>
+            <button
+              onClick={() => router.push('/track/no-destination')}
+              className="chip-btn chip-live"
+            >
+              📍 Edge Case: Missing Destination Fallback
             </button>
             <button
               onClick={() => router.push('/track/invalid-token')}
               className="chip-btn chip-error"
             >
-              🔴 Invalid Token Error State
-            </button>
-            <button
-              onClick={() => router.push('/track/expired-token')}
-              className="chip-btn chip-ended"
-            >
-              ⚪ Journey Completed State
+              🔴 Error State: Invalid Tracking Token
             </button>
           </div>
         </div>

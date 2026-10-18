@@ -1,4 +1,4 @@
-import { LocationPayload, TrackingSession } from '../types/tracker';
+import { LocationPayload, TrackingSession, SosState } from '../types/tracker';
 
 export interface MockLocationEmitter {
   start: (onLocation: (payload: LocationPayload) => void, onStatusChange?: (status: string) => void) => void;
@@ -6,7 +6,7 @@ export interface MockLocationEmitter {
   triggerNextPoint?: () => void;
 }
 
-// Sample route coordinates (e.g. Connaught Place to India Gate & Lodhi, New Delhi)
+// Sample route coordinates (Connaught Place to India Gate & Lodhi Colony, New Delhi)
 const MOCK_ROUTE: [number, number, number][] = [
   // [lat, lng, heading]
   [28.6315, 77.2167, 135],
@@ -25,7 +25,7 @@ const MOCK_ROUTE: [number, number, number][] = [
 ];
 
 export function getMockSession(token: string): TrackingSession {
-  // Test special tokens for simulating error states during IEEE judging / QA
+  // Test special tokens for simulating different states during IEEE judging / QA
   if (token === 'invalid-token') {
     throw new Error('SESSION_INVALID');
   }
@@ -34,17 +34,131 @@ export function getMockSession(token: string): TrackingSession {
       token,
       userName: 'Priya Verma',
       status: 'expired',
+      sosState: 'normal',
       lastUpdated: Date.now() - 3600000,
       startedAt: Date.now() - 7200000,
       isMock: true,
     };
   }
 
+  // State B Demo: SOS Active initial state
+  if (token === 'sos-active') {
+    return {
+      token,
+      userName: 'Ananya Sharma',
+      userPhoneMasked: '+91 98*** **412',
+      status: 'sos',
+      sosState: 'active',
+      destination: {
+        name: 'Home (Lodhi Estate, Central Delhi)',
+        latitude: 28.5875,
+        longitude: 77.2185,
+        address: 'Block 4, Lodhi Colony, New Delhi',
+      },
+      currentLocation: {
+        latitude: MOCK_ROUTE[4][0],
+        longitude: MOCK_ROUTE[4][1],
+        accuracy: 9,
+        speed: 12.0,
+        heading: MOCK_ROUTE[4][2],
+      },
+      lastUpdated: Date.now() - 15000,
+      batteryLevel: 42,
+      startedAt: Date.now() - 25 * 60 * 1000,
+      emergencyContactName: 'Rahul Sharma (Brother)',
+      isMock: true,
+    };
+  }
+
+  // State C Demo: SOS Resolved state
+  if (token === 'sos-resolved') {
+    return {
+      token,
+      userName: 'Ananya Sharma',
+      userPhoneMasked: '+91 98*** **412',
+      status: 'resolved',
+      sosState: 'resolved',
+      destination: {
+        name: 'Home (Lodhi Estate, Central Delhi)',
+        latitude: 28.5875,
+        longitude: 77.2185,
+        address: 'Block 4, Lodhi Colony, New Delhi',
+      },
+      currentLocation: {
+        latitude: MOCK_ROUTE[8][0],
+        longitude: MOCK_ROUTE[8][1],
+        accuracy: 7,
+        speed: 24.5,
+        heading: MOCK_ROUTE[8][2],
+      },
+      lastUpdated: Date.now() - 5000,
+      batteryLevel: 71,
+      startedAt: Date.now() - 30 * 60 * 1000,
+      emergencyContactName: 'Rahul Sharma (Brother)',
+      isMock: true,
+    };
+  }
+
+  // Edge case: Missing destination test
+  if (token === 'no-destination') {
+    return {
+      token,
+      userName: 'Ananya Sharma',
+      userPhoneMasked: '+91 98*** **412',
+      status: 'active',
+      sosState: 'normal',
+      destination: null, // Graceful missing destination
+      currentLocation: {
+        latitude: MOCK_ROUTE[0][0],
+        longitude: MOCK_ROUTE[0][1],
+        accuracy: 8,
+        speed: 28.5,
+        heading: MOCK_ROUTE[0][2],
+      },
+      lastUpdated: Date.now(),
+      batteryLevel: 80,
+      startedAt: Date.now() - 10 * 60 * 1000,
+      emergencyContactName: 'Rahul Sharma (Brother)',
+      isMock: true,
+    };
+  }
+
+  // Edge case: Missing timestamp test
+  if (token === 'no-timestamp') {
+    return {
+      token,
+      userName: 'Ananya Sharma',
+      userPhoneMasked: '+91 98*** **412',
+      status: 'active',
+      sosState: 'normal',
+      destination: {
+        name: 'Home (Lodhi Estate, Central Delhi)',
+        latitude: 28.5875,
+        longitude: 77.2185,
+        address: 'Block 4, Lodhi Colony, New Delhi',
+      },
+      currentLocation: {
+        latitude: MOCK_ROUTE[0][0],
+        longitude: MOCK_ROUTE[0][1],
+        accuracy: 8,
+        speed: 28.5,
+        heading: MOCK_ROUTE[0][2],
+      },
+      lastUpdated: null, // Missing timestamp
+      batteryLevel: 78,
+      startedAt: Date.now() - 15 * 60 * 1000,
+      emergencyContactName: 'Rahul Sharma (Brother)',
+      isMock: true,
+    };
+  }
+
+  // Default: State A (Normal Trip)
   return {
     token,
     userName: 'Ananya Sharma',
     userPhoneMasked: '+91 98*** **412',
     status: 'active',
+    sosState: 'normal',
     destination: {
       name: 'Home (Lodhi Estate, Central Delhi)',
       latitude: 28.5875,
@@ -66,10 +180,18 @@ export function getMockSession(token: string): TrackingSession {
   };
 }
 
-export function createMockEmitter(intervalMs = 3500): MockLocationEmitter {
+export interface MockEmitterOptions {
+  omitTimestamp?: boolean;
+}
+
+export function createMockEmitter(
+  intervalMs = 3500,
+  options?: MockEmitterOptions
+): MockLocationEmitter {
   let timer: NodeJS.Timeout | null = null;
   let currentIndex = 0;
   let battery = 78;
+  const shouldOmitTimestamp = options?.omitTimestamp === true;
 
   return {
     start: (onLocation) => {
@@ -81,7 +203,7 @@ export function createMockEmitter(intervalMs = 3500): MockLocationEmitter {
         accuracy: 6 + Math.random() * 4,
         speed: 26 + Math.random() * 6,
         heading: initHeading,
-        timestamp: Date.now(),
+        timestamp: shouldOmitTimestamp ? null : Date.now(),
         batteryLevel: battery,
       });
 
@@ -102,7 +224,7 @@ export function createMockEmitter(intervalMs = 3500): MockLocationEmitter {
           accuracy: 5 + Math.random() * 6,
           speed: 24 + Math.random() * 8,
           heading: heading + (Math.random() - 0.5) * 5,
-          timestamp: Date.now(),
+          timestamp: shouldOmitTimestamp ? null : Date.now(),
           batteryLevel: battery,
         });
       }, intervalMs);

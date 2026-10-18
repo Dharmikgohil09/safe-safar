@@ -23,7 +23,8 @@ export function isValidCoordinate(lat: unknown, lng: unknown): boolean {
 }
 
 /**
- * Safely parses and normalizes location payloads from socket or REST
+ * Safely parses and normalizes location payloads from socket or REST.
+ * Note: Never fabricates a live timestamp if one is not provided in the payload.
  */
 export function validateAndParseLocation(payload: unknown): LocationPayload | null {
   if (!payload || typeof payload !== 'object') {
@@ -55,13 +56,14 @@ export function validateAndParseLocation(payload: unknown): LocationPayload | nu
   const heading = typeof data.heading === 'number' && Number.isFinite(data.heading) ? data.heading : null;
   const batteryLevel = typeof data.batteryLevel === 'number' && Number.isFinite(data.batteryLevel) ? data.batteryLevel : undefined;
 
-  let timestamp: string | number = Date.now();
-  if (data.timestamp) {
+  // Safe timestamp parsing: DO NOT fabricate Date.now() if missing from payload
+  let timestamp: string | number | null = null;
+  if (data.timestamp !== undefined && data.timestamp !== null) {
     if (typeof data.timestamp === 'number' && Number.isFinite(data.timestamp)) {
       timestamp = data.timestamp;
     } else if (typeof data.timestamp === 'string') {
       const parsed = Date.parse(data.timestamp);
-      timestamp = Number.isNaN(parsed) ? Date.now() : data.timestamp;
+      timestamp = Number.isNaN(parsed) ? null : data.timestamp;
     }
   }
 

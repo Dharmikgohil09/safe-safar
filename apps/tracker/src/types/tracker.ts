@@ -13,7 +13,7 @@ export interface LocationPayload {
   accuracy?: number;
   speed?: number | null;
   heading?: number | null;
-  timestamp: string | number;
+  timestamp?: string | number | null;
   batteryLevel?: number; // 0 - 100 percentage
 }
 
@@ -33,14 +33,17 @@ export type ConnectionStatus =
   | 'invalid-token'
   | 'ended';
 
+export type SosState = 'normal' | 'active' | 'resolved';
+
 export interface TrackingSession {
   token: string;
   userName: string;
   userPhoneMasked?: string;
-  status: 'active' | 'completed' | 'sos' | 'expired';
+  status: 'active' | 'completed' | 'sos' | 'expired' | 'resolved';
+  sosState?: SosState;
   destination?: Destination | null;
   currentLocation?: Coordinates | null;
-  lastUpdated: string | number | null;
+  lastUpdated?: string | number | null;
   batteryLevel?: number | null;
   startedAt: string | number;
   emergencyContactName?: string;
@@ -52,6 +55,7 @@ export interface TrackerState {
   currentLocation: Coordinates | null;
   breadcrumbs: [number, number][]; // history of coordinates for path
   status: ConnectionStatus;
+  sosState: SosState;
   errorMessage: string | null;
   isStale: boolean;
   isMock: boolean;

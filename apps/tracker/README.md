@@ -164,14 +164,31 @@ The Socket.IO adapter (`src/services/socketAdapter.ts`) implements the following
     "timestamp": 1729080035000
   }
   ```
+- **`sos:active`** (or **`sos:triggered`**): Real-time emergency trigger alert from mobile/backend.
+- **`sos:resolved`**: Emergency all-clear resolution from mobile/backend.
 - **`session:ended`**: `{ status: "completed" | "expired" }`
 - **`session:error`**: `{ message: "Invalid or expired tracking link", code: "INVALID_TOKEN" }`
 
 ---
 
-## 7. IEEE Demo Test Links
+## 7. Day 3–4: 3-State SOS Tracking & Demonstration
 
-When running locally at `http://localhost:3000`:
-- **Active Live Demo**: [`http://localhost:3000/track/safesafar-live-session-2026`](http://localhost:3000/track/safesafar-live-session-2026)
-- **Invalid Token Error State**: [`http://localhost:3000/track/invalid-token`](http://localhost:3000/track/invalid-token)
-- **Completed/Expired Journey**: [`http://localhost:3000/track/expired-token`](http://localhost:3000/track/expired-token)
+The tracker features a dedicated **SOS State Banner** with three distinct states:
+
+| State | Visual Theme | Description |
+| :--- | :--- | :--- |
+| **A. Normal Trip** | Subtle Emerald/Cyan | Active safe tracking, no emergency reported. |
+| **B. SOS Active** | Urgent Pulsing Crimson | High-visibility emergency alert with quick "Call 112" shortcut. |
+| **C. Resolved** | Calming Ocean Blue | Confirmed all-clear signal; journey monitoring resumes. |
+
+### How to Test Each State:
+
+1. **Via Direct URL Quick Links:**
+   - **State A (Normal Trip)**: [`http://localhost:3000/track/safesafar-live-session-2026`](http://localhost:3000/track/safesafar-live-session-2026)
+   - **State B (SOS Active)**: [`http://localhost:3000/track/sos-active`](http://localhost:3000/track/sos-active)
+   - **State C (SOS Resolved)**: [`http://localhost:3000/track/sos-resolved`](http://localhost:3000/track/sos-resolved)
+   - **Edge Case (Missing Destination)**: [`http://localhost:3000/track/no-destination`](http://localhost:3000/track/no-destination)
+   - **Edge Case (Missing Timestamp)**: [`http://localhost:3000/track/no-timestamp`](http://localhost:3000/track/no-timestamp)
+
+2. **Via On-Screen Demo Controls:**
+   - Open any tracking session, click **`Demo Controls ⚙️`** on the floating simulator pill, and tap **`Normal`**, **`SOS Active`**, or **`Resolved`** to toggle states on the fly!

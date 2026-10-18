@@ -1,10 +1,10 @@
 import { io, Socket } from 'socket.io-client';
-import { LocationPayload, TrackingSession, ConnectionStatus } from '../types/tracker';
+import { LocationPayload, TrackingSession, ConnectionStatus, SosState } from '../types/tracker';
 import { validateAndParseLocation } from './validation';
 
 /**
- * SafeSafar Socket.IO Contract Specification (Day 2 Adapter)
- * ==========================================================
+ * SafeSafar Socket.IO Contract Specification (Days 1–4 Adapter)
+ * =============================================================
  * Client-to-Server Events:
  *   - "join-session": { token: string }
  *     Emitted upon connection to join the tracking room for the given token.
@@ -14,10 +14,14 @@ import { validateAndParseLocation } from './validation';
  * Server-to-Client Events:
  *   - "session:data": TrackingSession
  *     Sends session metadata including user name, destination, and initial state.
- *   - "location": LocationPayload
+ *   - "location" (or "location:update"): LocationPayload
  *     Real-time GPS coordinate telemetry emitted periodically by the mobile app.
- *   - "session:ended": { status: 'completed' | 'expired' | 'sos' }
- *     Notifies that the journey completed, expired, or changed status.
+ *   - "sos:active" (or "sos:triggered"):
+ *     Emergency SOS triggered by user on mobile app.
+ *   - "sos:resolved":
+ *     Emergency SOS resolved / all-clear sent by user on mobile app.
+ *   - "session:ended": { status: 'completed' | 'expired' }
+ *     Notifies that the journey completed or expired.
  *   - "session:error": { message: string, code: string }
  *     Notifies token validation failure or unauthorized session access.
  */
@@ -26,6 +30,7 @@ export interface TrackerConnectionCallbacks {
   onSessionInit: (session: TrackingSession) => void;
   onLocationUpdate: (location: LocationPayload) => void;
   onStatusChange: (status: ConnectionStatus, message?: string) => void;
+  onSosStateChange?: (state: SosState) => void;
   onStaleStateChange?: (isStale: boolean) => void;
 }
 
@@ -83,7 +88,6 @@ export function createTrackerSocketConnection(
 
     socket.on('disconnect', (reason) => {
       if (reason === 'io server disconnect') {
-        // the disconnection was initiated by the server, you need to reconnect manually
         socket?.connect();
       }
       callbacks.onStatusChange('disconnected', `Connection lost: ${reason}`);
@@ -103,6 +107,18 @@ export function createTrackerSocketConnection(
       if (data && typeof data === 'object') {
         const session = data as TrackingSession;
         callbacks.onSessionInit(session);
+
+        // Determine SOS state from initial session data
+        if (session.sosState) {
+          callbacks.onSosStateChange?.(session.sosState);
+        } else if (session.status === 'sos') {
+          callbacks.onSosStateChange?.('active');
+        } else if (session.status === 'resolved') {
+          callbacks.onSosStateChange?.('resolved');
+        } else {
+          callbacks.onSosStateChange?.('normal');
+        }
+
         if (session.currentLocation) {
           const valid = validateAndParseLocation(session.currentLocation);
           if (valid) {
@@ -124,13 +140,26 @@ export function createTrackerSocketConnection(
       }
     });
 
-    // Also support 'location:update' alias for backend compatibility
+    // Support 'location:update' alias for backend compatibility
     socket.on('location:update', (payload: unknown) => {
       const valid = validateAndParseLocation(payload);
       if (valid) {
         resetStaleTimer();
         callbacks.onLocationUpdate(valid);
       }
+    });
+
+    // Real-time SOS triggers from Kristal's emergency backend
+    socket.on('sos:active', () => {
+      callbacks.onSosStateChange?.('active');
+    });
+
+    socket.on('sos:triggered', () => {
+      callbacks.onSosStateChange?.('active');
+    });
+
+    socket.on('sos:resolved', () => {
+      callbacks.onSosStateChange?.('resolved');
     });
 
     // Listen for session end or error

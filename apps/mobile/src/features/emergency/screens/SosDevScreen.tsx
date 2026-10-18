@@ -13,12 +13,14 @@ import {
 import {
   DecoyCalculator,
   HoldToTriggerButton,
+  PinPad,
   getContacts,
   hasPins,
   isShakeTriggerEnabled,
   registerDefaultChannels,
   requestEmergencyPermissions,
   sendTestSms,
+  setCallChainListener,
   setContacts,
   setPins,
   setShakeDebugListener,
@@ -71,7 +73,7 @@ function stamp(): string {
 
 export default function SosDevScreen() {
   const snap = useSyncExternalStore(sosEngine.subscribe, sosEngine.getSnapshot);
-  const [view, setView] = useState<'dev' | 'decoy'>('dev');
+  const [view, setView] = useState<'dev' | 'decoy' | 'pinpad'>('dev');
   const [phones, setPhones] = useState('');
   const [name, setName] = useState('');
   const [saved, setSaved] = useState<string[]>([]);
@@ -131,6 +133,12 @@ export default function SosDevScreen() {
       setShakeDebugListener(null);
     };
   }, [shakeOn]);
+
+  // show what the call chain is doing in the log
+  useEffect(() => {
+    setCallChainListener(note);
+    return () => setCallChainListener(null);
+  }, [note]);
 
   const secondsLeft =
     snap.state === 'countdown' && snap.countdownEndsAt
@@ -213,6 +221,20 @@ export default function SosDevScreen() {
     );
   };
 
+  // "I'm safe" needs the real PIN. Only when no PINs have been set yet does it end the SOS directly.
+  const imSafe = () => {
+    if (pinsSet) {
+      setView('pinpad');
+    } else {
+      note('no PINs set yet: ended without a PIN');
+      void sosEngine.resolve();
+    }
+  };
+
+  if (view === 'pinpad') {
+    return <PinPad onResult={onPinResult} onCancel={() => setView('dev')} />;
+  }
+
   if (view === 'decoy') {
     return (
       <DecoyCalculator
@@ -287,14 +309,18 @@ export default function SosDevScreen() {
         onPress={() => sosEngine.trigger('duress')}
       />
       <Btn label="Cancel countdown" onPress={() => sosEngine.cancelCountdown()} />
-      <Btn label="I'm safe (resolve + all-clear SMS)" onPress={() => void sosEngine.resolve()} />
+      <Btn
+        label={pinsSet ? "I'm safe (asks for the real PIN)" : "I'm safe (no PIN set yet, ends directly)"}
+        onPress={imSafe}
+      />
 
       <View style={styles.sep} />
 
       <Text style={styles.h2}>Duress PIN and decoy</Text>
       <Text style={styles.muted}>
-        PINs are {pinsSet ? 'SET' : 'NOT set'}. Real PIN ends the SOS. Duress PIN looks like it ends it
-        but the SOS keeps going silently. Enter either on the calculator, then press =.
+        PINs are {pinsSet ? 'SET' : 'NOT set'}. Real PIN truly ends the SOS. Duress PIN looks like it ends
+        it but the SOS keeps going silently. Use either on the "I'm safe" pad or on the calculator (type
+        the PIN, then =). 5 wrong tries lock the PIN for 30 s, then longer.
       </Text>
       <TextInput
         style={styles.input}

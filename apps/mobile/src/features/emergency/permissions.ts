@@ -23,6 +23,8 @@ export async function requestEmergencyPermissions(): Promise<EmergencyPermission
     PermissionsAndroid.PERMISSIONS.SEND_SMS,
     PermissionsAndroid.PERMISSIONS.CALL_PHONE,
     PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+    PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE,
+    PermissionsAndroid.PERMISSIONS.READ_CALL_LOG,
   ]);
 
   const ok = (p: keyof typeof PermissionsAndroid.PERMISSIONS) =>
@@ -39,7 +41,7 @@ export async function requestEmergencyPermissions(): Promise<EmergencyPermission
 
 /** Read-only check, safe to use during an SOS (never shows a dialog). */
 export async function hasPermission(
-  name: 'SEND_SMS' | 'CALL_PHONE' | 'RECORD_AUDIO',
+  name: 'SEND_SMS' | 'CALL_PHONE' | 'RECORD_AUDIO' | 'READ_PHONE_STATE' | 'READ_CALL_LOG',
 ): Promise<boolean> {
   return PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS[name]);
 }

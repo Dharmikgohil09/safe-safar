@@ -11,12 +11,22 @@ import {
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
-import { Card, PrimaryButton } from '../../../components/ui';
+import { Card, PrimaryButton, StateView } from '../../../components/ui';
 import { colors, radius, spacing, typography } from '../../../theme';
 import { mockRoutes, MockRoute } from '../mock/mockData';
 
 export default function SafeRouteScreen() {
   const [selectedRouteId, setSelectedRouteId] = useState<string>(mockRoutes[0].id);
+  const [previewStatus, setPreviewStatus] = useState<'ready' | 'loading' | 'empty' | 'error'>('ready');
+
+  const cyclePreviewStatus = () => {
+    setPreviewStatus((prev) => {
+      if (prev === 'ready') return 'loading';
+      if (prev === 'loading') return 'empty';
+      if (prev === 'empty') return 'error';
+      return 'ready';
+    });
+  };
 
   const showMessage = (feature: string) => {
     Alert.alert(feature, 'This feature will be connected during development.');
@@ -99,14 +109,46 @@ export default function SafeRouteScreen() {
 
         {/* Section Heading */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Available Routes</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={styles.sectionTitle}>Available Routes</Text>
+            {__DEV__ && (
+              <TouchableOpacity
+                onPress={cyclePreviewStatus}
+                style={styles.previewChip}
+                accessibilityRole="button"
+                accessibilityLabel="Preview states"
+              >
+                <Text style={styles.previewChipText}>Preview: {previewStatus}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
           <Text style={styles.sectionSubtitle}>
             Select a route scored by real-time safety metrics
           </Text>
         </View>
 
-        {/* Route Cards from mockData */}
-        {mockRoutes.map((route: MockRoute, index: number) => {
+        {previewStatus === 'loading' ? (
+          <StateView
+            kind="loading"
+            title="Finding safe corridors"
+            message="Evaluating street illumination and historical safety factors..."
+          />
+        ) : previewStatus === 'empty' ? (
+          <StateView
+            kind="empty"
+            title="No routes available"
+            message="No verified safe routes found for this transit corridor."
+          />
+        ) : previewStatus === 'error' ? (
+          <StateView
+            kind="error"
+            title="Routing calculation failed"
+            message="Unable to score safety factors. Please retry."
+            actionLabel="Retry"
+            onAction={() => setPreviewStatus('ready')}
+          />
+        ) : (
+          mockRoutes.map((route: MockRoute, index: number) => {
           const isSelected = route.id === selectedRouteId;
           const isSafer = route.colorType === 'safer';
 
@@ -197,7 +239,8 @@ export default function SafeRouteScreen() {
               </Card>
             </TouchableOpacity>
           );
-        })}
+        })
+        )}
 
         {/* Action Button */}
         <View style={styles.actionsContainer}>
@@ -617,5 +660,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: colors.primary,
+  },
+  previewChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  previewChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#B45309',
   },
 });

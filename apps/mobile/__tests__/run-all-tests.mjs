@@ -1,5 +1,6 @@
 import test, { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 
 // Helper math and formatters
 function degreesToRadians(degrees) {
@@ -361,3 +362,23 @@ describe('SafeSafar React Native - RouteOption & Safety Tier Tests', () => {
     assert.equal(riskyRoute.dangerAlerts.length, 2);
   });
 });
+
+describe('SafeSafar React Native - GeocodingService & Search Tests', () => {
+  it('Can search local Surat landmarks with query string', () => {
+    const landmarks = JSON.parse(
+      fs.readFileSync(new URL('../assets/data/surat_landmarks.json', import.meta.url), 'utf-8')
+    );
+    const query = 'adajan';
+    const matches = landmarks.filter((l) => l.name.toLowerCase().includes(query));
+    assert.ok(matches.length > 0, 'Should find Adajan landmarks');
+  });
+
+  it('Calculates accurate distance for search results relative to user origin', () => {
+    const svnit = { latitude: 21.1648, longitude: 72.7848 };
+    const adajan = { latitude: 21.1963, longitude: 72.7952 };
+    const dist = calculateDistanceMeters(svnit, adajan);
+    assert.ok(dist > 3000 && dist < 5000, `Expected ~3.6km, got ${dist}`);
+    assert.equal(formatDistance(dist), `${(dist / 1000).toFixed(1)} km`);
+  });
+});
+

@@ -13,6 +13,8 @@ import { getRouteColor, getSafetyTier } from '../models/RouteOption';
 import { formatDistance, formatDuration } from '../utils/geo';
 import { SafetyBadge } from './SafetyBadge';
 
+import { useMapState } from '../context/MapContext';
+
 interface RouteDetailModalProps {
   route: RouteOption | null;
   visible: boolean;
@@ -22,12 +24,14 @@ interface RouteDetailModalProps {
 export const RouteDetailModal: React.FC<RouteDetailModalProps> = ({ route, visible, onClose }) => {
   if (!route) return null;
 
+  const { startNavigation } = useMapState();
   const tier = getSafetyTier(route.safetyScore);
   const routeColor = getRouteColor(tier);
   const factors = route.safetyFactors;
 
   const handleStartWalk = () => {
     onClose();
+    startNavigation();
     Alert.alert(
       'Walk Me Home Activated',
       `Trip navigation initiated via ${route.name}. Sharing live telemetry with trusted contacts.`

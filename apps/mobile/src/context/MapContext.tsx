@@ -15,6 +15,9 @@ import { LandmarksService } from '../services/landmarksService';
 import { DeadZoneService } from '../services/deadZoneService';
 import { OfflineCacheService } from '../services/offlineCacheService';
 import { DemoService } from '../services/demoService';
+import { GeocodingService, PlaceSearchResult } from '../services/geocodingService';
+
+export type MapStyleType = 'street' | 'dark' | 'satellite';
 
 export interface MapContextType {
   userLocation: LatLng;
@@ -33,6 +36,14 @@ export interface MapContextType {
   isLoading: boolean;
   selectedLandmark: Landmark | null;
   demoScenarios: DemoScenario[];
+  mapStyle: MapStyleType;
+  isNavigating: boolean;
+  navigationStep: string;
+  setMapStyle: (style: MapStyleType) => void;
+  startNavigation: () => void;
+  stopNavigation: () => void;
+  handleMapTap: (coords: LatLng) => Promise<void>;
+  searchPlaces: (query: string) => Promise<PlaceSearchResult[]>;
   initialize: () => Promise<void>;
   calculateRoutes: (dest: LatLng, name: string) => Promise<void>;
   selectRoute: (route: RouteOption) => void;
@@ -56,6 +67,7 @@ export const MapProvider: React.FC<{
   deadZoneService?: DeadZoneService;
   cacheService?: OfflineCacheService;
   demoService?: DemoService;
+  geocodingService?: GeocodingService;
 }> = ({
   children,
   apiService: injectedApiService,
@@ -63,14 +75,16 @@ export const MapProvider: React.FC<{
   deadZoneService: injectedDeadZoneService,
   cacheService: injectedCacheService,
   demoService: injectedDemoService,
+  geocodingService: injectedGeocodingService,
 }) => {
   const apiService = useMemo(() => injectedApiService || new ApiService(), [injectedApiService]);
   const landmarksService = useMemo(() => injectedLandmarksService || new LandmarksService(), [injectedLandmarksService]);
   const deadZoneService = useMemo(() => injectedDeadZoneService || new DeadZoneService(), [injectedDeadZoneService]);
   const cacheService = useMemo(() => injectedCacheService || new OfflineCacheService(), [injectedCacheService]);
   const demoService = useMemo(() => injectedDemoService || new DemoService(), [injectedDemoService]);
+  const geocodingService = useMemo(() => injectedGeocodingService || new GeocodingService(), [injectedGeocodingService]);
 
-  // Default to SVNIT Surat (Hackathon Demo Anchor)
+  // Default to SVNIT Surat (Hackathon Anchor)
   const [userLocation, setUserLocation] = useState<LatLng>({ latitude: 21.1648, longitude: 72.7848 });
   const [destination, setDestination] = useState<LatLng | null>({ latitude: 21.1963, longitude: 72.7952 });
   const [destinationName, setDestinationName] = useState<string>('Adajan Gam Circle');
@@ -95,6 +109,11 @@ export const MapProvider: React.FC<{
   const [selectedLandmark, setSelectedLandmark] = useState<Landmark | null>(null);
   const [demoScenarios, setDemoScenarios] = useState<DemoScenario[]>([]);
 
+  // Google Maps-like Extra Features State
+  const [mapStyle, setMapStyle] = useState<MapStyleType>('street');
+  const [isNavigating, setIsNavigating] = useState<boolean>(false);
+  const [navigationStep, setNavigationStep] = useState<string>('Head towards Dumas Road on well-lit corridor');
+
   const initialize = async () => {
     setIsLoading(true);
     try {
@@ -110,22 +129,20 @@ export const MapProvider: React.FC<{
       setDemoScenarios(loadedScenarios);
       setIsOffline(offlineForced);
 
-      // Automatically load the primary Hackathon Demo Scenario (SVNIT -> Adajan Gam)
-      if (loadedScenarios.length > 0) {
-        const scenario = loadedScenarios[0];
-        setUserLocation(scenario.origin);
-        setDestination(scenario.destination);
-        setDestinationName(scenario.destinationName);
-        setRoutes(scenario.routes);
-        if (scenario.routes.length > 0) {
-          setSelectedRoute(scenario.routes[0]);
-        }
-        setDeadZoneAlert(deadZoneService.checkUserPosition(scenario.origin));
-      } else {
-        setDeadZoneAlert(deadZoneService.checkUserPosition(userLocation));
+      // Initialize route calculation between initial origin and destination
+      const initialRoutes = await apiService.fetchSafeRoutes({
+        origin: userLocation,
+        destination: destination || { latitude: 21.1963, longitude: 72.7952 },
+      });
+
+      setRoutes(initialRoutes);
+      if (initialRoutes.length > 0) {
+        const safest = initialRoutes.find((r) => r.isSafest) || initialRoutes[0];
+        setSelectedRoute(safest);
       }
+      setDeadZoneAlert(deadZoneService.checkUserPosition(userLocation));
     } catch (_) {
-      // Keep resilient state
+      // Resilient fallback
     } finally {
       setIsLoading(false);
     }
@@ -170,6 +187,35 @@ export const MapProvider: React.FC<{
     }
   };
 
+  const handleMapTap = async (coords: LatLng) => {
+    try {
+      setIsLoading(true);
+      const geoInfo = await geocodingService.reverseGeocode(coords);
+      await calculateRoutes(coords, geoInfo.name);
+    } catch (_) {
+      await calculateRoutes(coords, `Custom Pin (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const searchPlaces = async (query: string): Promise<PlaceSearchResult[]> => {
+    return geocodingService.searchPlaces(query, userLocation);
+  };
+
+  const startNavigation = () => {
+    setIsNavigating(true);
+    setNavigationStep(
+      selectedRoute?.isSafest
+        ? 'Safest Route Active: Continue on main illuminated corridor past Umra Police Station'
+        : 'Navigation Active: Proceed cautiously. Keep phone ready.'
+    );
+  };
+
+  const stopNavigation = () => {
+    setIsNavigating(false);
+  };
+
   const selectRoute = (route: RouteOption) => {
     setSelectedRoute(route);
   };
@@ -203,22 +249,26 @@ export const MapProvider: React.FC<{
   };
 
   const toggleOfflineMode = async (value: boolean) => {
+    await cacheService.setForceOffline(value);
     setIsOffline(value);
-    await cacheService.setOfflineModeForced(value);
+    if (value && destination) {
+      calculateRoutes(destination, destinationName);
+    }
   };
 
   const loadDemoScenario = (scenarioId: string) => {
-    const scenario = demoScenarios.find((s) => s.id === scenarioId) || demoScenarios[0];
-    if (scenario) {
-      setUserLocation(scenario.origin);
-      setDestination(scenario.destination);
-      setDestinationName(scenario.destinationName);
-      setRoutes(scenario.routes);
-      if (scenario.routes.length > 0) {
-        setSelectedRoute(scenario.routes[0]);
-      }
-      setDeadZoneAlert(deadZoneService.checkUserPosition(scenario.origin));
+    const scenario = demoScenarios.find((s) => s.id === scenarioId);
+    if (!scenario) return;
+
+    setUserLocation(scenario.origin);
+    setDestination(scenario.destination);
+    setDestinationName(scenario.destinationName);
+    setRoutes(scenario.routes);
+    if (scenario.routes.length > 0) {
+      setSelectedRoute(scenario.routes[0]);
     }
+    setDeadZoneAlert(deadZoneService.checkUserPosition(scenario.origin));
+    setIsNavigating(false);
   };
 
   const resetDemo = () => {
@@ -227,38 +277,50 @@ export const MapProvider: React.FC<{
     }
   };
 
-  const value: MapContextType = {
-    userLocation,
-    destination,
-    destinationName,
-    routes,
-    selectedRoute,
-    landmarks,
-    deadZones,
-    reports,
-    deadZoneAlert,
-    showLandmarks,
-    showHeatmap,
-    showDeadZones,
-    isOffline,
-    isLoading,
-    selectedLandmark,
-    demoScenarios,
-    initialize,
-    calculateRoutes,
-    selectRoute,
-    updateUserLocation,
-    selectLandmark,
-    getNearestSafePlace,
-    toggleLandmarks,
-    toggleHeatmap,
-    toggleDeadZones,
-    toggleOfflineMode,
-    loadDemoScenario,
-    resetDemo,
-  };
-
-  return <MapContext.Provider value={value}>{children}</MapContext.Provider>;
+  return (
+    <MapContext.Provider
+      value={{
+        userLocation,
+        destination,
+        destinationName,
+        routes,
+        selectedRoute,
+        landmarks,
+        deadZones,
+        reports,
+        deadZoneAlert,
+        showLandmarks,
+        showHeatmap,
+        showDeadZones,
+        isOffline,
+        isLoading,
+        selectedLandmark,
+        demoScenarios,
+        mapStyle,
+        isNavigating,
+        navigationStep,
+        setMapStyle,
+        startNavigation,
+        stopNavigation,
+        handleMapTap,
+        searchPlaces,
+        initialize,
+        calculateRoutes,
+        selectRoute,
+        updateUserLocation,
+        selectLandmark,
+        getNearestSafePlace,
+        toggleLandmarks,
+        toggleHeatmap,
+        toggleDeadZones,
+        toggleOfflineMode,
+        loadDemoScenario,
+        resetDemo,
+      }}
+    >
+      {children}
+    </MapContext.Provider>
+  );
 };
 
 export const useMapState = (): MapContextType => {

@@ -23,6 +23,7 @@ export * from '../../services/landmarksService';
 export * from '../../services/offlineCacheService';
 export * from '../../services/demoService';
 export * from '../../services/apiService';
+export * from '../../services/geocodingService';
 
 // State & Context
 export * from '../../context/MapContext';

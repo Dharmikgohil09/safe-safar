@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Alert,
   SafeAreaView,
@@ -11,11 +11,13 @@ import {
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
-import { Card } from '../../../components/ui';
+import { Card, StateView } from '../../../components/ui';
 import { colors, radius, spacing, typography } from '../../../theme';
 import { mockUser } from '../mock/mockData';
 
 export default function ProfileScreen() {
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
   const showMessage = (feature: string) => {
     Alert.alert(feature, 'This feature will be connected during development.');
   };
@@ -30,47 +32,69 @@ export default function ProfileScreen() {
           <Text style={styles.headerTitle}>My Profile</Text>
           <Text style={styles.headerSubtitle}>Safety Settings & Personal Account</Text>
         </View>
-        <TouchableOpacity
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {__DEV__ && (
+            <TouchableOpacity
+              onPress={() => setIsLoading((prev) => !prev)}
+              style={styles.previewChip}
+              accessibilityRole="button"
+              accessibilityLabel="Preview states"
+            >
+              <Text style={styles.previewChipText}>
+                {isLoading ? 'Loading' : 'Ready'}
+              </Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
           onPress={() => showMessage('Settings')}
-          style={styles.settingsIconButton}
-          accessibilityRole="button"
-          accessibilityLabel="Open settings"
-        >
-          <MaterialIcons name="settings" size={22} color="#FFFFFF" />
-        </TouchableOpacity>
+            style={styles.settingsIconButton}
+            accessibilityRole="button"
+            accessibilityLabel="Open settings"
+          >
+            <MaterialIcons name="settings" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {/* User Card */}
-        <Card style={styles.profileCard}>
-          <View style={styles.profileTopRow}>
-            <View style={styles.avatarCircle}>
-              <Text style={styles.avatarText}>{mockUser.initials}</Text>
-            </View>
-            <View style={styles.profileDetails}>
-              <View style={styles.nameRow}>
-                <Text style={styles.userName}>{mockUser.name}</Text>
-                <MaterialIcons name="verified" size={18} color={colors.accent} />
+        {isLoading ? (
+          <StateView
+            kind="loading"
+            title="Loading profile"
+            message="Fetching safety profile and credentials..."
+          />
+        ) : (
+          <Card style={styles.profileCard}>
+            <View style={styles.profileTopRow}>
+              <View style={styles.avatarCircle}>
+                <Text style={styles.avatarText}>{mockUser.initials}</Text>
               </View>
-              <Text style={styles.userEmail}>{mockUser.email}</Text>
-              <View style={styles.badgeRow}>
-                <View style={styles.verifiedBadge}>
-                  <Text style={styles.verifiedBadgeText}>SafeSafar Verified</Text>
+              <View style={styles.profileDetails}>
+                <View style={styles.nameRow}>
+                  <Text style={styles.userName}>{mockUser.name}</Text>
+                  <MaterialIcons name="verified" size={18} color={colors.accent} />
+                </View>
+                <Text style={styles.userEmail}>{mockUser.email}</Text>
+                <View style={styles.badgeRow}>
+                  <View style={styles.verifiedBadge}>
+                    <Text style={styles.verifiedBadgeText}>SafeSafar Verified</Text>
+                  </View>
                 </View>
               </View>
             </View>
-          </View>
 
-          <TouchableOpacity
+            <TouchableOpacity
             onPress={() => showMessage('Edit Profile')}
-            style={styles.editButton}
-            accessibilityRole="button"
-            accessibilityLabel="Edit profile"
-          >
-            <MaterialIcons name="edit" size={16} color={colors.primary} />
-            <Text style={styles.editButtonText}>Edit Profile</Text>
-          </TouchableOpacity>
-        </Card>
+              style={styles.editButton}
+              accessibilityRole="button"
+              accessibilityLabel="Edit profile"
+            >
+              <MaterialIcons name="edit" size={16} color={colors.primary} />
+              <Text style={styles.editButtonText}>Edit Profile</Text>
+            </TouchableOpacity>
+          </Card>
+        )}
 
         {/* Section 1: Safety & Emergency Network */}
         <View style={styles.sectionHeader}>
@@ -490,5 +514,18 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textMuted,
     fontWeight: '500',
+  },
+  previewChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  previewChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#B45309',
   },
 });

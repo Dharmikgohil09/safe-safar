@@ -5,7 +5,6 @@ import {
   User,
   Clock,
   Battery,
-  Gauge,
   Navigation,
   MapPin,
   AlertCircle,
@@ -14,6 +13,7 @@ import {
   ExternalLink,
   ChevronUp,
   ChevronDown,
+  Gauge,
 } from 'lucide-react';
 import { Coordinates, Destination, TrackingSession, SosState } from '../types/tracker';
 import { calculateDistanceKm, formatRelativeTime, formatTime } from '../utils/geo';
@@ -73,8 +73,8 @@ export default function TrackerStatusCard({
         const url = window.location.href;
         if (navigator.share) {
           await navigator.share({
-            title: `SafeSafar Live Tracking - ${session?.userName || 'Personal Safety'}`,
-            text: `Follow my live safety journey on SafeSafar:`,
+            title: `SafeSafar Tracking: ${session?.userName || 'Personal Safety'}`,
+            text: `Live tracking link for ${session?.userName || 'trip'}:`,
             url,
           });
         } else if (navigator.clipboard) {
@@ -94,209 +94,208 @@ export default function TrackerStatusCard({
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  const getBatteryIcon = (pct?: number | null) => {
-    if (pct === undefined || pct === null) return null;
-    let colorClass = 'battery-high';
-    if (pct <= 20) colorClass = 'battery-critical';
-    else if (pct <= 45) colorClass = 'battery-med';
-
-    return (
-      <div className={`metric-badge ${colorClass}`} title={`Device Battery: ${pct}%`}>
-        <Battery size={14} />
-        <span>{pct}%</span>
-      </div>
-    );
-  };
-
   const getStatusBadge = () => {
     if (effectiveSos) {
-      return <span className="journey-status-tag status-sos-tag">🚨 SOS EMERGENCY</span>;
+      return (
+        <span className="status-badge badge-sos">
+          <span className="status-dot dot-sos"></span>
+          SOS Active
+        </span>
+      );
     }
     if (effectiveResolved) {
-      return <span className="journey-status-tag status-resolved-tag">✅ SOS RESOLVED</span>;
+      return (
+        <span className="status-badge badge-resolved">
+          <span className="status-dot dot-resolved"></span>
+          Resolved
+        </span>
+      );
     }
     return (
-      <span className={`journey-status-tag ${session?.status || 'active'}`}>
-        {session?.status ? session.status.toUpperCase() : 'IN TRANSIT'}
+      <span className="status-badge badge-normal">
+        <span className="status-dot dot-normal"></span>
+        Active Trip
       </span>
     );
   };
 
+  const batteryPct = session?.batteryLevel ?? (currentLocation as any)?.batteryLevel;
+
   return (
-    <div
-      className={`tracker-bottom-panel ${collapsed ? 'collapsed' : ''} ${
-        effectiveSos ? 'panel-sos' : effectiveResolved ? 'panel-resolved' : ''
+    <section
+      className={`tracker-info-panel ${collapsed ? 'is-collapsed' : ''} ${
+        effectiveSos ? 'state-sos' : effectiveResolved ? 'state-resolved' : ''
       }`}
+      aria-label="Trip and Telemetry Information"
     >
-      {/* Drag / Toggle bar */}
+      {/* Collapse / Expand toggle */}
       <button
+        type="button"
         onClick={() => setCollapsed(!collapsed)}
-        className="collapse-toggle-btn"
+        className="panel-collapse-bar"
         aria-label={collapsed ? 'Expand details' : 'Collapse details'}
       >
-        <span className="toggle-pill"></span>
-        <span className="toggle-icon">
-          {collapsed ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </span>
+        <span className="collapse-handle"></span>
       </button>
 
-      {/* Stale Warning Banner */}
+      {/* Stale Warning Strip */}
       {isStale && (
-        <div className="stale-warning-strip">
-          <AlertCircle size={16} className="stale-icon" />
-          <span>
-            Telemetry Delayed: No location updates received in over 90s. Device might be in low network coverage.
-          </span>
+        <div className="stale-alert-row" role="status">
+          <AlertCircle size={14} className="alert-icon" />
+          <span>Location delayed: No update received in 90+ seconds</span>
         </div>
       )}
 
-      {/* Persistent Summary Row — Always visible on desktop & mobile */}
-      <div className="person-info-row">
-        <div className="person-avatar-block">
-          <div
-            className={`avatar-circle ${
-              effectiveSos ? 'avatar-sos' : effectiveResolved ? 'avatar-resolved' : ''
-            }`}
-          >
-            <User size={22} />
-          </div>
-          <div className="person-meta">
-            <h2 className="person-name">{session?.userName || 'Tracked Individual'}</h2>
-            <div className="person-submeta">
-              <span className="phone-mask">{session?.userPhoneMasked || 'Protected Contact'}</span>
-              <span className="meta-separator">•</span>
-              {getStatusBadge()}
-            </div>
+      {/* 1. Person's Name & Tracking Status */}
+      <div className="panel-primary-row">
+        <div className="person-identity">
+          <h2 className="person-name">{session?.userName || 'Tracked Individual'}</h2>
+          <div className="person-details">
+            <span className="phone-text">{session?.userPhoneMasked || 'Protected Contact'}</span>
+            <span className="detail-dot">•</span>
+            {getStatusBadge()}
           </div>
         </div>
 
-        <div className="quick-battery-time">
-          {getBatteryIcon(session?.batteryLevel ?? (currentLocation as any)?.batteryLevel)}
-        </div>
+        <button
+          type="button"
+          onClick={() => setCollapsed(!collapsed)}
+          className="collapse-icon-btn"
+          title={collapsed ? 'Expand details' : 'Collapse details'}
+        >
+          {collapsed ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
       </div>
 
-      {/* Persistent Destination & Last Update Bar (Always visible) */}
-      <div className="persistent-trip-strip">
-        <div className="trip-strip-item trip-strip-dest">
-          <MapPin size={13} className="strip-icon text-teal" />
-          <span className="strip-label">Dest:</span>
-          <span className="strip-val" title={session?.destination?.name || 'No destination specified'}>
-            {session?.destination?.name ? session.destination.name : 'Not specified'}
-          </span>
+      {/* Summary Row (Visible in collapsed state) */}
+      {collapsed && (
+        <div className="collapsed-summary-row">
+          <div className="summary-item">
+            <span className="summary-label">Dest:</span>
+            <span className="summary-val">{session?.destination?.name || 'No destination specified'}</span>
+          </div>
+          <div className="summary-item">
+            <span className="summary-label">Updated:</span>
+            <span className="summary-val">{formatRelativeTime(latestTimestamp)}</span>
+          </div>
         </div>
-        <div className="trip-strip-divider">|</div>
-        <div className="trip-strip-item trip-strip-time">
-          <Clock size={13} className="strip-icon text-cyan" />
-          <span className="strip-label">Updated:</span>
-          <span className="strip-val">{formatRelativeTime(latestTimestamp)}</span>
-        </div>
-      </div>
+      )}
 
-      {/* Expandable Section */}
+      {/* Expanded Information Panel */}
       {!collapsed && (
-        <>
-          {/* Telemetry Metrics Grid */}
-          <div className="telemetry-grid">
-            <div className="telemetry-card">
-              <div className="telemetry-icon-box">
-                <Clock size={16} />
-              </div>
-              <div className="telemetry-text">
-                <span className="telemetry-label">Last Updated</span>
-                <span className="telemetry-value">{formatRelativeTime(latestTimestamp)}</span>
-                <span className="telemetry-sub">{formatTime(latestTimestamp)}</span>
+        <div className="panel-body">
+          {/* 2. Last Location Update */}
+          <div className="data-row">
+            <div className="data-cell">
+              <span className="cell-label">Last Location Update</span>
+              <div className="cell-value-group">
+                <span className="cell-value">{formatRelativeTime(latestTimestamp)}</span>
+                {latestTimestamp && <span className="cell-sub">{formatTime(latestTimestamp)}</span>}
               </div>
             </div>
 
-            <div className="telemetry-card">
-              <div className="telemetry-icon-box">
-                <Gauge size={16} />
+            {/* 3. Coordinates & Precision */}
+            <div className="data-cell">
+              <span className="cell-label">Coordinates</span>
+              <div className="cell-value-group">
+                <span className="cell-value cell-mono">
+                  {currentLocation
+                    ? `${currentLocation.latitude.toFixed(4)}°, ${currentLocation.longitude.toFixed(4)}°`
+                    : 'Awaiting signal'}
+                </span>
+                <span className="cell-sub">
+                  {currentLocation?.accuracy ? `±${Math.round(currentLocation.accuracy)}m precision` : 'Standard accuracy'}
+                </span>
               </div>
-              <div className="telemetry-text">
-                <span className="telemetry-label">Speed</span>
-                <span className="telemetry-value">
+            </div>
+          </div>
+
+          {/* 4. Speed & Battery Level */}
+          <div className="data-row">
+            <div className="data-cell">
+              <span className="cell-label">Speed</span>
+              <div className="cell-value-group">
+                <span className="cell-value">
                   {currentLocation?.speed !== undefined && currentLocation.speed !== null
                     ? `${Math.round(currentLocation.speed)} km/h`
-                    : '--'}
+                    : 'Unavailable'}
                 </span>
-                <span className="telemetry-sub">
-                  {currentLocation?.speed && currentLocation.speed > 3 ? 'Moving' : 'Stationary'}
+                <span className="cell-sub">
+                  {currentLocation?.speed && currentLocation.speed > 3 ? 'In motion' : 'Stationary'}
                 </span>
               </div>
             </div>
 
-            <div className="telemetry-card">
-              <div className="telemetry-icon-box">
-                <Navigation size={16} />
-              </div>
-              <div className="telemetry-text">
-                <span className="telemetry-label">GPS Precision</span>
-                <span className="telemetry-value">
-                  {currentLocation?.accuracy ? `±${Math.round(currentLocation.accuracy)}m` : 'Accurate'}
+            <div className="data-cell">
+              <span className="cell-label">Battery Level</span>
+              <div className="cell-value-group">
+                <span className="cell-value">
+                  {batteryPct !== undefined && batteryPct !== null ? `${batteryPct}%` : 'Unavailable'}
                 </span>
-                <span className="telemetry-sub">High Confidence</span>
+                <span className="cell-sub">
+                  {batteryPct !== undefined && batteryPct !== null && batteryPct <= 20
+                    ? 'Low battery'
+                    : 'Normal level'}
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Destination & Route Info Card — Gracefully handles missing destinations */}
-          <div className="destination-banner">
-            <div className={`dest-icon-circle ${!session?.destination ? 'dest-missing' : ''}`}>
-              <MapPin size={18} />
+          {/* 5. Destination */}
+          <div className="destination-section">
+            <div className="dest-header">
+              <span className="cell-label">Trip Destination</span>
+              {distanceKm !== null && (
+                <span className="dest-dist-tag">
+                  {distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m away` : `${distanceKm.toFixed(1)} km away`}
+                </span>
+              )}
             </div>
-            <div className="dest-details">
-              <div className="dest-header-line">
-                <span className="dest-title">Trip Destination</span>
-                {distanceKm !== null && (
-                  <span className="dest-distance">
-                    {distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m away` : `${distanceKm.toFixed(1)} km away`}
-                  </span>
-                )}
-              </div>
-              <div className="dest-name">
-                {session?.destination?.name ? session.destination.name : 'No Destination Specified'}
-              </div>
-              <div className="dest-addr">
-                {session?.destination?.address
-                  ? session.destination.address
-                  : session?.destination?.name
-                  ? 'Address coordinates loaded'
-                  : 'Trip navigation active without a fixed end point'}
-              </div>
+            <div className="dest-title">
+              {session?.destination?.name ? session.destination.name : 'No destination specified'}
+            </div>
+            <div className="dest-address">
+              {session?.destination?.address
+                ? session.destination.address
+                : session?.destination?.name
+                ? 'Address details loaded'
+                : 'Trip navigation active without a fixed end point'}
             </div>
           </div>
 
-          {/* Action Buttons Row */}
-          <div className="action-buttons-group">
+          {/* 6. Relevant Tracking Actions */}
+          <div className="actions-section">
             <button
+              type="button"
               onClick={handleGoogleMapsDirections}
-              className="action-btn secondary-btn"
-              title="Open coordinates in external map"
+              className="action-button secondary-button"
+              title="Open coordinates in Google Maps"
             >
-              <ExternalLink size={16} />
+              <ExternalLink size={14} />
               <span>Open in Maps</span>
             </button>
 
             <button
+              type="button"
               onClick={handleShare}
-              className="action-btn secondary-btn"
-              title="Share tracking link"
+              className="action-button secondary-button"
+              title="Copy or share tracking link"
             >
-              <Share2 size={16} />
-              <span>{copied ? 'Link Copied!' : 'Share Link'}</span>
+              <Share2 size={14} />
+              <span>{copied ? 'Link Copied' : 'Share Link'}</span>
             </button>
 
             <a
               href="tel:112"
-              className="action-btn emergency-btn"
-              title="Emergency SOS Hotline (112)"
+              className="action-button emergency-button"
+              title="Direct call to Emergency Helpline (112)"
             >
-              <PhoneCall size={16} />
+              <PhoneCall size={14} />
               <span>Emergency (112)</span>
             </a>
           </div>
-        </>
+        </div>
       )}
-    </div>
+    </section>
   );
 }

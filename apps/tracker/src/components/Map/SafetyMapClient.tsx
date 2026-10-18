@@ -183,9 +183,9 @@ export default function SafetyMapClient({
     } else {
       accuracyCircleRef.current = L.circle(userLatLng, {
         radius: accuracy,
-        color: isSosActive ? '#ef4444' : '#0ea5e9',
-        fillColor: isSosActive ? '#ef4444' : '#38bdf8',
-        fillOpacity: 0.12,
+        color: isSosActive ? '#dc2626' : '#0284c7',
+        fillColor: isSosActive ? '#dc2626' : '#0284c7',
+        fillOpacity: 0.08,
         weight: 1,
       }).addTo(map);
     }
@@ -206,6 +206,9 @@ export default function SafetyMapClient({
           dashArray: '4, 6',
         }).addTo(map);
       }
+    } else if (routeLineRef.current) {
+      routeLineRef.current.remove();
+      routeLineRef.current = null;
     }
 
     // Auto-center if enabled

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Play, Pause, AlertOctagon, Sparkles, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Play, Pause, AlertOctagon, CheckCircle2, ShieldCheck, SlidersHorizontal } from 'lucide-react';
 import { SosState } from '../types/tracker';
 
 interface MockModeBadgeProps {
@@ -38,70 +38,75 @@ export default function MockModeBadge({
   };
 
   return (
-    <aside className="mock-floating-panel" aria-label="Mock Telemetry Controls">
-      <div className="mock-pill-button" onClick={() => setExpanded(!expanded)}>
-        <span className="mock-live-indicator"></span>
-        <span className="mock-title">MOCK TELEMETRY ACTIVE</span>
-        <span className="mock-chevron">{expanded ? '✕' : 'Demo Controls ⚙️'}</span>
-      </div>
+    <div className="demo-controller-widget" aria-label="Demo Simulator Controls">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="demo-toggle-trigger"
+        title="Toggle simulated telemetry controls"
+      >
+        <SlidersHorizontal size={13} />
+        <span>Demo Controls</span>
+      </button>
 
       {expanded && (
-        <div className="mock-details-box">
-          <div className="mock-header">
-            <Sparkles size={16} className="text-teal" />
-            <strong>IEEE Day 3–4 Demo Simulator</strong>
+        <div className="demo-popover-card">
+          <div className="demo-card-header">
+            <span className="demo-header-title">Demo Controls</span>
+            <button
+              type="button"
+              onClick={() => setExpanded(false)}
+              className="demo-close-btn"
+              aria-label="Close demo controls"
+            >
+              ✕
+            </button>
           </div>
-          <p className="mock-desc">
-            Simulating live telemetry with switchable SOS states (Normal, SOS Active, and Resolved).
+          <p className="demo-card-subtitle">
+            Simulating live movement. Select an SOS state to test the banner:
           </p>
 
-          {/* SOS 3-State Simulator Controls */}
-          <div className="mock-sos-selector">
-            <span className="mock-selector-title">Test SOS Banner State:</span>
-            <div className="mock-sos-btn-group">
-              <button
-                type="button"
-                onClick={() => handleStateSelect('normal')}
-                className={`mock-sos-btn ${currentSosState === 'normal' ? 'btn-active-normal' : ''}`}
-                title="Normal Trip (No SOS)"
-              >
-                <ShieldCheck size={13} />
-                <span>Normal</span>
-              </button>
+          <div className="demo-state-selector">
+            <button
+              type="button"
+              onClick={() => handleStateSelect('normal')}
+              className={`demo-select-btn ${currentSosState === 'normal' ? 'selected' : ''}`}
+            >
+              <ShieldCheck size={13} />
+              <span>Normal</span>
+            </button>
 
-              <button
-                type="button"
-                onClick={() => handleStateSelect('active')}
-                className={`mock-sos-btn ${currentSosState === 'active' ? 'btn-active-sos' : ''}`}
-                title="Trigger Emergency SOS"
-              >
-                <AlertOctagon size={13} />
-                <span>SOS Active</span>
-              </button>
+            <button
+              type="button"
+              onClick={() => handleStateSelect('active')}
+              className={`demo-select-btn demo-btn-sos ${currentSosState === 'active' ? 'selected' : ''}`}
+            >
+              <AlertOctagon size={13} />
+              <span>SOS Active</span>
+            </button>
 
-              <button
-                type="button"
-                onClick={() => handleStateSelect('resolved')}
-                className={`mock-sos-btn ${currentSosState === 'resolved' ? 'btn-active-resolved' : ''}`}
-                title="Resolve SOS (All Clear)"
-              >
-                <CheckCircle2 size={13} />
-                <span>Resolved</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => handleStateSelect('resolved')}
+              className={`demo-select-btn demo-btn-resolved ${currentSosState === 'resolved' ? 'selected' : ''}`}
+            >
+              <CheckCircle2 size={13} />
+              <span>Resolved</span>
+            </button>
           </div>
 
-          <div className="mock-stream-control">
+          <div className="demo-footer-action">
             <button
+              type="button"
               onClick={onTogglePause}
-              className={`mock-ctrl-action ${isPaused ? 'paused' : ''}`}
+              className={`demo-playback-btn ${isPaused ? 'is-paused' : ''}`}
             >
-              {isPaused ? <Play size={14} /> : <Pause size={14} />}
-              <span>{isPaused ? 'Resume Telemetry' : 'Pause Telemetry'}</span>
+              {isPaused ? <Play size={13} /> : <Pause size={13} />}
+              <span>{isPaused ? 'Resume Movement' : 'Pause Movement'}</span>
             </button>
           </div>
         </div>
       )}
-    </aside>
+    </div>
   );
 }

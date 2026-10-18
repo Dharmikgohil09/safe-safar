@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Shield, Radio, ArrowRight, MapPin, Smartphone, Sparkles, AlertTriangle } from 'lucide-react';
+import { Shield, ArrowRight, MapPin, Smartphone, PhoneCall } from 'lucide-react';
 
 export default function HomePage() {
   const router = useRouter();
@@ -17,42 +17,45 @@ export default function HomePage() {
 
   return (
     <div className="home-container">
-      <div className="home-hero-card">
+      <main className="home-hero-card">
         <div className="home-logo-badge">
-          <Shield size={32} className="shield-brand-icon" />
-          <Radio size={18} className="pulse-brand-radio" />
+          <Shield size={28} className="shield-brand-icon" />
         </div>
 
         <h1 className="home-title">SafeSafar Guardian Tracker</h1>
         <p className="home-subtitle">
-          Real-time personal safety tracking for trusted contacts. Accessible directly from SMS or Telegram emergency links without login.
+          Help your loved ones stay informed during your journey. Share your
+          tracking link with trusted contacts so they can follow your trip and
+          know when you need help.
         </p>
 
-        {/* Quick Launch Button */}
+        {/* Primary Demo Launch Button */}
         <div className="home-primary-cta">
           <button
+            type="button"
             onClick={() => router.push('/track/safesafar-live-session-2026')}
             className="btn-launch-demo"
           >
-            <Sparkles size={18} />
-            <span>Launch Live Tracking Demo</span>
-            <ArrowRight size={18} />
+            <span>Explore Tracking Demo</span>
+            <ArrowRight size={16} />
           </button>
         </div>
 
         {/* Custom Token Form */}
         <form onSubmit={handleSubmit} className="token-input-form">
           <label htmlFor="token-input" className="input-label">
-            Or enter a SafeSafar Tracking Token:
+            Or enter a tracking token:
           </label>
           <div className="input-group">
             <input
               id="token-input"
               type="text"
-              placeholder="e.g. safe-session-xyz"
+              placeholder="e.g. safesafar-live-session-2026"
               value={tokenInput}
               onChange={(e) => setTokenInput(e.target.value)}
               className="token-input"
+              autoComplete="off"
+              spellCheck={false}
             />
             <button type="submit" className="btn-token-submit" disabled={!tokenInput.trim()}>
               Track
@@ -60,58 +63,27 @@ export default function HomePage() {
           </div>
         </form>
 
-        {/* Test Scenarios for IEEE Evaluation */}
-        <div className="demo-scenarios-section">
-          <span className="scenarios-title">IEEE Day 3–4 QA & Demo Quick Links:</span>
-          <div className="scenario-chips">
-            <button
-              onClick={() => router.push('/track/safesafar-live-session-2026')}
-              className="chip-btn chip-live"
-            >
-              🟢 State A: Normal Trip (No SOS Active)
-            </button>
-            <button
-              onClick={() => router.push('/track/sos-active')}
-              className="chip-btn chip-error"
-            >
-              🚨 State B: SOS Active (Emergency Triggered)
-            </button>
-            <button
-              onClick={() => router.push('/track/sos-resolved')}
-              className="chip-btn chip-ended"
-            >
-              ✅ State C: SOS Resolved (All-Clear Signal)
-            </button>
-            <button
-              onClick={() => router.push('/track/no-destination')}
-              className="chip-btn chip-live"
-            >
-              📍 Edge Case: Missing Destination Fallback
-            </button>
-            <button
-              onClick={() => router.push('/track/invalid-token')}
-              className="chip-btn chip-error"
-            >
-              🔴 Error State: Invalid Tracking Token
-            </button>
+        {/* Verified Feature Highlights */}
+        <div className="home-features-grid">
+          <div className="feature-item">
+            <MapPin size={16} className="text-teal" />
+            <span>Location Updates</span>
+          </div>
+          <div className="feature-item">
+            <Smartphone size={16} className="text-teal" />
+            <span>Works on Any Device</span>
+          </div>
+          <div className="feature-item">
+            <PhoneCall size={16} className="text-teal" />
+            <span>Emergency Assistance</span>
           </div>
         </div>
 
-        <div className="home-features-grid">
-          <div className="feature-item">
-            <MapPin size={18} className="text-teal" />
-            <span>Smooth OpenStreetMap Telemetry</span>
-          </div>
-          <div className="feature-item">
-            <Smartphone size={18} className="text-teal" />
-            <span>100% Mobile & SMS Friendly</span>
-          </div>
-          <div className="feature-item">
-            <Radio size={18} className="text-teal" />
-            <span>Socket.IO Ready with Mock Fallback</span>
-          </div>
-        </div>
-      </div>
+        {/* Subtle, Professional Footer */}
+        <footer className="home-footer">
+          <p>SafeSafar — Helping you travel with greater peace of mind.</p>
+        </footer>
+      </main>
     </div>
   );
 }

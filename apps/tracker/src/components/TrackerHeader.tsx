@@ -25,18 +25,18 @@ export default function TrackerHeader({
   const getStatusBadge = () => {
     if (isEmergency) {
       return (
-        <span className="status-pill status-sos">
-          <span className="pill-dot blink-fast"></span>
-          SOS EMERGENCY
+        <span className="header-status-pill status-emergency">
+          <span className="dot dot-emergency"></span>
+          SOS Emergency
         </span>
       );
     }
 
     if (isResolved) {
       return (
-        <span className="status-pill status-resolved">
-          <CheckCircle2 size={12} />
-          SOS RESOLVED
+        <span className="header-status-pill status-resolved">
+          <span className="dot dot-resolved"></span>
+          Resolved
         </span>
       );
     }
@@ -44,45 +44,45 @@ export default function TrackerHeader({
     switch (status) {
       case 'connected':
         return (
-          <span className="status-pill status-live">
-            <span className="pill-dot pulse"></span>
-            LIVE TRACKING
+          <span className="header-status-pill status-connected">
+            <span className="dot dot-connected"></span>
+            Live
           </span>
         );
       case 'connecting':
         return (
-          <span className="status-pill status-connecting">
-            <RefreshCw size={12} className="animate-spin" />
-            CONNECTING...
+          <span className="header-status-pill status-connecting">
+            <RefreshCw size={11} className="animate-spin" />
+            Connecting
           </span>
         );
       case 'reconnecting':
         return (
-          <span className="status-pill status-warning">
-            <RefreshCw size={12} className="animate-spin" />
-            RECONNECTING...
+          <span className="header-status-pill status-reconnecting">
+            <RefreshCw size={11} className="animate-spin" />
+            Reconnecting
           </span>
         );
       case 'disconnected':
         return (
-          <span className="status-pill status-offline">
-            <span className="pill-dot"></span>
-            DISCONNECTED
+          <span className="header-status-pill status-offline">
+            <span className="dot dot-offline"></span>
+            Offline
           </span>
         );
       case 'error':
       case 'invalid-token':
         return (
-          <span className="status-pill status-error">
-            <AlertTriangle size={12} />
-            ERROR
+          <span className="header-status-pill status-error">
+            <AlertTriangle size={11} />
+            Error
           </span>
         );
       case 'ended':
         return (
-          <span className="status-pill status-ended">
-            <CheckCircle2 size={12} />
-            JOURNEY ENDED
+          <span className="header-status-pill status-ended">
+            <CheckCircle2 size={11} />
+            Completed
           </span>
         );
       default:
@@ -91,38 +91,35 @@ export default function TrackerHeader({
   };
 
   return (
-    <header className="tracker-header">
-      <div className="header-left">
-        <div className="brand-logo">
-          <div className="logo-shield">
-            <Shield size={22} className="shield-icon" />
-            <Radio size={12} className="radio-icon" />
-          </div>
-          <div className="brand-text">
-            <span className="brand-name">SafeSafar</span>
-            <span className="brand-tag">Guardian Live</span>
-          </div>
+    <header className="tracker-top-header" role="banner">
+      <div className="header-brand-group">
+        <div className="header-logo-icon">
+          <Shield size={18} strokeWidth={2.2} />
+        </div>
+        <div className="header-brand-titles">
+          <span className="brand-title">SafeSafar</span>
+          <span className="brand-subtitle">Live Tracker</span>
         </div>
       </div>
 
-      <div className="header-right">
+      <div className="header-meta-group">
         {isMock && (
-          <div className="mock-badge-header" title="This view is using simulated telemetry (Day 3-4 Demo Mode)">
-            <span className="mock-dot"></span>
-            <span className="mock-text">DEMO / MOCK DATA</span>
-          </div>
+          <span className="header-demo-tag" title="Simulated GPS Telemetry Active">
+            Demo Data
+          </span>
         )}
 
-        <div className="status-badge-container">{getStatusBadge()}</div>
+        {getStatusBadge()}
 
         {onRefresh && (
           <button
+            type="button"
             onClick={onRefresh}
-            className="icon-refresh-btn"
+            className="header-refresh-btn"
             title="Refresh connection"
             aria-label="Refresh connection"
           >
-            <RefreshCw size={16} />
+            <RefreshCw size={13} />
           </button>
         )}
       </div>

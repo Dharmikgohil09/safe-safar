@@ -215,7 +215,7 @@ export default function HomeScreen() {
 
           {/* Card 4: Report an unsafe location */}
           <Card
-            onPress={() => showMessage('Report an Unsafe Location')}
+            onPress={() => router.push('/report')}
             style={styles.exploreCard}
             accessibilityLabel="Report an unsafe location"
             entranceDelay={420}

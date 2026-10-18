@@ -16,7 +16,7 @@ import {
   View,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useReduceMotion } from '../../../components/ui';
+import { StateView, useReduceMotion } from '../../../components/ui';
 import {
   normalizePhone,
   type Contact,
@@ -75,6 +75,16 @@ export default function ContactsScreen() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<FeedbackNotice | null>(null);
+  const [previewStatus, setPreviewStatus] = useState<'ready' | 'loading' | 'empty' | 'error'>('ready');
+
+  const cyclePreviewStatus = () => {
+    setPreviewStatus((prev) => {
+      if (prev === 'ready') return 'loading';
+      if (prev === 'loading') return 'empty';
+      if (prev === 'empty') return 'error';
+      return 'ready';
+    });
+  };
 
   // Modal states
   const [isFormModalVisible, setIsFormModalVisible] = useState<boolean>(false);
@@ -367,15 +377,49 @@ export default function ContactsScreen() {
 
             {/* Contact Cards Section */}
             <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>Saved Contacts</Text>
-              {contacts.length > 0 && (
-                <Text style={styles.sectionSubtitle}>
-                  {contacts.length === 1 ? '1 contact' : `${contacts.length} contacts`}
-                </Text>
+              <View>
+                <Text style={styles.sectionTitle}>Saved Contacts</Text>
+                {contacts.length > 0 && (
+                  <Text style={styles.sectionSubtitle}>
+                    {contacts.length === 1 ? '1 contact' : `${contacts.length} contacts`}
+                  </Text>
+                )}
+              </View>
+              {__DEV__ && (
+                <TouchableOpacity
+                  onPress={cyclePreviewStatus}
+                  style={styles.previewChip}
+                  accessibilityRole="button"
+                  accessibilityLabel="Preview states"
+                >
+                  <Text style={styles.previewChipText}>Preview: {previewStatus}</Text>
+                </TouchableOpacity>
               )}
             </View>
 
-            {isLoading ? (
+            {previewStatus === 'loading' ? (
+              <StateView
+                kind="loading"
+                title="Loading contacts"
+                message="Fetching your trusted guardian network..."
+              />
+            ) : previewStatus === 'empty' ? (
+              <StateView
+                kind="empty"
+                title="No contacts found"
+                message="You have not added any trusted emergency contacts yet."
+                actionLabel="Add Contact"
+                onAction={handleOpenAddModal}
+              />
+            ) : previewStatus === 'error' ? (
+              <StateView
+                kind="error"
+                title="Failed to load contacts"
+                message="Unable to read contacts from secure storage. Please retry."
+                actionLabel="Retry"
+                onAction={() => void loadContacts()}
+              />
+            ) : isLoading ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={colors.primary} />
                 <Text style={styles.loadingText}>Reading secure local storage...</Text>
@@ -1347,5 +1391,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  previewChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  previewChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#B45309',
   },
 });

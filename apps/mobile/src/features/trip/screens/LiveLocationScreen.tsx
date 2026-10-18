@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
-import { Card, PrimaryButton, useReduceMotion } from '../../../components/ui';
+import { Card, PrimaryButton, StateView, useReduceMotion } from '../../../components/ui';
 import { colors, radius, spacing, typography } from '../../../theme';
 import { mockShareContacts, MockShareContact } from '../mock/mockData';
 
@@ -32,6 +32,16 @@ export default function LiveLocationScreen() {
   });
 
   const [selectedDuration, setSelectedDuration] = useState<string>('1 hour');
+  const [previewStatus, setPreviewStatus] = useState<'ready' | 'loading' | 'empty' | 'error'>('ready');
+
+  const cyclePreviewStatus = () => {
+    setPreviewStatus((prev) => {
+      if (prev === 'ready') return 'loading';
+      if (prev === 'loading') return 'empty';
+      if (prev === 'empty') return 'error';
+      return 'ready';
+    });
+  };
 
   const showMessage = (feature: string) => {
     if (!reduceMotion && feature === 'Live location sharing preview') {
@@ -99,64 +109,98 @@ export default function LiveLocationScreen() {
         {/* Contacts Section */}
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
-            <Text style={styles.sectionTitle}>Share With</Text>
-            <View style={styles.badgeCount}>
-              <Text style={styles.badgeCountText}>{selectedCount} Selected</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={styles.sectionTitle}>Share With</Text>
+              <View style={styles.badgeCount}>
+                <Text style={styles.badgeCountText}>{selectedCount} Selected</Text>
+              </View>
             </View>
+            {__DEV__ && (
+              <TouchableOpacity
+                onPress={cyclePreviewStatus}
+                style={styles.previewChip}
+                accessibilityRole="button"
+                accessibilityLabel="Preview states"
+              >
+                <Text style={styles.previewChipText}>Preview: {previewStatus}</Text>
+              </TouchableOpacity>
+            )}
           </View>
           <Text style={styles.sectionSubtitle}>
             Choose trusted guardians who will receive your location
           </Text>
         </View>
 
-        <View style={styles.contactsList}>
-          {mockShareContacts.map((contact: MockShareContact, index: number) => {
-            const isChecked = !!selectedContactIds[contact.id];
+        {previewStatus === 'loading' ? (
+          <StateView
+            kind="loading"
+            title="Loading contacts"
+            message="Retrieving your trusted contacts..."
+          />
+        ) : previewStatus === 'empty' ? (
+          <StateView
+            kind="empty"
+            title="No trusted contacts yet"
+            message="Add contacts to share your location."
+          />
+        ) : previewStatus === 'error' ? (
+          <StateView
+            kind="error"
+            title="Unable to load contacts"
+            message="Could not load your contact list. Please try again."
+            actionLabel="Retry"
+            onAction={() => setPreviewStatus('ready')}
+          />
+        ) : (
+          <View style={styles.contactsList}>
+            {mockShareContacts.map((contact: MockShareContact, index: number) => {
+              const isChecked = !!selectedContactIds[contact.id];
 
-            return (
-              <TouchableOpacity
-                key={contact.id}
-                activeOpacity={0.8}
+              return (
+                <TouchableOpacity
+                  key={contact.id}
+                  activeOpacity={0.8}
                 onPress={() => toggleContact(contact.id)}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: isChecked }}
-                accessibilityLabel={`${contact.name}, ${contact.relationship}, ${isChecked ? 'selected' : 'unselected'}`}
-              >
-                <Card
-                  style={[
-                    styles.contactCard,
-                    isChecked && styles.contactCardChecked,
-                  ]}
-                  entranceDelay={index * 60}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: isChecked }}
+                  accessibilityLabel={`${contact.name}, ${contact.relationship}, ${isChecked ? 'selected' : 'unselected'}`}
                 >
-                  <View style={styles.checkboxContainer}>
-                    <MaterialIcons
-                      name={isChecked ? 'check-box' : 'check-box-outline-blank'}
-                      size={24}
-                      color={isChecked ? colors.accent : colors.textMuted}
-                    />
-                  </View>
-
-                  <View style={styles.contactAvatar}>
-                    <Text style={styles.avatarInitials}>
-                      {contact.name.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-
-                  <View style={styles.contactInfo}>
-                    <View style={styles.contactTopRow}>
-                      <Text style={styles.contactName}>{contact.name}</Text>
-                      <View style={styles.relPill}>
-                        <Text style={styles.relPillText}>{contact.relationship}</Text>
-                      </View>
+                  <Card
+                    style={[
+                      styles.contactCard,
+                      isChecked && styles.contactCardChecked,
+                    ]}
+                    entranceDelay={index * 60}
+                  >
+                    <View style={styles.checkboxContainer}>
+                      <MaterialIcons
+                        name={isChecked ? 'check-box' : 'check-box-outline-blank'}
+                        size={24}
+                        color={isChecked ? colors.accent : colors.textMuted}
+                      />
                     </View>
-                    <Text style={styles.contactPhone}>{contact.phone}</Text>
-                  </View>
-                </Card>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+
+                    <View style={styles.contactAvatar}>
+                      <Text style={styles.avatarInitials}>
+                        {contact.name.charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+
+                    <View style={styles.contactInfo}>
+                      <View style={styles.contactTopRow}>
+                        <Text style={styles.contactName}>{contact.name}</Text>
+                        <View style={styles.relPill}>
+                          <Text style={styles.relPillText}>{contact.relationship}</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.contactPhone}>{contact.phone}</Text>
+                    </View>
+                  </Card>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
 
         {/* Duration Chips Section */}
         <View style={styles.sectionHeader}>
@@ -452,5 +496,18 @@ const styles = StyleSheet.create({
   },
   shareButton: {
     height: 50,
+  },
+  previewChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  previewChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#B45309',
   },
 });

@@ -23,6 +23,7 @@ export const MapLayerControls: React.FC<MapLayerControlsProps> = ({ onRecenter }
     toggleLandmarks,
     toggleHeatmap,
     toggleDeadZones,
+    recenterOnUser,
   } = useMapState();
 
   const [safeModalVisible, setSafeModalVisible] = useState(false);
@@ -62,7 +63,7 @@ export const MapLayerControls: React.FC<MapLayerControlsProps> = ({ onRecenter }
         {/* 4. Recenter to GPS Location */}
         <TouchableOpacity
           style={[styles.fab, styles.recenterFab]}
-          onPress={onRecenter}
+          onPress={onRecenter || recenterOnUser}
           activeOpacity={0.8}
         >
           <Text style={styles.fabIcon}>🎯</Text>

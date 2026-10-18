@@ -48,8 +48,8 @@ export default function SafeRouteScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Grey Map-Area Placeholder Card with Two Route Lines */}
-        <Card style={styles.mapCard}>
+        {/* Interactive Map Entry Card */}
+        <Card style={styles.mapCard} onPress={() => router.push('/(tabs)/map')}>
           <View style={styles.mapArea}>
             {/* Grid / Street simulated markings */}
             <View style={styles.mapGridLineH1} />
@@ -90,9 +90,9 @@ export default function SafeRouteScreen() {
           </View>
 
           <View style={styles.mapCaptionRow}>
-            <MaterialIcons name="layers" size={16} color={colors.textMuted} />
-            <Text style={styles.mapCaptionText}>
-              Simulated Safety Heatmap · High Streetlight & Patrol Coverage
+            <MaterialIcons name="open-in-new" size={16} color={colors.accent} />
+            <Text style={[styles.mapCaptionText, { color: colors.accent, fontWeight: '600' }]}>
+              Tap to open live interactive GPS map with safe havens & dead zones
             </Text>
           </View>
         </Card>
@@ -204,7 +204,7 @@ export default function SafeRouteScreen() {
           <PrimaryButton
             variant="accent"
             label="Start Navigation"
-            onPress={() => showMessage('Start Navigation')}
+            onPress={() => router.push('/(tabs)/map')}
             icon={<MaterialIcons name="navigation" size={20} color={colors.primaryDark} />}
             style={styles.navButton}
           />

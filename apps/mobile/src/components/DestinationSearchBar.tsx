@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Keyboard,
+  Alert,
 } from 'react-native';
 import { useMapState } from '../context/MapContext';
 import { LatLng } from '../types';
@@ -66,7 +67,16 @@ const QUICK_SPOTS: QuickSpot[] = [
 ];
 
 export const DestinationSearchBar: React.FC = () => {
-  const { destinationName, isOffline, isLoading, calculateRoutes, searchPlaces } = useMapState();
+  const {
+    destinationName,
+    userLocation,
+    isRealLocation,
+    isOffline,
+    isLoading,
+    calculateRoutes,
+    searchPlaces,
+    clearDestination,
+  } = useMapState();
   const [inputText, setInputText] = useState(destinationName);
   const [suggestions, setSuggestions] = useState<PlaceSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
@@ -77,7 +87,7 @@ export const DestinationSearchBar: React.FC = () => {
     setInputText(destinationName);
   }, [destinationName]);
 
-  // Debounced live place search (Nominatim + Surat database)
+  // Debounced live place search
   const handleTextChange = (text: string) => {
     setInputText(text);
 
@@ -131,11 +141,16 @@ export const DestinationSearchBar: React.FC = () => {
       if (results.length > 0) {
         handleSelectPlace(results[0]);
       } else {
-        // Fallback to Adajan Gam default
-        calculateRoutes({ latitude: 21.1963, longitude: 72.7952 }, inputText.trim());
+        Alert.alert(
+          'Location Not Found',
+          `Could not locate "${inputText.trim()}". Try searching another address, landmark, or tap directly on the map to drop a pin.`
+        );
       }
     } catch (_) {
-      calculateRoutes({ latitude: 21.1963, longitude: 72.7952 }, inputText.trim());
+      Alert.alert(
+        'Search Error',
+        'Unable to search places right now. Tap anywhere on the map to route to that coordinate.'
+      );
     } finally {
       setIsSearching(false);
     }
@@ -145,7 +160,12 @@ export const DestinationSearchBar: React.FC = () => {
     setInputText('');
     setSuggestions([]);
     setShowDropdown(false);
+    clearDestination();
   };
+
+  const originDisplay = isRealLocation
+    ? 'Live GPS Location'
+    : `Anchor: ${userLocation.latitude.toFixed(4)}, ${userLocation.longitude.toFixed(4)}`;
 
   return (
     <View style={styles.container}>
@@ -153,9 +173,9 @@ export const DestinationSearchBar: React.FC = () => {
       <View style={styles.searchCard}>
         {/* Origin Row */}
         <View style={styles.originRow}>
-          <View style={styles.originDot} />
+          <View style={[styles.originDot, isRealLocation && { backgroundColor: '#00C853' }]} />
           <Text style={styles.originText} numberOfLines={1}>
-            Your Location (SVNIT Dumas Road, Surat)
+            {originDisplay}
           </Text>
           {isOffline && (
             <View style={styles.offlineChip}>
@@ -176,7 +196,7 @@ export const DestinationSearchBar: React.FC = () => {
             onFocus={() => {
               if (inputText.length > 0) setShowDropdown(true);
             }}
-            placeholder="Search address, landmark in Surat..."
+            placeholder="Search destination, landmark, safe haven..."
             placeholderTextColor="#8E8E93"
             onSubmitEditing={handleManualSearchSubmit}
             returnKeyType="search"

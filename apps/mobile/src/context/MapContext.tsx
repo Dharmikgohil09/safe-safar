@@ -16,6 +16,8 @@ import { DeadZoneService } from '../services/deadZoneService';
 import { OfflineCacheService } from '../services/offlineCacheService';
 import { DemoService } from '../services/demoService';
 import { GeocodingService, PlaceSearchResult } from '../services/geocodingService';
+import * as Location from 'expo-location';
+import { MAP_CONFIG } from '../config/mapConfig';
 
 export type MapStyleType = 'street' | 'dark' | 'satellite';
 
@@ -35,6 +37,7 @@ export interface MapContextType {
   isOffline: boolean;
   isLoading: boolean;
   selectedLandmark: Landmark | null;
+  isRealLocation: boolean;
   demoScenarios: DemoScenario[];
   mapStyle: MapStyleType;
   isNavigating: boolean;
@@ -45,6 +48,8 @@ export interface MapContextType {
   handleMapTap: (coords: LatLng) => Promise<void>;
   searchPlaces: (query: string) => Promise<PlaceSearchResult[]>;
   initialize: () => Promise<void>;
+  recenterOnUser: () => Promise<void>;
+  clearDestination: () => void;
   calculateRoutes: (dest: LatLng, name: string) => Promise<void>;
   selectRoute: (route: RouteOption) => void;
   updateUserLocation: (newLocation: LatLng) => void;
@@ -84,10 +89,11 @@ export const MapProvider: React.FC<{
   const demoService = useMemo(() => injectedDemoService || new DemoService(), [injectedDemoService]);
   const geocodingService = useMemo(() => injectedGeocodingService || new GeocodingService(), [injectedGeocodingService]);
 
-  // Default to SVNIT Surat (Hackathon Anchor)
-  const [userLocation, setUserLocation] = useState<LatLng>({ latitude: 21.1648, longitude: 72.7848 });
-  const [destination, setDestination] = useState<LatLng | null>({ latitude: 21.1963, longitude: 72.7952 });
-  const [destinationName, setDestinationName] = useState<string>('Adajan Gam Circle');
+  // Location state: defaults to fallback anchor, dynamically updated to live GPS on startup
+  const [userLocation, setUserLocation] = useState<LatLng>(MAP_CONFIG.defaultFallbackLocation);
+  const [destination, setDestination] = useState<LatLng | null>(null);
+  const [destinationName, setDestinationName] = useState<string>('');
+  const [isRealLocation, setIsRealLocation] = useState<boolean>(false);
 
   const [routes, setRoutes] = useState<RouteOption[]>([]);
   const [selectedRoute, setSelectedRoute] = useState<RouteOption | null>(null);
@@ -112,7 +118,38 @@ export const MapProvider: React.FC<{
   // Google Maps-like Extra Features State
   const [mapStyle, setMapStyle] = useState<MapStyleType>('street');
   const [isNavigating, setIsNavigating] = useState<boolean>(false);
-  const [navigationStep, setNavigationStep] = useState<string>('Head towards Dumas Road on well-lit corridor');
+  const [navigationStep, setNavigationStep] = useState<string>('Head towards illuminated corridor');
+
+  const recenterOnUser = async () => {
+    try {
+      setIsLoading(true);
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const pos = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        const liveCoords: LatLng = {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        };
+        setUserLocation(liveCoords);
+        setIsRealLocation(true);
+        setDeadZoneAlert(deadZoneService.checkUserPosition(liveCoords));
+      }
+    } catch (_) {
+      // Fallback
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const clearDestination = () => {
+    setDestination(null);
+    setDestinationName('');
+    setRoutes([]);
+    setSelectedRoute(null);
+    setIsNavigating(false);
+  };
 
   const initialize = async () => {
     setIsLoading(true);
@@ -129,18 +166,39 @@ export const MapProvider: React.FC<{
       setDemoScenarios(loadedScenarios);
       setIsOffline(offlineForced);
 
-      // Initialize route calculation between initial origin and destination
-      const initialRoutes = await apiService.fetchSafeRoutes({
-        origin: userLocation,
-        destination: destination || { latitude: 21.1963, longitude: 72.7952 },
-      });
-
-      setRoutes(initialRoutes);
-      if (initialRoutes.length > 0) {
-        const safest = initialRoutes.find((r) => r.isSafest) || initialRoutes[0];
-        setSelectedRoute(safest);
+      // Attempt to acquire real live GPS location
+      let initialCoords = MAP_CONFIG.defaultFallbackLocation;
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const pos = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          initialCoords = {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            name: 'Current Location',
+          };
+          setUserLocation({ latitude: initialCoords.latitude, longitude: initialCoords.longitude });
+          setIsRealLocation(true);
+        }
+      } catch (_) {
+        // Fallback to default anchor
       }
-      setDeadZoneAlert(deadZoneService.checkUserPosition(userLocation));
+
+      setDeadZoneAlert(deadZoneService.checkUserPosition(initialCoords));
+
+      // Only load demo scenario if explicitly enabled via EXPO_PUBLIC_DEMO_MODE=true
+      if (MAP_CONFIG.isDemoMode && loadedScenarios.length > 0) {
+        const primary = loadedScenarios[0];
+        setUserLocation(primary.origin);
+        setDestination(primary.destination);
+        setDestinationName(primary.destinationName);
+        setRoutes(primary.routes);
+        if (primary.routes.length > 0) {
+          setSelectedRoute(primary.routes[0]);
+        }
+      }
     } catch (_) {
       // Resilient fallback
     } finally {
@@ -249,7 +307,7 @@ export const MapProvider: React.FC<{
   };
 
   const toggleOfflineMode = async (value: boolean) => {
-    await cacheService.setForceOffline(value);
+    await cacheService.setOfflineModeForced(value);
     setIsOffline(value);
     if (value && destination) {
       calculateRoutes(destination, destinationName);
@@ -295,6 +353,7 @@ export const MapProvider: React.FC<{
         isOffline,
         isLoading,
         selectedLandmark,
+        isRealLocation,
         demoScenarios,
         mapStyle,
         isNavigating,
@@ -305,6 +364,8 @@ export const MapProvider: React.FC<{
         handleMapTap,
         searchPlaces,
         initialize,
+        recenterOnUser,
+        clearDestination,
         calculateRoutes,
         selectRoute,
         updateUserLocation,

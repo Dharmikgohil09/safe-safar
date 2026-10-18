@@ -98,16 +98,17 @@ export class GeocodingService {
 
     try {
       if (Array.isArray(landmarksData)) {
-        for (const item of landmarksData) {
-          const lat = Array.isArray(item.coordinates) ? item.coordinates[1] : item.coordinates?.latitude;
-          const lng = Array.isArray(item.coordinates) ? item.coordinates[0] : item.coordinates?.longitude;
+        for (const item of (landmarksData as any[])) {
+          const coords = item.coordinates;
+          const lat = Array.isArray(coords) ? coords[1] : coords?.latitude;
+          const lng = Array.isArray(coords) ? coords[0] : coords?.longitude;
 
           if (lat && lng) {
             list.push({
               id: item.id || `lm_${Math.random().toString(36).substring(7)}`,
               name: item.name,
               address: item.address || item.zone || 'Surat, Gujarat',
-              coordinates: { latitude: lat, longitude: lng },
+              coordinates: { latitude: Number(lat), longitude: Number(lng) },
               category: (item.type as any) || 'landmark',
             });
           }
@@ -143,11 +144,19 @@ export class GeocodingService {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 2500);
 
-        // Include Surat context if not specified
-        const searchQuery = cleaned.includes('surat') ? cleaned : `${cleaned}, Surat`;
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+        // Query directly with user's input without hardcoding any specific city
+        const searchQuery = cleaned;
+        let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
           searchQuery
-        )}&addressdetails=1&limit=5&countrycodes=in`;
+        )}&addressdetails=1&limit=5`;
+        if (userLocation) {
+          // Bias search towards user's real GPS bounding area (+- 0.5 degrees ~ 55km)
+          const left = userLocation.longitude - 0.5;
+          const right = userLocation.longitude + 0.5;
+          const top = userLocation.latitude + 0.5;
+          const bottom = userLocation.latitude - 0.5;
+          url += `&viewbox=${left},${top},${right},${bottom}`;
+        }
 
         const res = await fetch(url, {
           signal: controller.signal,
@@ -266,7 +275,7 @@ export class GeocodingService {
 
     return {
       name: `Dropped Pin (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`,
-      address: `Surat, Gujarat • Coordinate: ${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`,
+      address: `Coordinate: ${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`,
     };
   }
 

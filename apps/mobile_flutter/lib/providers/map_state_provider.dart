@@ -33,7 +33,7 @@ class MapStateProvider extends ChangeNotifier {
   // Default to SVNIT Surat (Hackathon Demo Anchor)
   LatLng _userLocation = const LatLng(21.1648, 72.7848);
   LatLng? _destination;
-  String _destinationName = "Adajan Gam Circle";
+  String _destinationName = "";
 
   // Data Collections
   List<RouteOption> _routes = [];
@@ -87,17 +87,7 @@ class MapStateProvider extends ChangeNotifier {
       // Check offline preference
       _isOffline = await _cacheService.isOfflineModeForced();
 
-      // Automatically load the primary Hackathon Demo Scenario (SVNIT -> Adajan Gam)
-      if (_demoService.scenarios.isNotEmpty) {
-        final scenario = _demoService.scenarios.first;
-        _userLocation = scenario.origin;
-        _destination = scenario.destination;
-        _destinationName = scenario.destinationName;
-        _routes = scenario.routes;
-        if (_routes.isNotEmpty) {
-          _selectedRoute = _routes.first;
-        }
-      }
+      // Demo scenarios are loaded into memory and ready when tapped in demo modal
 
       // Check initial dead zone status
       _deadZoneAlert = _deadZoneService.checkUserPosition(_userLocation);

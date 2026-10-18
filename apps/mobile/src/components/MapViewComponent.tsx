@@ -19,15 +19,9 @@ import { getDeadZoneBorderColor, getDeadZoneCircleColor } from '../models/DeadZo
 import { getIncidentColor } from '../models/IncidentReport';
 import { getRouteColor, getSafetyTier } from '../models/RouteOption';
 import { formatDistance, formatDuration } from '../utils/geo';
+import { getTileUrl } from '../config/mapConfig';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-// Tile server URLs
-const TILE_SERVERS: Record<MapStyleType, (z: number, x: number, y: number) => string> = {
-  street: (z, x, y) => `https://a.basemaps.cartocdn.com/rastertiles/voyager/${z}/${x}/${y}.png`,
-  dark: (z, x, y) => `https://a.basemaps.cartocdn.com/dark_all/${z}/${x}/${y}.png`,
-  satellite: (z, x, y) => `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}.jpg`,
-};
 
 // Tile math utilities (Web Mercator EPSG:3857)
 function lon2tile(lon: number, zoom: number): number {
@@ -64,6 +58,9 @@ export const MapViewComponent: React.FC = () => {
     mapStyle,
     isNavigating,
     navigationStep,
+    isRealLocation,
+    recenterOnUser,
+    clearDestination,
     setMapStyle,
     stopNavigation,
     selectRoute,
@@ -162,7 +159,7 @@ export const MapViewComponent: React.FC = () => {
     const maxCoord = Math.pow(2, zoomLevel);
     const tiles: Array<{ key: string; x: number; y: number; left: number; top: number; url: string }> = [];
 
-    const tileUrlFn = TILE_SERVERS[mapStyle];
+    const tileUrlFn = (z: number, x: number, y: number) => getTileUrl(mapStyle, z, x, y);
 
     for (let tx = minTileX; tx <= maxTileX; tx++) {
       for (let ty = minTileY; ty <= maxTileY; ty++) {
@@ -193,9 +190,10 @@ export const MapViewComponent: React.FC = () => {
     setZoomLevel((prev) => Math.max(11, prev - 1));
   };
 
-  const handleRecenter = () => {
+  const handleRecenter = async () => {
     setPanOffset({ x: 0, y: 0 });
-    setZoomLevel(14);
+    setZoomLevel(15);
+    await recenterOnUser();
   };
 
   const handleCanvasTap = (e: any) => {

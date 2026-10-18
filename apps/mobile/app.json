@@ -10,10 +10,18 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.codecraft.safesafar"
+      "bundleIdentifier": "com.codecraft.safesafar",
+      "config": {
+        "googleMapsApiKey": ""
+      }
     },
     "android": {
       "package": "com.codecraft.safesafar",
+      "config": {
+        "googleMaps": {
+          "apiKey": ""
+        }
+      },
       "permissions": [
         "SEND_SMS",
         "CALL_PHONE",

@@ -2,6 +2,7 @@ import { IncidentReport, LatLng, RouteOption, SafetyFactors } from '../types';
 import { parseRouteOption } from '../models/RouteOption';
 import { parseIncidentReport } from '../models/IncidentReport';
 import { calculateDistanceMeters } from '../utils/geo';
+import { MAP_CONFIG } from '../config/mapConfig';
 import demoRoutesData from '../../assets/data/surat_demo_routes.json';
 import reportsData from '../../assets/data/surat_reports.json';
 import landmarksData from '../../assets/data/surat_landmarks.json';
@@ -10,7 +11,7 @@ import deadZonesData from '../../assets/data/surat_dead_zones.json';
 export class ApiService {
   readonly baseUrl: string;
 
-  constructor(baseUrl: string = 'https://safesafar-backend.onrender.com') {
+  constructor(baseUrl: string = MAP_CONFIG.apiUrl) {
     this.baseUrl = baseUrl;
   }
 
@@ -113,8 +114,8 @@ export class ApiService {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-    // OSRM format: lng,lat;lng,lat
-    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}?overview=full&geometries=geojson&alternatives=true&steps=true`;
+    // Routing API format: lng,lat;lng,lat
+    const osrmUrl = `${MAP_CONFIG.routingApiUrl}/route/v1/driving/${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}?overview=full&geometries=geojson&alternatives=true&steps=true`;
 
     const res = await fetch(osrmUrl, {
       signal: controller.signal,

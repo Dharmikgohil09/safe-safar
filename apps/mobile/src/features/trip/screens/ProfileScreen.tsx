@@ -165,6 +165,46 @@ export default function ProfileScreen() {
 
           <View style={styles.menuDivider} />
 
+          {/* Battery Optimization */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => router.push('/battery-prompt')}
+            style={styles.menuRow}
+            accessibilityRole="button"
+            accessibilityLabel="Battery Optimization"
+          >
+            <View style={[styles.menuIconCircle, styles.iconBgSoft]}>
+              <MaterialIcons name="battery-charging-full" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.menuTextGroup}>
+              <Text style={styles.menuLabel}>Battery Optimization</Text>
+              <Text style={styles.menuSubLabel}>Keep SafeSafar running in background</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <View style={styles.menuDivider} />
+
+          {/* Trip Rating */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => router.push('/trip-rating')}
+            style={styles.menuRow}
+            accessibilityRole="button"
+            accessibilityLabel="Trip Rating"
+          >
+            <View style={[styles.menuIconCircle, styles.iconBgSoft]}>
+              <MaterialIcons name="star-outline" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.menuTextGroup}>
+              <Text style={styles.menuLabel}>Trip Rating</Text>
+              <Text style={styles.menuSubLabel}>Rate your recent journey safety</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <View style={styles.menuDivider} />
+
           {/* Help and Support */}
           <TouchableOpacity
             activeOpacity={0.7}

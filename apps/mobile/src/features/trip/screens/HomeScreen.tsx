@@ -194,7 +194,7 @@ export default function HomeScreen() {
 
           {/* Card 3: Walk Me Home */}
           <Card
-            onPress={() => showMessage('Walk Me Home')}
+            onPress={() => router.push('/walk-me-home')}
             style={styles.exploreCard}
             accessibilityLabel="Walk Me Home"
             entranceDelay={360}

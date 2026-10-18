@@ -1,0 +1,10 @@
+{
+  "name": "safesafar-telephony",
+  "version": "1.0.0",
+  "description": "SafeSafar: call state and outgoing call log lookups, used by the SOS call chain",
+  "main": "index.js",
+  "license": "UNLICENSED",
+  "peerDependencies": {
+    "react-native": "*"
+  }
+}

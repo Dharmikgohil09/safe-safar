@@ -1,0 +1,72 @@
+[
+  {
+    "id": "rep_surat_001",
+    "type": "dark_street",
+    "coordinates": [72.7912, 21.1975],
+    "description": "Streetlights off for past 4 nights. Pitch black stretch near Adajan Gam canal.",
+    "severity": 4,
+    "confirmations": 5,
+    "verified": true,
+    "createdAt": "2026-10-14T20:15:00.000Z"
+  },
+  {
+    "id": "rep_surat_002",
+    "type": "harassment",
+    "coordinates": [72.7895, 21.1989],
+    "description": "Group loitering and catcalling near the desolate junction after 9:30 PM.",
+    "severity": 5,
+    "confirmations": 3,
+    "verified": true,
+    "createdAt": "2026-10-15T21:40:00.000Z"
+  },
+  {
+    "id": "rep_surat_003",
+    "type": "isolated_path",
+    "coordinates": [72.7930, 21.1960],
+    "description": "Narrow alleyway with blind corners and no commercial shops open late.",
+    "severity": 3,
+    "confirmations": 4,
+    "verified": true,
+    "createdAt": "2026-10-13T19:00:00.000Z"
+  },
+  {
+    "id": "rep_surat_004",
+    "type": "dark_street",
+    "coordinates": [72.8385, 21.2030],
+    "description": "Under-bridge road near Railway Station east exit has broken floodlights.",
+    "severity": 4,
+    "confirmations": 6,
+    "verified": true,
+    "createdAt": "2026-10-12T22:10:00.000Z"
+  },
+  {
+    "id": "rep_surat_005",
+    "type": "suspicious",
+    "coordinates": [72.8420, 21.2065],
+    "description": "Unregistered autos blocking pedestrian footpath, harassing travelers.",
+    "severity": 3,
+    "confirmations": 4,
+    "verified": true,
+    "createdAt": "2026-10-14T23:05:00.000Z"
+  },
+  {
+    "id": "rep_surat_006",
+    "type": "isolated_path",
+    "coordinates": [72.7310, 21.1080],
+    "description": "Isolated stretch approaching Dumas village with no street illumination.",
+    "severity": 5,
+    "confirmations": 7,
+    "verified": true,
+    "createdAt": "2026-10-15T18:30:00.000Z"
+  },
+  {
+    "id": "rep_surat_007",
+    "type": "dark_street",
+    "coordinates": [72.7720, 21.1480],
+    "description": "Service lane adjacent to university canal lacks functional lamps.",
+    "severity": 3,
+    "confirmations": 2,
+    "verified": true,
+    "createdAt": "2026-10-11T20:50:00.000Z"
+  }
+]

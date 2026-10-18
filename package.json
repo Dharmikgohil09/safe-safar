@@ -6,7 +6,9 @@
   "scripts": {
     "backend:dev": "npm --prefix apps/backend run dev",
     "backend:start": "npm --prefix apps/backend start",
-    "backend:test": "npm --prefix apps/backend test"
+    "backend:test": "npm --prefix apps/backend test",
+    "mobile:start": "npm --prefix apps/mobile start",
+    "mobile:test": "npm --prefix apps/mobile test"
   },
   "keywords": [
     "safesafar",

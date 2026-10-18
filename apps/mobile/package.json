@@ -1,7 +1,8 @@
 {
-  "name": "mobile",
+  "name": "@safesafar/mobile",
   "main": "expo-router/entry",
   "version": "1.0.0",
+  "description": "SafeSafar Mobile Application (React Native & Expo) - Safe Navigation, Heatmaps, Dead Zones & SOS",
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
@@ -9,6 +10,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
+    "test": "node __tests__/run-all-tests.mjs",
     "postinstall": "patch-package"
   },
   "dependencies": {

@@ -5,11 +5,37 @@ const MAX_RADIUS_M = 5000;
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
 
+// Route safety scoring constants
+const SAMPLE_INTERVAL_M = 50;
+const LIGHT_RADIUS_M = 50;
+const REPORT_RADIUS_M = 100;
+const POLICE_MAX_DISTANCE_M = 1000;
+const REPORT_PENALTY = 15;
+const NEUTRAL_SCORE = 50;
+const WEIGHTS = {
+  incident: 0.4,
+  lighting: 0.35,
+  police: 0.25
+};
+const COLOR_THRESHOLDS = {
+  green: 70,
+  yellow: 40
+};
+
 module.exports = {
   MIN_CONFIRMATIONS,
   HALF_LIFE_DAYS,
   DEFAULT_RADIUS_M,
   MAX_RADIUS_M,
   DEFAULT_LIMIT,
-  MAX_LIMIT
+  MAX_LIMIT,
+  SAMPLE_INTERVAL_M,
+  LIGHT_RADIUS_M,
+  REPORT_RADIUS_M,
+  POLICE_MAX_DISTANCE_M,
+  REPORT_PENALTY,
+  NEUTRAL_SCORE,
+  WEIGHTS,
+  COLOR_THRESHOLDS
 };
+

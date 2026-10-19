@@ -15,6 +15,24 @@ This module manages safety reports, landmark infrastructure, illumination data, 
    - The weight halves every 7 days from creation.
    - For reports created at current or future timestamps, age is clamped to $\ge 0$ (weight = 1.0).
 
+3. **Route Safety Scoring Engine**:
+   - **Sampling**: Polylines are sampled along their path at intervals of `SAMPLE_INTERVAL_M = 50m` using geodesic Haversine interpolation (`samplePath`), always preserving the exact origin and destination coordinates.
+   - **Candidate Fetching**: Geospatial candidates are fetched using a single `$geoWithin: { $box: [...] }` query per collection over the padded bounding box, eliminating per-point database queries.
+   - **Three Safety Factors**:
+     - **Incident Decay (`incidentDecayScore`, 0-100)**: Starts at 100 and applies penalties for active hazard reports (`confirmations >= 2`) within `REPORT_RADIUS_M = 100m` of any sample. Each report is counted exactly once and penalized by $\text{decayWeight} \times \text{REPORT\_PENALTY} (15)$, clamped to $[0, 100]$.
+     - **Street Lighting (`lightingScore`, 0-100)**: Evaluates the fraction of route samples with a `LightPoint` within `LIGHT_RADIUS_M = 50m`, rounded to an integer ($100 \times \text{fraction}$).
+     - **Police & Hospital Proximity (`policeProximityScore`, 0-100)**: Computes the average over all samples of $\max(0, 1 - \text{distanceToNearest} / \text{POLICE\_MAX\_DISTANCE\_M} (1000m)) \times 100$, rounded to an integer.
+   - **No-Data Neutral Rule**: Absence of infrastructure data in the queried area is not penalized as darkness or hazard. When no candidates exist in the padded box for lighting or landmarks, the engine assigns `NEUTRAL_SCORE = 50`.
+   - **Weights & Overall Safety Score**:
+     $$\text{safetyScore} = \text{round}(0.40 \times \text{incident} + 0.35 \times \text{lighting} + 0.25 \times \text{police})$$
+     Clamped to $[0, 100]$.
+   - **Color Thresholds**:
+     - $\ge 70 \to \text{"green"}$ (Safe)
+     - $\ge 40 \to \text{"yellow"}$ (Moderate caution)
+     - $< 40 \to \text{"red"}$ (High risk)
+   - **Roadmap**: The HTTP endpoint `POST /routes/safe` with polyline decoding and multi-route comparison will be built in Day 4.
+
+
 ---
 
 ## API Endpoints

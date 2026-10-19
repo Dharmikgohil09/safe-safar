@@ -30,7 +30,7 @@ This module manages safety reports, landmark infrastructure, illumination data, 
      - $\ge 70 \to \text{"green"}$ (Safe)
      - $\ge 40 \to \text{"yellow"}$ (Moderate caution)
      - $< 40 \to \text{"red"}$ (High risk)
-   - **Roadmap**: The HTTP endpoint `POST /routes/safe` with polyline decoding and multi-route comparison will be built in Day 4.
+   - **Implementation**: The HTTP endpoint `POST /routes/safe` evaluates alternative walking routes fetched from OpenRouteService, scores them against safety infrastructure and incidents, and returns routes ranked by safety score.
 
 
 ---
@@ -128,6 +128,76 @@ Retrieve community reports. By default, returns only active reports (`isActive: 
 }
 ```
 
+### 4. `POST /routes/safe`
+Calculate and rank alternative walking routes between origin and destination based on safety factors.
+
+- **Auth**: None (Public)
+- **Environment Variable**: `ORS_API_KEY` (OpenRouteService API token). Required on deployment (e.g. Render).
+- **Request Body**:
+```json
+{
+  "origin": {
+    "coordinates": [72.8311, 21.1702]
+  },
+  "destination": {
+    "coordinates": [72.8350, 21.1750]
+  },
+  "preferences": {
+    "prioritizeLighting": true,
+    "avoidReportHotspots": true
+  }
+}
+```
+> [!NOTE]
+> `preferences` are optional and validated, but currently accepted without altering the scoring calculation (reserved for Days 5-6).
+
+- **Routing Behavior & Alternative Limit**:
+  - Fetches walking directions (`foot-walking`) with up to 3 alternative routes from OpenRouteService.
+  - ORS limits alternative routes to distances $< 100\text{ km}$ (returning HTTP 400 if exceeded). When a 400 occurs on an alternative routes query, the client automatically retries **once** without alternatives to fetch a single direct route.
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "data": {
+    "routes": [
+      {
+        "routeId": "route_2",
+        "safetyScore": 85,
+        "color": "green",
+        "distanceMeters": 680,
+        "durationSeconds": 490,
+        "polyline": "_p~iF~ps|U_ulLnnqC_mqNvxq",
+        "safetyFactors": {
+          "lightingScore": 80,
+          "policeProximityScore": 90,
+          "incidentDecayScore": 100
+        },
+        "isFastest": false
+      },
+      {
+        "routeId": "route_1",
+        "safetyScore": 70,
+        "color": "green",
+        "distanceMeters": 550,
+        "durationSeconds": 380,
+        "polyline": "_p~iF~ps|U_ulLnnqC",
+        "safetyFactors": {
+          "lightingScore": 50,
+          "policeProximityScore": 50,
+          "incidentDecayScore": 85
+        },
+        "isFastest": true
+      }
+    ]
+  }
+}
+```
+- **Error Responses**:
+  - `400`: Validation failed (invalid coordinates, out of range, or identical origin and destination).
+  - `404`: `"No route found"` (no walkable path between coordinates).
+  - `502`: `"Routing provider error"` (ORS provider failure or network drop).
+  - `503`: `"Routing service is not configured"` (`ORS_API_KEY` missing) or `"Routing service is busy, try again shortly"` (rate limit 429).
+
 ---
 
 ## cURL Examples
@@ -152,4 +222,17 @@ curl -X GET "http://localhost:5000/reports?near=72.8311,21.1702&radius=1500"
 
 # 4. List reports including pending
 curl -X GET "http://localhost:5000/reports?includePending=true"
+
+# 5. Get safe routes
+curl -X POST http://localhost:5000/routes/safe \
+  -H "Content-Type: application/json" \
+  -d '{
+    "origin": { "coordinates": [72.8311, 21.1702] },
+    "destination": { "coordinates": [72.8350, 21.1750] },
+    "preferences": {
+      "prioritizeLighting": true,
+      "avoidReportHotspots": true
+    }
+  }'
 ```
+

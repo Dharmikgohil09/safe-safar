@@ -4,7 +4,7 @@ describe('Polyline Encoding and Decoding (polyline.js)', () => {
   // Official Google Polyline test vector:
   // Points: (38.5, -120.2), (40.7, -120.95), (43.252, -126.453)
   // In [lng, lat] format: [[-120.2, 38.5], [-120.95, 40.7], [-126.453, 43.252]]
-  const googleEncoded = '_p~iF~ps|U_ulLnnqC_mqNvxq';
+  const googleEncoded = '_p~iF~ps|U_ulLnnqC_mqNvxq`@';
   const expectedGoogleCoords = [
     [-120.2, 38.5],
     [-120.95, 40.7],

@@ -39,7 +39,7 @@ export default function ErrorState({
       case 'location-unavailable':
         return 'Location Telemetry Unavailable';
       case 'ended':
-        return 'Journey Completed Safely';
+        return 'Journey Completed';
       default:
         return 'Tracking Unavailable';
     }
@@ -54,7 +54,7 @@ export default function ErrorState({
       case 'location-unavailable':
         return 'The user has enabled tracking, but GPS coordinates have not yet been transmitted by their device. Retrying...';
       case 'ended':
-        return 'The user has arrived at their destination or marked this journey as safely finished. Real-time tracking has concluded.';
+        return 'Your trip has reached its destination. Real-time tracking has concluded.';
       default:
         return errorMessage || 'An unexpected error occurred while loading this tracking session.';
     }

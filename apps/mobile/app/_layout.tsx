@@ -4,6 +4,9 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { registerFakeCallBackground } from '../src/features/emergency';
+
+registerFakeCallBackground();
 
 export const unstable_settings = {
   anchor: '(tabs)',

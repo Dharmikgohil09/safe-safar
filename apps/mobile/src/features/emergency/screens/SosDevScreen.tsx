@@ -12,11 +12,31 @@ import {
 } from 'react-native';
 import {
   DecoyCalculator,
+  FakeCallScreen,
   HoldToTriggerButton,
   PinPad,
   getContacts,
   hasPins,
+  ensureFakeCallPermissions,
+  flushBackendQueue,
+  getBackendUrl,
+  getContactInviteLink,
+  getLastHeard,
+  getVoiceError,
+  initVoiceTrigger,
+  isVoiceTriggerAvailable,
+  setVoiceSensitivity,
+  startVoiceTrigger,
+  stopVoiceTrigger,
+  voiceStore,
+  registerBackendDevice,
+  setBackendListener,
+  setBackendUrl,
+  initFakeCall,
+  isFakeCallNotificationAvailable,
   isShakeTriggerEnabled,
+  openExactAlarmSettings,
+  scheduleFakeCall,
   registerDefaultChannels,
   requestEmergencyPermissions,
   sendTestSms,
@@ -71,7 +91,7 @@ function stamp(): string {
   return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
 
-export default function SosDevScreen() {
+function SosDevInner() {
   const snap = useSyncExternalStore(sosEngine.subscribe, sosEngine.getSnapshot);
   const [view, setView] = useState<'dev' | 'decoy' | 'pinpad'>('dev');
   const [phones, setPhones] = useState('');
@@ -133,6 +153,63 @@ export default function SosDevScreen() {
       setShakeDebugListener(null);
     };
   }, [shakeOn]);
+
+  useEffect(() => {
+    void initFakeCall();
+  }, []);
+
+  // backend: show its progress in the log, send anything left from an offline SOS, load saved settings
+  // voice trigger
+  const voice = useSyncExternalStore(voiceStore.subscribe, voiceStore.getSnapshot);
+  const [twice, setTwice] = useState(true);
+  useEffect(() => {
+    void initVoiceTrigger();
+  }, []);
+  const toggleVoice = async (on: boolean) => {
+    if (!on) return stopVoiceTrigger();
+    const r = await startVoiceTrigger();
+    if (!r.ok) note('voice trigger: ' + (r.reason ?? 'could not start'));
+    else note('voice trigger is listening. Say "help me" ' + (twice ? 'twice' : 'once') + '.');
+  };
+
+  const [serverUrl, setServerUrl] = useState('');
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  useEffect(() => {
+    setBackendListener(note);
+    void (async () => {
+      setServerUrl((await getBackendUrl()) ?? '');
+      setInviteLink(await getContactInviteLink());
+      await flushBackendQueue();
+    })();
+    return () => setBackendListener(null);
+  }, [note]);
+
+  const saveServer = async () => {
+    await setBackendUrl(serverUrl);
+    note(serverUrl.trim() ? 'server address saved' : 'server address cleared (backend channel is off)');
+  };
+  const registerServer = async () => {
+    try {
+      await setBackendUrl(serverUrl);
+      await registerBackendDevice(name.trim() || 'Kristal');
+      setInviteLink(await getContactInviteLink());
+      note('registered with the server');
+    } catch (e) {
+      note('register failed: ' + (e instanceof Error ? e.message : String(e)));
+    }
+  };
+
+  const startFakeCall = async (sec: number) => {
+    const perm = await ensureFakeCallPermissions();
+    if (isFakeCallNotificationAvailable() && !perm.notifications) note('fake call: notifications not allowed, ringing only inside the app');
+    if (sec > 0 && isFakeCallNotificationAvailable() && !perm.exactAlarm) {
+      note('fake call: exact alarms not allowed. Turn it on in the screen that opens, then try again');
+      await openExactAlarmSettings();
+      return;
+    }
+    const how = await scheduleFakeCall(sec);
+    note(sec === 0 ? 'fake call: ringing now (' + how + ')' : 'fake call: ringing in ' + sec + ' s (' + how + '). Lock the phone to test.');
+  };
 
   // show what the call chain is doing in the log
   useEffect(() => {
@@ -309,10 +386,62 @@ export default function SosDevScreen() {
         onPress={() => sosEngine.trigger('duress')}
       />
       <Btn label="Cancel countdown" onPress={() => sosEngine.cancelCountdown()} />
+      <View style={styles.rowBetween}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.switchLabel}>Voice trigger: say "help me"</Text>
+          <Text style={styles.muted}>
+            {!isVoiceTriggerAvailable()
+              ? 'not in this build yet (needs the new build)'
+              : voice === 'listening'
+                ? 'listening. Last heard: ' + (getLastHeard() || 'nothing yet')
+                : voice === 'starting'
+                  ? 'starting... ' + getVoiceError()
+                  : voice === 'error'
+                    ? 'error: ' + getVoiceError()
+                    : 'off. Keeps listening with the screen off.'}
+          </Text>
+        </View>
+        <Switch value={voice === 'listening' || voice === 'starting'} onValueChange={(v) => void toggleVoice(v)} />
+      </View>
+      <Btn
+        label={twice ? 'Voice: needs the phrase twice (fewer false alarms). Tap to change' : 'Voice: once is enough (more sensitive). Tap to change'}
+        onPress={() => {
+          setVoiceSensitivity(twice ? 1 : 2);
+          setTwice(!twice);
+        }}
+      />
+      <Btn label="Fake call now" onPress={() => void startFakeCall(0)} />
+      <Btn label="Fake call in 15 s (lock the phone to test)" onPress={() => void startFakeCall(15)} />
+      <Text style={styles.muted}>
+        On the fake call, long-press the caller's name for 1.5 s to start a silent SOS (SMS only).
+      </Text>
       <Btn
         label={pinsSet ? "I'm safe (asks for the real PIN)" : "I'm safe (no PIN set yet, ends directly)"}
         onPress={imSafe}
       />
+
+      <View style={styles.sep} />
+
+      <Text style={styles.h2}>Server and Telegram alerts</Text>
+      <Text style={styles.muted}>
+        Optional. With a server address, each SOS also goes to the server, which messages your contacts on
+        Telegram with a live tracking link. If the phone is offline it is sent when the connection returns.
+      </Text>
+      <TextInput
+        style={styles.input}
+        value={serverUrl}
+        onChangeText={setServerUrl}
+        placeholder="http://192.168.1.5:4000/api"
+        placeholderTextColor={MUTED}
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="url"
+      />
+      <Btn label="Save server address" onPress={() => void saveServer()} />
+      <Btn label="Register this phone (uses the name above)" onPress={() => void registerServer()} />
+      <Text style={styles.muted}>
+        {inviteLink ? 'Send this link to each contact, they tap Start in Telegram: ' + inviteLink : 'Not registered yet.'}
+      </Text>
 
       <View style={styles.sep} />
 
@@ -419,3 +548,13 @@ const styles = StyleSheet.create({
   result: { fontSize: 14, fontWeight: '600' },
   mono: { fontFamily: 'monospace', fontSize: 12, color: TEXT },
 });
+
+/** The fake call draws on top of everything, including the PIN pad and the decoy calculator. */
+export default function SosDevScreen() {
+  return (
+    <View style={{ flex: 1 }}>
+      <SosDevInner />
+      <FakeCallScreen />
+    </View>
+  );
+}

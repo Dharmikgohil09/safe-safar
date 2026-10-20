@@ -22,6 +22,41 @@ const COLOR_THRESHOLDS = {
   yellow: 40
 };
 
+// Time-of-day weighting constants (IST: UTC+05:30)
+const TIMEZONE_OFFSET_MINUTES = 330;
+
+const TIME_PERIODS = {
+  day: { startHour: 6, endHour: 18 },
+  evening: { startHour: 18, endHour: 21 },
+  night: { startHour: 21, endHour: 6 } // wraps past midnight: hours 21-23 and 0-5
+};
+
+// Tunable parameters: these values are a team choice for SafeSafar (Track 3 SheLeads), not an official standard.
+// Each period's weights must sum to 1.0.
+const WEIGHTS_BY_PERIOD = {
+  day: {
+    incident: 0.40,
+    lighting: 0.35,
+    police: 0.25
+  },
+  evening: {
+    incident: 0.40,
+    lighting: 0.40,
+    police: 0.20
+  },
+  night: {
+    incident: 0.35,
+    lighting: 0.45,
+    police: 0.20
+  }
+};
+
+const PENALTY_MULTIPLIER_BY_PERIOD = {
+  day: 1,
+  evening: 1.25,
+  night: 1.5
+};
+
 module.exports = {
   MIN_CONFIRMATIONS,
   HALF_LIFE_DAYS,
@@ -36,6 +71,11 @@ module.exports = {
   REPORT_PENALTY,
   NEUTRAL_SCORE,
   WEIGHTS,
-  COLOR_THRESHOLDS
+  COLOR_THRESHOLDS,
+  TIMEZONE_OFFSET_MINUTES,
+  TIME_PERIODS,
+  WEIGHTS_BY_PERIOD,
+  PENALTY_MULTIPLIER_BY_PERIOD
 };
+
 

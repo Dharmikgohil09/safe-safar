@@ -12,6 +12,7 @@ const {
   WEIGHTS,
   COLOR_THRESHOLDS
 } = require('./constants');
+const { getPeriodConfig } = require('./timeOfDay');
 
 /**
  * Maps a numerical safety score (0-100) to its corresponding color tier.
@@ -37,11 +38,13 @@ function colorForScore(score) {
 }
 
 /**
- * Scores a route polyline based on incident reports, street lighting, and police/hospital proximity.
+ * Scores a route polyline based on incident reports, street lighting, and police/hospital proximity,
+ * applying time-of-day dynamic weights and penalties.
  *
  * @param {Array<Array<number>>} coordinates - Polyline coordinates as [[lng, lat], ...]
  * @param {Object} [options]
  * @param {Date} [options.now=new Date()] - Reference timestamp for report time decay
+ * @param {'day' | 'evening' | 'night'} [options.timeOfDay='day'] - Time-of-day period
  * @returns {Promise<{
  *   safetyScore: number,
  *   color: 'green' | 'yellow' | 'red',
@@ -50,10 +53,22 @@ function colorForScore(score) {
  *     policeProximityScore: number,
  *     incidentDecayScore: number
  *   },
- *   sampleCount: number
+ *   sampleCount: number,
+ *   timeOfDay: 'day' | 'evening' | 'night',
+ *   details: {
+ *     activeReportCount: number,
+ *     lightingDataAvailable: boolean,
+ *     litSamplePercent: number | null,
+ *     landmarkDataAvailable: boolean,
+ *     nearestSafePlace: { name: string, category: string, distanceMeters: number } | null,
+ *     sampleCount: number
+ *   }
  * }>}
  */
-async function scoreRoute(coordinates, { now = new Date() } = {}) {
+async function scoreRoute(coordinates, { now = new Date(), timeOfDay = 'day' } = {}) {
+  const period = ['day', 'evening', 'night'].includes(timeOfDay) ? timeOfDay : 'day';
+  const { weights, penaltyMultiplier } = getPeriodConfig(period);
+
   // Step a: Sample path points at ~50m intervals
   const samples = samplePath(coordinates);
 
@@ -62,9 +77,9 @@ async function scoreRoute(coordinates, { now = new Date() } = {}) {
     const lightingScore = NEUTRAL_SCORE;
     const policeProximityScore = NEUTRAL_SCORE;
     const weighted =
-      WEIGHTS.incident * incidentDecayScore +
-      WEIGHTS.lighting * lightingScore +
-      WEIGHTS.police * policeProximityScore;
+      weights.incident * incidentDecayScore +
+      weights.lighting * lightingScore +
+      weights.police * policeProximityScore;
     const safetyScore = Math.max(0, Math.min(100, Math.round(weighted)));
 
     return {
@@ -75,7 +90,16 @@ async function scoreRoute(coordinates, { now = new Date() } = {}) {
         policeProximityScore,
         incidentDecayScore
       },
-      sampleCount: 0
+      sampleCount: 0,
+      timeOfDay: period,
+      details: {
+        activeReportCount: 0,
+        lightingDataAvailable: false,
+        litSamplePercent: null,
+        landmarkDataAvailable: false,
+        nearestSafePlace: null,
+        sampleCount: 0
+      }
     };
   }
 
@@ -142,7 +166,7 @@ async function scoreRoute(coordinates, { now = new Date() } = {}) {
   let totalPenalty = 0;
   for (const rep of matchingReports) {
     const weight = calculateDecayWeight(rep.createdAt, now);
-    totalPenalty += weight * REPORT_PENALTY;
+    totalPenalty += weight * REPORT_PENALTY * penaltyMultiplier;
   }
 
   const rawIncidentScore = 100 - totalPenalty;
@@ -154,8 +178,11 @@ async function scoreRoute(coordinates, { now = new Date() } = {}) {
   // Step d: lightingScore
   // 100 * fraction of samples with a LightPoint within LIGHT_RADIUS_M
   // If no LightPoint candidates in padded box, return NEUTRAL_SCORE
+  const lightingDataAvailable = lightCandidates.length > 0;
   let lightingScore;
-  if (lightCandidates.length === 0) {
+  let litSamplePercent = null;
+
+  if (!lightingDataAvailable) {
     lightingScore = NEUTRAL_SCORE;
   } else {
     let litSampleCount = 0;
@@ -169,16 +196,23 @@ async function scoreRoute(coordinates, { now = new Date() } = {}) {
       }
     }
     lightingScore = Math.round((litSampleCount / samples.length) * 100);
+    litSamplePercent = lightingScore;
   }
 
   // Step e: policeProximityScore
   // Average over samples of max(0, 1 - distanceToNearest / POLICE_MAX_DISTANCE_M) * 100
   // If no landmark candidates in padded box, return NEUTRAL_SCORE
+  const landmarkDataAvailable = landmarkCandidates.length > 0;
   let policeProximityScore;
-  if (landmarkCandidates.length === 0) {
+  let nearestSafePlace = null;
+
+  if (!landmarkDataAvailable) {
     policeProximityScore = NEUTRAL_SCORE;
   } else {
     let totalScore = 0;
+    let minDistanceToAnySample = Infinity;
+    let closestLandmark = null;
+
     for (const sample of samples) {
       let minDistance = Infinity;
       for (const lm of landmarkCandidates) {
@@ -187,18 +221,30 @@ async function scoreRoute(coordinates, { now = new Date() } = {}) {
         if (d < minDistance) {
           minDistance = d;
         }
+        if (d < minDistanceToAnySample) {
+          minDistanceToAnySample = d;
+          closestLandmark = lm;
+        }
       }
       const sampleScore = Math.max(0, 1 - minDistance / POLICE_MAX_DISTANCE_M) * 100;
       totalScore += sampleScore;
     }
     policeProximityScore = Math.round(totalScore / samples.length);
+
+    if (closestLandmark) {
+      nearestSafePlace = {
+        name: closestLandmark.name,
+        category: closestLandmark.category,
+        distanceMeters: Math.round(minDistanceToAnySample)
+      };
+    }
   }
 
   // Step f: safetyScore
   const weighted =
-    WEIGHTS.incident * incidentDecayScore +
-    WEIGHTS.lighting * lightingScore +
-    WEIGHTS.police * policeProximityScore;
+    weights.incident * incidentDecayScore +
+    weights.lighting * lightingScore +
+    weights.police * policeProximityScore;
   const safetyScore = Math.max(0, Math.min(100, Math.round(weighted)));
 
   // Step g: color
@@ -212,7 +258,16 @@ async function scoreRoute(coordinates, { now = new Date() } = {}) {
       policeProximityScore,
       incidentDecayScore
     },
-    sampleCount: samples.length
+    sampleCount: samples.length,
+    timeOfDay: period,
+    details: {
+      activeReportCount: matchingReports.length,
+      lightingDataAvailable,
+      litSamplePercent,
+      landmarkDataAvailable,
+      nearestSafePlace,
+      sampleCount: samples.length
+    }
   };
 }
 
@@ -220,3 +275,4 @@ module.exports = {
   scoreRoute,
   colorForScore
 };
+

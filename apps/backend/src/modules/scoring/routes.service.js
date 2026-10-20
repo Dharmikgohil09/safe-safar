@@ -1,13 +1,16 @@
 const { scoreRoute } = require('./routeScoring.service');
+const { getTimePeriod } = require('./timeOfDay');
+const { buildExplanation } = require('./explain');
 
 /**
  * Factory creating the routes safety service with an injected OpenRouteService client.
  *
  * @param {Object} options
  * @param {Object} options.orsClient - Initialized ORS client instance
+ * @param {Function|Date} [options.now=() => new Date()] - Clock provider for deterministic testing
  * @returns {{ getSafeRoutes: Function }}
  */
-function createRoutesService({ orsClient }) {
+function createRoutesService({ orsClient, now = () => new Date() }) {
   if (!orsClient || typeof orsClient.getRoutes !== 'function') {
     throw new Error('createRoutesService requires an `orsClient` instance with a `getRoutes` method');
   }
@@ -20,9 +23,10 @@ function createRoutesService({ orsClient }) {
    * @param {Object} params.origin - { coordinates: [lng, lat] }
    * @param {Object} params.destination - { coordinates: [lng, lat] }
    * @param {Object} [params.preferences] - User preferences (accepted but ignored for now)
-   * @returns {Promise<Array<Object>>} Sorted safe route objects
+   * @param {string} [params.departureTime] - Optional ISO 8601 departure timestamp
+   * @returns {Promise<{ routes: Array<Object>, timeOfDay: string }>} Sorted safe routes and period
    */
-  async function getSafeRoutes({ origin, destination, preferences }) {
+  async function getSafeRoutes({ origin, destination, preferences, departureTime }) {
     // 1. Fetch raw walking routes from OpenRouteService
     const rawRoutes = await orsClient.getRoutes({ origin, destination });
 
@@ -32,11 +36,21 @@ function createRoutesService({ orsClient }) {
       throw err;
     }
 
+    const currentNow = typeof now === 'function' ? now() : now;
+    const period = departureTime
+      ? getTimePeriod(new Date(departureTime))
+      : getTimePeriod(currentNow);
+
     // 2. Score each route in parallel
     const scoredRoutes = await Promise.all(
       rawRoutes.map(async (route, index) => {
         const routeId = `route_${index + 1}`; // n starts at 1, in ORS order
-        const scoring = await scoreRoute(route.coordinates);
+        const scoring = await scoreRoute(route.coordinates, {
+          timeOfDay: period,
+          now: currentNow
+        });
+
+        const explanation = buildExplanation(scoring.details, period);
 
         return {
           routeId,
@@ -45,6 +59,7 @@ function createRoutesService({ orsClient }) {
           distanceMeters: Math.round(route.distanceMeters),
           durationSeconds: Math.round(route.durationSeconds),
           polyline: route.polyline,
+          explanation,
           safetyFactors: {
             lightingScore: scoring.safetyFactors.lightingScore,
             policeProximityScore: scoring.safetyFactors.policeProximityScore,
@@ -69,7 +84,10 @@ function createRoutesService({ orsClient }) {
       return a.durationSeconds - b.durationSeconds;
     });
 
-    return routesWithFastest;
+    return {
+      routes: routesWithFastest,
+      timeOfDay: period
+    };
   }
 
   return {
@@ -80,3 +98,4 @@ function createRoutesService({ orsClient }) {
 module.exports = {
   createRoutesService
 };
+

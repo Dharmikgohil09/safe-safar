@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Shield, ArrowRight, MapPin, Smartphone, PhoneCall } from 'lucide-react';
 
+import Link from 'next/link';
+
 export default function HomePage() {
   const router = useRouter();
   const [tokenInput, setTokenInput] = useState('');
@@ -38,6 +40,26 @@ export default function HomePage() {
           >
             <span>Explore Tracking Demo</span>
             <ArrowRight size={16} />
+          </button>
+        </div>
+
+        {/* Navigation Quick Links to Heatmap and Admin */}
+        <div className="home-nav-links-row">
+          <button
+            type="button"
+            onClick={() => router.push('/heatmap')}
+            className="btn-secondary-link"
+          >
+            <MapPin size={14} />
+            <span>Community Heatmap</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push('/admin')}
+            className="btn-secondary-link"
+          >
+            <Shield size={14} />
+            <span>Admin Overview</span>
           </button>
         </div>
 
@@ -82,6 +104,15 @@ export default function HomePage() {
         {/* Subtle, Professional Footer */}
         <footer className="home-footer">
           <p>SafeSafar — Helping you travel with greater peace of mind.</p>
+          <div className="home-footer-nav">
+            <Link href="/heatmap" className="footer-link">
+              Community Heatmap
+            </Link>
+            <span className="dot-divider">•</span>
+            <Link href="/admin" className="footer-link">
+              Admin Overview
+            </Link>
+          </div>
         </footer>
       </main>
     </div>

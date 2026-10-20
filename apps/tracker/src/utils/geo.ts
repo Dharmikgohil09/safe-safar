@@ -22,6 +22,24 @@ function toRad(degrees: number): number {
 }
 
 /**
+ * Safely parses any timestamp (number or string/ISO) to numeric epoch milliseconds.
+ * Returns null if missing, empty, or unparseable.
+ */
+export function getNumericTimestamp(timestamp: string | number | null | undefined): number | null {
+  if (timestamp === null || timestamp === undefined || timestamp === '') {
+    return null;
+  }
+  if (typeof timestamp === 'number') {
+    return Number.isFinite(timestamp) ? timestamp : null;
+  }
+  if (typeof timestamp === 'string') {
+    const parsed = Date.parse(timestamp);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+  return null;
+}
+
+/**
  * Formats relative time since timestamp (e.g., "Just now", "42s ago", "2m ago")
  * Handles missing or invalid timestamps safely without fabricating timestamps.
  */
@@ -30,8 +48,8 @@ export function formatRelativeTime(timestamp: string | number | null | undefined
     return 'No update timestamp available';
   }
 
-  const time = typeof timestamp === 'string' ? new Date(timestamp).getTime() : timestamp;
-  if (isNaN(time) || !Number.isFinite(time)) {
+  const time = getNumericTimestamp(timestamp);
+  if (time === null) {
     return 'Timestamp unavailable';
   }
 
@@ -55,7 +73,8 @@ export function formatTime(timestamp: string | number | null | undefined): strin
   if (timestamp === null || timestamp === undefined || timestamp === '') {
     return 'Time unavailable';
   }
-  const date = typeof timestamp === 'string' ? new Date(timestamp) : new Date(timestamp);
-  if (isNaN(date.getTime())) return 'Time unavailable';
+  const time = getNumericTimestamp(timestamp);
+  if (time === null) return 'Time unavailable';
+  const date = new Date(time);
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }

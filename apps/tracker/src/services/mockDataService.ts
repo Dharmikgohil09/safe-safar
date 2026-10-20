@@ -3,7 +3,11 @@ import { LocationPayload, TrackingSession, SosState } from '../types/tracker';
 export interface MockLocationEmitter {
   start: (onLocation: (payload: LocationPayload) => void, onStatusChange?: (status: string) => void) => void;
   stop: () => void;
+  pause?: () => void;
+  resume?: (onLocation?: (payload: LocationPayload) => void) => void;
   triggerNextPoint?: () => void;
+  reset?: () => void;
+  isCompleted?: () => boolean;
 }
 
 // Sample route coordinates (Connaught Place to India Gate & Lodhi Colony, New Delhi)
@@ -22,6 +26,7 @@ const MOCK_ROUTE: [number, number, number][] = [
   [28.5985, 77.2240, 205],
   [28.5930, 77.2215, 210],
   [28.5880, 77.2190, 210], // Lodhi Colony / Destination approach
+  [28.5875, 77.2185, 210], // Lodhi Estate / Destination arrival point
 ];
 
 export function getMockSession(token: string): TrackingSession {
@@ -191,49 +196,124 @@ export function createMockEmitter(
   let timer: NodeJS.Timeout | null = null;
   let currentIndex = 0;
   let battery = 78;
+  let isStarted = false;
+  let isCompleted = false;
+  let activeCallback: ((payload: LocationPayload) => void) | null = null;
+  let activeStatusCallback: ((status: string) => void) | null = null;
   const shouldOmitTimestamp = options?.omitTimestamp === true;
 
-  return {
-    start: (onLocation) => {
-      // Send initial point immediately
-      const [initLat, initLng, initHeading] = MOCK_ROUTE[0];
-      onLocation({
-        latitude: initLat,
-        longitude: initLng,
-        accuracy: 6 + Math.random() * 4,
-        speed: 26 + Math.random() * 6,
-        heading: initHeading,
-        timestamp: shouldOmitTimestamp ? null : Date.now(),
-        batteryLevel: battery,
-      });
+  const emitPoint = (index: number, cb: (payload: LocationPayload) => void) => {
+    const [lat, lng, heading] = MOCK_ROUTE[index];
+    const isInitial = index === 0 && !isStarted;
+    const isFinal = index === MOCK_ROUTE.length - 1;
+    // Do not add random jitter to initial or arrival point to keep pins exact
+    const jitterLat = isInitial || isFinal ? 0 : (Math.random() - 0.5) * 0.0001;
+    const jitterLng = isInitial || isFinal ? 0 : (Math.random() - 0.5) * 0.0001;
 
-      timer = setInterval(() => {
-        currentIndex = (currentIndex + 1) % MOCK_ROUTE.length;
-        const [lat, lng, heading] = MOCK_ROUTE[currentIndex];
-        // Add tiny realistic jitter for GPS accuracy
-        const jitterLat = (Math.random() - 0.5) * 0.0001;
-        const jitterLng = (Math.random() - 0.5) * 0.0001;
+    if (index % 4 === 0 && battery > 10) {
+      battery -= 1;
+    }
 
-        if (currentIndex % 4 === 0 && battery > 10) {
-          battery -= 1;
+    cb({
+      latitude: lat + jitterLat,
+      longitude: lng + jitterLng,
+      accuracy: isInitial || isFinal ? 5 : 5 + Math.random() * 6,
+      speed: isFinal ? 0 : isInitial ? 26 + Math.random() * 6 : 24 + Math.random() * 8,
+      heading: isInitial || isFinal ? heading : heading + (Math.random() - 0.5) * 5,
+      timestamp: shouldOmitTimestamp ? null : Date.now(),
+      batteryLevel: battery,
+    });
+  };
+
+  const clearTimer = () => {
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+  };
+
+  const startInterval = (cb: (payload: LocationPayload) => void) => {
+    clearTimer();
+    if (isCompleted) return;
+
+    timer = setInterval(() => {
+      if (currentIndex < MOCK_ROUTE.length - 1) {
+        currentIndex++;
+        emitPoint(currentIndex, cb);
+
+        if (currentIndex >= MOCK_ROUTE.length - 1) {
+          isCompleted = true;
+          clearTimer();
+          if (activeStatusCallback) {
+            activeStatusCallback('completed');
+          }
         }
+      } else {
+        isCompleted = true;
+        clearTimer();
+        if (activeStatusCallback) {
+          activeStatusCallback('completed');
+        }
+      }
+    }, intervalMs);
+  };
 
-        onLocation({
-          latitude: lat + jitterLat,
-          longitude: lng + jitterLng,
-          accuracy: 5 + Math.random() * 6,
-          speed: 24 + Math.random() * 8,
-          heading: heading + (Math.random() - 0.5) * 5,
-          timestamp: shouldOmitTimestamp ? null : Date.now(),
-          batteryLevel: battery,
-        });
-      }, intervalMs);
+  return {
+    start: (onLocation, onStatusChange) => {
+      clearTimer();
+      activeCallback = onLocation;
+      if (onStatusChange) {
+        activeStatusCallback = onStatusChange;
+      }
+
+      if (isCompleted) {
+        return;
+      }
+
+      if (!isStarted) {
+        // Send initial point immediately only on the very first start
+        emitPoint(0, onLocation);
+        isStarted = true;
+      }
+
+      startInterval(onLocation);
     },
-    stop: () => {
-      if (timer) {
-        clearInterval(timer);
-        timer = null;
+    pause: () => {
+      clearTimer();
+    },
+    resume: (onLocation) => {
+      clearTimer();
+      if (isCompleted) return;
+      if (onLocation) {
+        activeCallback = onLocation;
+      }
+      if (activeCallback) {
+        startInterval(activeCallback);
       }
     },
+    stop: () => {
+      clearTimer();
+    },
+    reset: () => {
+      clearTimer();
+      currentIndex = 0;
+      isStarted = false;
+      isCompleted = false;
+    },
+    triggerNextPoint: () => {
+      if (isCompleted || !activeCallback) return;
+      if (currentIndex < MOCK_ROUTE.length - 1) {
+        currentIndex++;
+        emitPoint(currentIndex, activeCallback);
+        if (currentIndex === MOCK_ROUTE.length - 1) {
+          isCompleted = true;
+          clearTimer();
+          if (activeStatusCallback) {
+            activeStatusCallback('completed');
+          }
+        }
+      }
+    },
+    isCompleted: () => isCompleted,
   };
 }

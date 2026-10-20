@@ -61,8 +61,8 @@ export default function TrackerStatusCard({
 
   // Safe timestamp determination: prioritize latest received telemetry timestamp, then session initial timestamp
   const latestTimestamp =
-    (currentLocation as any)?.timestamp !== undefined && (currentLocation as any)?.timestamp !== null
-      ? (currentLocation as any).timestamp
+    currentLocation?.timestamp !== undefined && currentLocation?.timestamp !== null
+      ? currentLocation.timestamp
       : session?.lastUpdated !== undefined && session?.lastUpdated !== null
       ? session.lastUpdated
       : null;
@@ -108,6 +108,14 @@ export default function TrackerStatusCard({
         <span className="status-badge badge-resolved">
           <span className="status-dot dot-resolved"></span>
           Resolved
+        </span>
+      );
+    }
+    if (session?.status === 'completed') {
+      return (
+        <span className="status-badge badge-completed">
+          <span className="status-dot dot-completed"></span>
+          Trip Completed
         </span>
       );
     }
@@ -247,7 +255,11 @@ export default function TrackerStatusCard({
               <span className="cell-label">Trip Destination</span>
               {distanceKm !== null && (
                 <span className="dest-dist-tag">
-                  {distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m away` : `${distanceKm.toFixed(1)} km away`}
+                  {distanceKm < 0.05 || session?.status === 'completed'
+                    ? 'Arrived'
+                    : distanceKm < 1
+                    ? `${Math.round(distanceKm * 1000)} m away`
+                    : `${distanceKm.toFixed(1)} km away`}
                 </span>
               )}
             </div>

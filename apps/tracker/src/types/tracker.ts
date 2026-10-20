@@ -5,6 +5,7 @@ export interface Coordinates {
   altitude?: number | null;
   speed?: number | null; // in km/h or m/s
   heading?: number | null; // in degrees
+  timestamp?: string | number | null;
 }
 
 export interface LocationPayload {

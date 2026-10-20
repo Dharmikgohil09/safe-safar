@@ -7,6 +7,7 @@ import { SosState } from '../types/tracker';
 interface MockModeBadgeProps {
   isMockActive: boolean;
   isPaused: boolean;
+  isCompleted?: boolean;
   sosState?: SosState;
   isSos?: boolean;
   onTogglePause: () => void;
@@ -17,6 +18,7 @@ interface MockModeBadgeProps {
 export default function MockModeBadge({
   isMockActive,
   isPaused,
+  isCompleted = false,
   sosState = 'normal',
   isSos = false,
   onTogglePause,
@@ -98,11 +100,27 @@ export default function MockModeBadge({
           <div className="demo-footer-action">
             <button
               type="button"
-              onClick={onTogglePause}
-              className={`demo-playback-btn ${isPaused ? 'is-paused' : ''}`}
+              onClick={isCompleted ? undefined : onTogglePause}
+              disabled={isCompleted}
+              className={`demo-playback-btn ${
+                isCompleted ? 'is-completed' : isPaused ? 'is-paused' : ''
+              }`}
+              title={isCompleted ? 'Simulated trip reached destination' : undefined}
             >
-              {isPaused ? <Play size={13} /> : <Pause size={13} />}
-              <span>{isPaused ? 'Resume Movement' : 'Pause Movement'}</span>
+              {isCompleted ? (
+                <CheckCircle2 size={13} />
+              ) : isPaused ? (
+                <Play size={13} />
+              ) : (
+                <Pause size={13} />
+              )}
+              <span>
+                {isCompleted
+                  ? 'Trip Completed'
+                  : isPaused
+                  ? 'Resume Movement'
+                  : 'Pause Movement'}
+              </span>
             </button>
           </div>
         </div>

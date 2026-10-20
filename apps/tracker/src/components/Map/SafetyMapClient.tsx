@@ -31,7 +31,6 @@ export default function SafetyMapClient({
   const accuracyCircleRef = useRef<L.Circle | null>(null);
   const destinationMarkerRef = useRef<L.Marker | null>(null);
   const pathLineRef = useRef<L.Polyline | null>(null);
-  const routeLineRef = useRef<L.Polyline | null>(null);
 
   const [autoFollow, setAutoFollow] = useState<boolean>(true);
 
@@ -63,6 +62,22 @@ export default function SafetyMapClient({
     mapInstanceRef.current = map;
 
     return () => {
+      if (destinationMarkerRef.current) {
+        destinationMarkerRef.current.remove();
+        destinationMarkerRef.current = null;
+      }
+      if (pathLineRef.current) {
+        pathLineRef.current.remove();
+        pathLineRef.current = null;
+      }
+      if (userMarkerRef.current) {
+        userMarkerRef.current.remove();
+        userMarkerRef.current = null;
+      }
+      if (accuracyCircleRef.current) {
+        accuracyCircleRef.current.remove();
+        accuracyCircleRef.current = null;
+      }
       map.remove();
       mapInstanceRef.current = null;
     };
@@ -135,13 +150,28 @@ export default function SafetyMapClient({
           color: isSosActive ? '#ef4444' : '#0284c7',
         });
       }
+    } else if (pathLineRef.current) {
+      pathLineRef.current.remove();
+      pathLineRef.current = null;
     }
   }, [breadcrumbs, isSosActive]);
 
   // Update User Marker & Accuracy Circle
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map || !currentLocation) return;
+    if (!map) return;
+
+    if (!currentLocation) {
+      if (userMarkerRef.current) {
+        userMarkerRef.current.remove();
+        userMarkerRef.current = null;
+      }
+      if (accuracyCircleRef.current) {
+        accuracyCircleRef.current.remove();
+        accuracyCircleRef.current = null;
+      }
+      return;
+    }
 
     const userLatLng: L.LatLngTuple = [currentLocation.latitude, currentLocation.longitude];
 
@@ -190,32 +220,11 @@ export default function SafetyMapClient({
       }).addTo(map);
     }
 
-    // Connect line to destination if available
-    if (destination) {
-      const routePoints: [L.LatLngTuple, L.LatLngTuple] = [
-        userLatLng,
-        [destination.latitude, destination.longitude],
-      ];
-      if (routeLineRef.current) {
-        routeLineRef.current.setLatLngs(routePoints);
-      } else {
-        routeLineRef.current = L.polyline(routePoints, {
-          color: '#94a3b8',
-          weight: 2,
-          opacity: 0.5,
-          dashArray: '4, 6',
-        }).addTo(map);
-      }
-    } else if (routeLineRef.current) {
-      routeLineRef.current.remove();
-      routeLineRef.current = null;
-    }
-
     // Auto-center if enabled
     if (autoFollow) {
       map.panTo(userLatLng, { animate: true, duration: 1 });
     }
-  }, [currentLocation, destination, isSosActive, isStale, autoFollow]);
+  }, [currentLocation, isSosActive, isStale, autoFollow]);
 
   // Map Controls Handlers
   const handleRecenter = () => {

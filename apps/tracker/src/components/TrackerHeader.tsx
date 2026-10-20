@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Shield, Radio, AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react';
+import Link from 'next/link';
+import { Shield, Radio, AlertTriangle, CheckCircle2, RefreshCw, MapPin, LayoutDashboard } from 'lucide-react';
 import { ConnectionStatus, SosState } from '../types/tracker';
 
 interface TrackerHeaderProps {
@@ -93,14 +94,27 @@ export default function TrackerHeader({
   return (
     <header className="tracker-top-header" role="banner">
       <div className="header-brand-group">
-        <div className="header-logo-icon">
-          <Shield size={18} strokeWidth={2.2} />
-        </div>
-        <div className="header-brand-titles">
-          <span className="brand-title">SafeSafar</span>
-          <span className="brand-subtitle">Live Tracker</span>
-        </div>
+        <Link href="/" className="header-brand-link" title="SafeSafar Home">
+          <div className="header-logo-icon">
+            <Shield size={18} strokeWidth={2.2} />
+          </div>
+          <div className="header-brand-titles">
+            <span className="brand-title">SafeSafar</span>
+            <span className="brand-subtitle">Live Tracker</span>
+          </div>
+        </Link>
       </div>
+
+      <nav className="header-nav-group" aria-label="Site Navigation">
+        <Link href="/heatmap" className="header-nav-item" title="Community Safety Heatmap">
+          <MapPin size={12} />
+          <span>Heatmap</span>
+        </Link>
+        <Link href="/admin" className="header-nav-item" title="Admin Overview Demo">
+          <LayoutDashboard size={12} />
+          <span>Admin</span>
+        </Link>
+      </nav>
 
       <div className="header-meta-group">
         {isMock && (

@@ -20,6 +20,7 @@ import { config } from '../../../config/env';
 import { createTrackerSocketConnection, TrackerConnectionHandle } from '../../../services/socketAdapter';
 import { createMockEmitter, getMockSession, MockLocationEmitter } from '../../../services/mockDataService';
 import { isValidTokenFormat, validateAndParseLocation } from '../../../services/validation';
+import { getNumericTimestamp } from '../../../utils/geo';
 
 export default function TrackPage() {
   const params = useParams();
@@ -38,13 +39,42 @@ export default function TrackPage() {
 
   // Mock State Controls
   const [isPaused, setIsPaused] = useState<boolean>(false);
+  const [isCompleted, setIsCompleted] = useState<boolean>(false);
   const mockEmitterRef = useRef<MockLocationEmitter | null>(null);
   const socketHandleRef = useRef<TrackerConnectionHandle | null>(null);
 
-  // Location update processor
+  // Out-of-order tracking watermark and location timestamp buffer
+  const latestProcessedTimestampRef = useRef<number | null>(null);
+  const latestLocationTimestampRef = useRef<string | number | null>(null);
+
+  // Location update processor with out-of-order protection
   const handleLocationUpdate = useCallback((payload: LocationPayload) => {
     const valid = validateAndParseLocation(payload);
     if (!valid) return;
+
+    // Out-of-order packet protection:
+    // If incoming payload has a parseable timestamp and we have already processed
+    // a newer timestamp, discard this older location to prevent position regression
+    // and spurious breadcrumb trail segments.
+    const incomingNumericTime = getNumericTimestamp(valid.timestamp);
+    const lastTime = latestProcessedTimestampRef.current;
+
+    if (incomingNumericTime !== null && lastTime !== null && incomingNumericTime < lastTime) {
+      console.warn('[SafeSafar] Discarded out-of-order location update:', {
+        incoming: valid.timestamp,
+        incomingNumeric: incomingNumericTime,
+        lastProcessed: lastTime,
+      });
+      return;
+    }
+
+    if (incomingNumericTime !== null) {
+      latestProcessedTimestampRef.current = incomingNumericTime;
+    }
+
+    if (valid.timestamp !== null && valid.timestamp !== undefined) {
+      latestLocationTimestampRef.current = valid.timestamp;
+    }
 
     setCurrentLocation({
       latitude: valid.latitude,
@@ -52,6 +82,7 @@ export default function TrackPage() {
       accuracy: valid.accuracy,
       speed: valid.speed,
       heading: valid.heading,
+      timestamp: valid.timestamp,
     });
 
     setBreadcrumbs((prev) => {
@@ -96,6 +127,11 @@ export default function TrackPage() {
     if (config.isMockMode) {
       try {
         const mockSess = getMockSession(token);
+
+        // Reset watermark refs for the mock session
+        latestProcessedTimestampRef.current = getNumericTimestamp(mockSess.lastUpdated);
+        latestLocationTimestampRef.current = mockSess.lastUpdated ?? null;
+
         setSession(mockSess);
 
         // Determine SOS state from mock session
@@ -125,9 +161,17 @@ export default function TrackPage() {
 
         const emitter = createMockEmitter(3500, { omitTimestamp: isNoTimestamp });
         mockEmitterRef.current = emitter;
-        emitter.start((locationPayload) => {
-          handleLocationUpdate(locationPayload);
-        });
+        emitter.start(
+          (locationPayload) => {
+            handleLocationUpdate(locationPayload);
+          },
+          (status) => {
+            if (status === 'completed') {
+              setSession((prev) => (prev ? { ...prev, status: 'completed' } : null));
+              setIsCompleted(true);
+            }
+          }
+        );
 
         setConnectionStatus('connected');
       } catch (err: any) {
@@ -144,18 +188,47 @@ export default function TrackPage() {
           mockEmitterRef.current.stop();
           mockEmitterRef.current = null;
         }
+        setIsCompleted(false);
+        latestProcessedTimestampRef.current = null;
+        latestLocationTimestampRef.current = null;
       };
     }
 
     // MODE B: Real Socket.IO Backend Integration
     const handle = createTrackerSocketConnection(token, config.socketUrl, {
       onSessionInit: (sess) => {
-        setSession(sess);
-        if (sess.sosState) {
-          setSosState(sess.sosState);
-        } else if (sess.status === 'sos') {
+        // Reconcile timestamps: If an early location update arrived before session:data,
+        // preserve the newer location timestamp rather than overwriting with an older session time.
+        const earlyLocTs = latestLocationTimestampRef.current;
+        const earlyLocNum = getNumericTimestamp(earlyLocTs);
+        const sessNum = getNumericTimestamp(sess.lastUpdated);
+
+        let resolvedLastUpdated = sess.lastUpdated;
+        if (earlyLocTs !== null && earlyLocTs !== undefined) {
+          if (sessNum === null || (earlyLocNum !== null && earlyLocNum >= sessNum)) {
+            resolvedLastUpdated = earlyLocTs;
+          }
+        }
+
+        const reconciledSession = {
+          ...sess,
+          lastUpdated: resolvedLastUpdated,
+        };
+
+        const currentWatermark = getNumericTimestamp(resolvedLastUpdated);
+        if (currentWatermark !== null) {
+          latestProcessedTimestampRef.current = Math.max(
+            latestProcessedTimestampRef.current ?? 0,
+            currentWatermark
+          );
+        }
+
+        setSession(reconciledSession);
+        if (reconciledSession.sosState) {
+          setSosState(reconciledSession.sosState);
+        } else if (reconciledSession.status === 'sos') {
           setSosState('active');
-        } else if (sess.status === 'resolved') {
+        } else if (reconciledSession.status === 'resolved') {
           setSosState('resolved');
         } else {
           setSosState('normal');
@@ -181,17 +254,28 @@ export default function TrackPage() {
     return () => {
       handle.disconnect();
       socketHandleRef.current = null;
+      latestProcessedTimestampRef.current = null;
+      latestLocationTimestampRef.current = null;
     };
   }, [token, handleLocationUpdate]);
 
   // Mock Control Toggles
   const handleTogglePause = () => {
     if (!config.isMockMode || !mockEmitterRef.current) return;
+    if (isCompleted || mockEmitterRef.current.isCompleted?.()) return;
     if (isPaused) {
-      mockEmitterRef.current.start((payload) => handleLocationUpdate(payload));
+      if (mockEmitterRef.current.resume) {
+        mockEmitterRef.current.resume((payload) => handleLocationUpdate(payload));
+      } else {
+        mockEmitterRef.current.start((payload) => handleLocationUpdate(payload));
+      }
       setIsPaused(false);
     } else {
-      mockEmitterRef.current.stop();
+      if (mockEmitterRef.current.pause) {
+        mockEmitterRef.current.pause();
+      } else {
+        mockEmitterRef.current.stop();
+      }
       setIsPaused(true);
     }
   };
@@ -204,8 +288,13 @@ export default function TrackPage() {
     if (socketHandleRef.current) {
       socketHandleRef.current.reconnect();
     } else if (config.isMockMode && mockEmitterRef.current) {
-      mockEmitterRef.current.stop();
-      mockEmitterRef.current.start((p) => handleLocationUpdate(p));
+      if (mockEmitterRef.current.isCompleted?.()) return;
+      if (mockEmitterRef.current.resume) {
+        mockEmitterRef.current.resume((p) => handleLocationUpdate(p));
+      } else {
+        mockEmitterRef.current.stop();
+        mockEmitterRef.current.start((p) => handleLocationUpdate(p));
+      }
       setIsPaused(false);
     }
   };
@@ -288,6 +377,7 @@ export default function TrackPage() {
       <MockModeBadge
         isMockActive={config.isMockMode}
         isPaused={isPaused}
+        isCompleted={isCompleted}
         sosState={sosState}
         isSos={sosState === 'active'}
         onTogglePause={handleTogglePause}

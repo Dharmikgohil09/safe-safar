@@ -24,6 +24,7 @@ export * from './safeRouteClient';
 export * from './mockRoutes';
 export * from './safePlaceHelper';
 export * from './offlineManager';
+export * from './reportClient';
 export * from '../../services/deadZoneService';
 export * from '../../services/landmarksService';
 export * from '../../services/offlineCacheService';

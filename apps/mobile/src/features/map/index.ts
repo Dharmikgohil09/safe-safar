@@ -22,6 +22,7 @@ export * from '../../utils/geo';
 // Services & Safe Route Client
 export * from './safeRouteClient';
 export * from './mockRoutes';
+export * from './safePlaceHelper';
 export * from '../../services/deadZoneService';
 export * from '../../services/landmarksService';
 export * from '../../services/offlineCacheService';

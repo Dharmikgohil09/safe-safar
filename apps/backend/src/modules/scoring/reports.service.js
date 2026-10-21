@@ -58,6 +58,7 @@ function toReportDto(report, now = new Date()) {
 
   const dto = {
     _id: String(doc._id),
+    reportId: String(doc._id),
     type: doc.type,
     description: doc.note || '',
     location: {
@@ -65,6 +66,7 @@ function toReportDto(report, now = new Date()) {
       coordinates: doc.location?.coordinates || [0, 0]
     },
     confirmationCount,
+    confirmationsCount: confirmationCount,
     isActive: active,
     weight,
     createdAt: doc.createdAt,
@@ -132,7 +134,9 @@ async function confirmReport(reportId, userId) {
   if (updatedReport) {
     return {
       _id: String(updatedReport._id),
+      reportId: String(updatedReport._id),
       confirmationCount: updatedReport.confirmations.length,
+      confirmationsCount: updatedReport.confirmations.length,
       isActive: isReportActive(updatedReport)
     };
   }

@@ -1,0 +1,171 @@
+{
+  "scenarios": [
+    {
+      "id": "scenario_svnit_to_adajan",
+      "title": "SVNIT Surat → Adajan Gam (Hackathon Live Demo)",
+      "origin": {
+        "name": "SVNIT Campus Main Gate",
+        "coordinates": [72.7848, 21.1648]
+      },
+      "destination": {
+        "name": "Adajan Gam Circle",
+        "coordinates": [72.7952, 21.1963]
+      },
+      "routes": [
+        {
+          "routeId": "route_green_safest",
+          "name": "Via Athwa Gate & Swami Vivekananda Bridge",
+          "safetyScore": 93,
+          "color": "green",
+          "distanceMeters": 5200,
+          "durationSeconds": 720,
+          "isSafest": true,
+          "isFastest": false,
+          "safetyFactors": {
+            "lightingScore": 96,
+            "policeProximityScore": 92,
+            "incidentDecayScore": 95
+          },
+          "explanation": "Safest Route: Continuous high-mast LED lighting, 2 active police chowkis (Umra & Athwa Lines), CCTV surveillance corridor, and heavy pedestrian footfall along Dumas Road.",
+          "dangerAlerts": [],
+          "coordinates": [
+            [72.7848, 21.1648],
+            [72.7892, 21.1665],
+            [72.7935, 21.1685],
+            [72.7995, 21.1730],
+            [72.8021, 21.1762],
+            [72.8078, 21.1812],
+            [72.8045, 21.1870],
+            [72.8010, 21.1915],
+            [72.7952, 21.1963]
+          ]
+        },
+        {
+          "routeId": "route_yellow_moderate",
+          "name": "Via City Light Road & Sardar Bridge",
+          "safetyScore": 72,
+          "color": "yellow",
+          "distanceMeters": 4800,
+          "durationSeconds": 660,
+          "isSafest": false,
+          "isFastest": false,
+          "safetyFactors": {
+            "lightingScore": 75,
+            "policeProximityScore": 68,
+            "incidentDecayScore": 76
+          },
+          "explanation": "Moderate Route: Residential area with moderate illumination. 1 police patrol point, fewer open shops past 10 PM. Decent alternative during evening hours.",
+          "dangerAlerts": [
+            "Moderate lighting drop after Bhatar crossroad"
+          ],
+          "coordinates": [
+            [72.7848, 21.1648],
+            [72.7910, 21.1710],
+            [72.7960, 21.1770],
+            [72.7990, 21.1820],
+            [72.8005, 21.1880],
+            [72.7975, 21.1920],
+            [72.7952, 21.1963]
+          ]
+        },
+        {
+          "routeId": "route_red_risky",
+          "name": "Via Adajan Canal Backroad (Fastest but Dangerous)",
+          "safetyScore": 41,
+          "color": "red",
+          "distanceMeters": 4100,
+          "durationSeconds": 540,
+          "isSafest": false,
+          "isFastest": true,
+          "safetyFactors": {
+            "lightingScore": 32,
+            "policeProximityScore": 38,
+            "incidentDecayScore": 45
+          },
+          "explanation": "High Risk Warning: 2 recent reports of harassment and low lighting near Adajan Gam canal. Isolated unmonitored road with cellular dead-spot and zero open commercial establishments.",
+          "dangerAlerts": [
+            "2 verified harassment / dark street incidents in last 48 hours",
+            "Severe RF cellular blind spot near canal bend",
+            "No active CCTV or police checkpoints"
+          ],
+          "coordinates": [
+            [72.7848, 21.1648],
+            [72.7830, 21.1730],
+            [72.7850, 21.1810],
+            [72.7885, 21.1890],
+            [72.7895, 21.1945],
+            [72.7912, 21.1975],
+            [72.7952, 21.1963]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scenario_station_to_vrmall",
+      "title": "Surat Railway Station → VR Mall Surat",
+      "origin": {
+        "name": "Surat Railway Station (Main Concourse)",
+        "coordinates": [72.8407, 21.2044]
+      },
+      "destination": {
+        "name": "VR Mall Surat (Dumas Road)",
+        "coordinates": [72.7565, 21.1442]
+      },
+      "routes": [
+        {
+          "routeId": "route_station_green",
+          "name": "Via Ring Road & Athwa Boulevard",
+          "safetyScore": 91,
+          "color": "green",
+          "distanceMeters": 9800,
+          "durationSeconds": 1380,
+          "isSafest": true,
+          "isFastest": false,
+          "safetyFactors": {
+            "lightingScore": 94,
+            "policeProximityScore": 90,
+            "incidentDecayScore": 92
+          },
+          "explanation": "Safest Highway Route: Passes Majura Gate Trauma Centre, Umra Police Station, and constant BRTS corridor surveillance.",
+          "dangerAlerts": [],
+          "coordinates": [
+            [72.8407, 21.2044],
+            [72.8361, 21.1895],
+            [72.8189, 21.1712],
+            [72.8021, 21.1762],
+            [72.7845, 21.1560],
+            [72.7758, 21.1578],
+            [72.7565, 21.1442]
+          ]
+        },
+        {
+          "routeId": "route_station_red",
+          "name": "Via Udhna Railway Colony & Outer Bypass",
+          "safetyScore": 47,
+          "color": "red",
+          "distanceMeters": 8900,
+          "durationSeconds": 1180,
+          "isSafest": false,
+          "isFastest": true,
+          "safetyFactors": {
+            "lightingScore": 41,
+            "policeProximityScore": 45,
+            "incidentDecayScore": 52
+          },
+          "explanation": "High Risk: Industrial siding route with sparse lighting and dark spots near the underpass.",
+          "dangerAlerts": [
+            "Reported auto-harassment and dark railway sidings"
+          ],
+          "coordinates": [
+            [72.8407, 21.2044],
+            [72.8385, 21.2030],
+            [72.8300, 21.1750],
+            [72.8050, 21.1500],
+            [72.7750, 21.1420],
+            [72.7565, 21.1442]
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,45 +1,75 @@
-# SafeSafar Mobile Application (React Native / Expo)
+# SafeSafar — Android Mobile Application (`apps/mobile`)
 
-This is the SafeSafar mobile app workspace built using [Expo](https://expo.dev) and React Native.
+SafeSafar's React Native Expo application, featuring offline-first emergency SOS dispatch, safe routing alternatives, Walk Me Home live companion, and trusted guardian alerts.
 
-## Get Started
+## 🌟 Delivered Features
 
-1. Install dependencies:
+| Area | Owner | Deliverable | Status |
+| :--- | :--- | :--- | :--- |
+| **Emergency Systems** | Kristal Patel | SOS engine, on-device SMS, direct phone call, shake trigger, duress PIN, decoy calculator | ✅ Completed |
+| **Mobile Shell & UI** | Harshil Bamaniya | Expo Router navigation, Dark/Amber theme, onboarding, trusted contacts, auth tabs, Walk Me Home UI | ✅ Completed |
+| **Maps & Safe Routing** | Dhruv Raval | Interactive Map, 3 route tiers (Green/Yellow/Red), landmark havens, cellular dead-zone detector, demo simulator | ✅ Completed |
 
-   ```bash
-   npm install
-   ```
+---
 
-2. Start the development server:
+## 🚀 Running the App
 
-   ```bash
-   npx expo start
-   ```
+### 1. Install Dependencies
+```bash
+cd apps/mobile
+npm install
+```
 
-In the output, you'll find options to open the app in:
+### 2. Start Expo Development Server
+```bash
+npm start
+# or for android
+npm run android
+# or for web
+npm run web
+```
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go)
+### 3. Run Automated Tests
+```bash
+npm test
+```
 
-## Directory Structure
+---
+
+## 📁 Directory Structure
 
 ```text
 apps/mobile/
   app/                    # Expo Router file-based navigation & tab screens
-  assets/                 # Images, icons, and splash screens
+  assets/                 # Images, icons, and pre-seeded demo datasets
   components/             # UI components and themes
   src/
-    components/ui/        # Reusable UI components (Buttons, Cards, Drawer, StateView)
+    components/           # Reusable UI components (Map controls, HUD, Badges)
+    config/               # Map & service environment configurations
+    context/              # Global application state (MapContext)
     features/
-      emergency/          # SOS engine and emergency triggers
-      trip/               # Trip screens (Contacts, Walk Me Home, Report, Live Location)
-    lib/                  # Shared API client and utility helpers
+      emergency/          # SOS engine, shake triggers, call chain, and decoy calculator
+      map/                # Safe routing client, mock routes, offline manager, landmarks
+      trip/               # Walk Me Home, contacts, auth, and onboarding flows
+    models/               # TypeScript domain models (RouteOption, Landmark, DeadZone)
+    services/             # API services, geocoding, and offline caching
     theme/                # Colors, spacing, and typography tokens
 ```
 
-## Learn More
+---
 
-- [Expo documentation](https://docs.expo.dev/)
-- [Expo Router documentation](https://docs.expo.dev/router/introduction/)
+## 🎯 Hackathon Live Demo Script
+
+1. **Launch App**: The app opens centered at **SVNIT Surat**, displaying verified police chowkis, 24/7 hospitals, and live incident heatmaps across the city.
+2. **Safe Route vs Fastest Route**:
+   - Destination is set to **Adajan Gam**.
+   - Tap **Green Route (Score 93 - Safest)**: Shows via Athwa Gate & Vivekananda Bridge with full street lighting and active police posts.
+   - Tap **Red Route (Score 41 - Dangerous)**: Shows via Adajan Canal backroad with active hazards and incident warnings.
+3. **Dead-Zone Proximity Alert**:
+   - Open Demo Controller and tap **"Simulate Entering Dead Zone"**.
+   - User enters Dumas Mangrove RF Blind Spot.
+   - Top banner warns: **"CRITICAL: Cellular Dead Zone Active - Route cached offline, SMS SOS standby."**
+4. **Emergency Haven Helper**:
+   - Tap the **Blue Shield icon**: Instantly shows nearest police post with distance and one-tap **"Navigate Here"**.
+5. **One-Tap Reset**:
+   - Tap **"Reset Demo Scenario"** to restore pristine presentation state instantly!

@@ -110,7 +110,7 @@ export default function HomeScreen() {
           <PrimaryButton
             variant="accent"
             label="Find Safe Route"
-            onPress={() => showMessage('Plan a Safe Route')}
+            onPress={() => router.push('/(tabs)/map')}
             icon={<MaterialIcons name="search" size={20} color={colors.primaryDark} />}
             style={styles.findRouteButton}
           />
@@ -120,7 +120,7 @@ export default function HomeScreen() {
         <View style={styles.tilesRow}>
           {/* Tile 1: Emergency SOS */}
           <Card
-            onPress={() => showMessage('SOS preview')}
+            onPress={() => router.push('/(tabs)/sos')}
             style={styles.sosTile}
             accessibilityLabel="Emergency SOS"
             entranceDelay={120}
@@ -134,7 +134,7 @@ export default function HomeScreen() {
 
           {/* Tile 2: Share Live Location */}
           <Card
-            onPress={() => showMessage('Share Live Location')}
+            onPress={() => router.push('/live-location')}
             style={styles.shareTile}
             accessibilityLabel="Share Live Location"
             entranceDelay={180}

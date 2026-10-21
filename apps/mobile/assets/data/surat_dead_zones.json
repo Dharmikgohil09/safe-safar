@@ -1,0 +1,38 @@
+[
+  {
+    "id": "deadzone_dumas_beach_approach",
+    "name": "Dumas Silent Zone & Mangrove Belt",
+    "center": [72.7154, 21.0921],
+    "radiusMeters": 450,
+    "warningLevel": "high",
+    "description": "Known cellular blind spot. 4G/5G drops to No Service along unlit mangrove stretch.",
+    "carrierNotes": "Jio/Airtel dead zone past 9 PM"
+  },
+  {
+    "id": "deadzone_tapi_causeway_underpass",
+    "name": "Singanpore Causeway Underpass",
+    "center": [72.8123, 21.2185],
+    "radiusMeters": 280,
+    "warningLevel": "high",
+    "description": "Subterranean concrete structure causes immediate RF attenuation and GPS drift.",
+    "carrierNotes": "All carriers experience -118 dBm or disconnect"
+  },
+  {
+    "id": "deadzone_adajan_canal_backlane",
+    "name": "Adajan Gam Canal Service Cut",
+    "center": [72.7885, 21.1982],
+    "radiusMeters": 220,
+    "warningLevel": "moderate",
+    "description": "Isolated unlit canal service corridor with intermittent voice/data packet loss.",
+    "carrierNotes": "Frequent handoff failure between towers"
+  },
+  {
+    "id": "deadzone_khajod_dream_city_fringe",
+    "name": "Khajod Diamond Bourse Outer Fringe",
+    "center": [72.7812, 21.1198],
+    "radiusMeters": 350,
+    "warningLevel": "moderate",
+    "description": "Under-construction expanse with sparse cell tower density.",
+    "carrierNotes": "Unstable 2G fallback"
+  }
+]

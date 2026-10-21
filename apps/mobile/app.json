@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "SafeSafar",
-    "slug": "mobile",
+    "slug": "safesafar",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -9,10 +9,19 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.codecraft.safesafar",
+      "config": {
+        "googleMapsApiKey": ""
+      }
     },
     "android": {
       "package": "com.codecraft.safesafar",
+      "config": {
+        "googleMaps": {
+          "apiKey": ""
+        }
+      },
       "permissions": [
         "SEND_SMS",
         "CALL_PHONE",
@@ -26,6 +35,8 @@
         "POST_NOTIFICATIONS",
         "USE_FULL_SCREEN_INTENT",
         "VIBRATE",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_BACKGROUND_LOCATION",

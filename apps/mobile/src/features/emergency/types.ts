@@ -45,6 +45,8 @@ export interface SosSnapshot {
   coords?: Coords | null;
   /** ms from trigger until each channel finished, or 'failed'. This is the SOS response-time KPI. */
   timings: Record<string, number | 'failed'>;
+  /** Error text for each channel that failed, so it can be shown on screen. */
+  errors: Record<string, string>;
 }
 
 /** Sources that must not show anything on screen or ring on the phone. */

@@ -1,1 +1,2 @@
-export { default } from '../../src/features/trip/screens/placeholders/GuardiansPlaceholder';
+export { default } from '../../src/features/trip/screens/ContactsScreen';
+

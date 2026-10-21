@@ -1,5 +1,5 @@
 /**
- * SafeSafar - Safety Scoring & Community Reports Module
+ * SafeSafar - Safety Scoring & Safe Routing Router
  * Owner: Satej (@satej)
  *
  * Mounts Satej's production safety scoring engine, community incident reporting,

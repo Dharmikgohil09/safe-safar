@@ -80,14 +80,31 @@ describe('Trip Expiration Worker & Reports Routing', () => {
     });
 
     it('POST /reports/:id/confirm - confirms a community report', async () => {
-      const res = await request(app)
-        .post('/reports/report_12345/confirm')
+      const createRes = await request(app)
+        .post('/reports')
         .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          type: 'dark_street',
+          location: { coordinates: [72.83, 21.18] },
+          description: 'Street lights malfunctioning'
+        });
+
+      const reportId = createRes.body.data.reportId || createRes.body.data._id;
+
+      const confirmer = await registerUser({
+        phone: '+919876543299',
+        name: 'Confirmer User',
+        pin: '5678'
+      });
+
+      const res = await request(app)
+        .post(`/reports/${reportId}/confirm`)
+        .set('Authorization', `Bearer ${confirmer.token}`)
         .send();
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.reportId).toBe('report_12345');
+      expect(res.body.data.reportId).toBe(reportId);
       expect(res.body.data.confirmationsCount).toBe(1);
     });
   });

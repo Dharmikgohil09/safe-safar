@@ -12,17 +12,19 @@ function createRoutesController({ routesService }) {
    */
   async function getSafeRoutes(req, res, next) {
     try {
-      const { origin, destination, preferences } = req.body;
-      const routes = await routesService.getSafeRoutes({
+      const { origin, destination, preferences, departureTime } = req.body;
+      const { routes, timeOfDay } = await routesService.getSafeRoutes({
         origin,
         destination,
-        preferences
+        preferences,
+        departureTime
       });
 
       return res.status(200).json({
         success: true,
         data: {
-          routes
+          routes,
+          timeOfDay
         }
       });
     } catch (error) {

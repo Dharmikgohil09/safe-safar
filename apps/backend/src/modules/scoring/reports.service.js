@@ -67,7 +67,11 @@ function toReportDto(report, now = new Date()) {
     confirmationCount,
     isActive: active,
     weight,
-    createdAt: doc.createdAt
+    createdAt: doc.createdAt,
+    id: String(doc._id),
+    coordinates: doc.location?.coordinates ? [...doc.location.coordinates] : [0, 0],
+    confirmations: confirmationCount,
+    verified: active
   };
 
   if (typeof doc.distanceMeters === 'number') {

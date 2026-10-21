@@ -51,7 +51,16 @@ const reportSchema = new mongoose.Schema(
     type: {
       type: String,
       required: true,
-      enum: ['dark_street', 'poor_lighting', 'harassment', 'isolated', 'unsafe_crowd', 'other']
+      enum: [
+        'dark_street',
+        'poor_lighting',
+        'harassment',
+        'isolated',
+        'unsafe_crowd',
+        'other',
+        'isolated_path',
+        'suspicious'
+      ]
     },
     note: {
       type: String,

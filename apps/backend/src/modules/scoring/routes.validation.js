@@ -24,6 +24,7 @@ const safeRoutesBodySchema = z
     destination: z.object({
       coordinates: coordinatePairSchema
     }),
+    departureTime: z.string().datetime({ offset: true }).optional(),
     preferences: z
       .object({
         prioritizeLighting: z.boolean().optional(),

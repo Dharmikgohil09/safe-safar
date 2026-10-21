@@ -6,6 +6,8 @@
  * fully implemented in React Native & TypeScript.
  */
 
+import { MapScreen } from '../../screens/MapScreen';
+
 // Types & Models
 export * from '../../types';
 export * from '../../models/SafetyFactors';
@@ -17,7 +19,9 @@ export * from '../../models/RouteOption';
 // Utilities
 export * from '../../utils/geo';
 
-// Services
+// Services & Safe Route Client
+export * from './safeRouteClient';
+export * from './mockRoutes';
 export * from '../../services/deadZoneService';
 export * from '../../services/landmarksService';
 export * from '../../services/offlineCacheService';
@@ -39,6 +43,9 @@ export * from '../../components/DemoControlModal';
 export * from '../../components/MapLayerControls';
 export * from '../../components/MapViewComponent';
 export * from '../../screens/MapScreen';
+
+// Default export for route files expecting default export
+export default MapScreen;
 
 // Default Demo Anchor: SVNIT Surat
 export const SVNIT_SURAT_COORDINATES = {

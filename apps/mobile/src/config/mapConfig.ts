@@ -68,8 +68,8 @@ export const MAP_CONFIG: MapConfig = {
  * Get the tile URL for a given style and tile coordinates (z, x, y)
  */
 export function getTileUrl(style: 'street' | 'dark' | 'satellite', z: number, x: number, y: number): string {
-  // 1. If custom tile URL is configured in .env
-  if (MAP_CONFIG.customTileUrl) {
+  // 1. If custom tile URL is configured in .env (skip blocked OSM volunteer server)
+  if (MAP_CONFIG.customTileUrl && !MAP_CONFIG.customTileUrl.includes('tile.openstreetmap.org')) {
     return MAP_CONFIG.customTileUrl
       .replace('{z}', String(z))
       .replace('{x}', String(x))

@@ -93,6 +93,29 @@ Every route explanation is built from up to 4 deterministic English sentences jo
 
 ---
 
+## Fields Used by the Mobile App
+
+To support client-side parsing by the React Native app (`apps/mobile`) without requiring client-side polyline decoding or nested property lookups, the following additive fields and hazard types are provided:
+
+### 1. Route Fields (`POST /routes/safe`)
+- **`coordinates`** (`Array<[number, number]>`): An array of `[longitude, latitude]` coordinate pairs representing the sampled/decoded route path. The mobile map renders the path directly from this array while retaining the encoded `polyline` string for backward compatibility.
+- **`isSafest`** (`boolean`): Flag indicating the safest route option. Assigned `true` exclusively to the first route ranked by `safetyScore` descending; all other alternatives receive `false`.
+
+### 2. Community Report Fields (`GET /reports` and `POST /reports`)
+- **`id`** (`string`): Top-level alias for `_id` (`String(doc._id)`).
+- **`coordinates`** (`[number, number]`): Top-level copy of `[longitude, latitude]` from `location.coordinates`.
+- **`confirmations`** (`number`): Top-level alias matching `confirmationCount`.
+- **`verified`** (`boolean`): Top-level alias matching `isActive`.
+
+### 3. Additional Report Types
+The allowed hazard report types now accept:
+- **`isolated_path`**: Unlit, deserted pathways or alleys.
+- **`suspicious`**: Suspicious activities, persons, or vehicles.
+
+All previous report types (`dark_street`, `poor_lighting`, `harassment`, `isolated`, `unsafe_crowd`, `other`) remain supported. All additions are non-breaking and additive: all original response fields (`_id`, `polyline`, `location`, `isActive`, `confirmationCount`, `isFastest`, etc.) remain intact.
+
+---
+
 ## API Endpoints
 
 ### 1. `POST /reports`

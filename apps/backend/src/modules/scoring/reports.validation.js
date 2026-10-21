@@ -12,7 +12,9 @@ const REPORT_TYPES = [
   'harassment',
   'isolated',
   'unsafe_crowd',
-  'other'
+  'other',
+  'isolated_path',
+  'suspicious'
 ];
 
 /**

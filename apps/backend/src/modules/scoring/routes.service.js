@@ -59,6 +59,7 @@ function createRoutesService({ orsClient, now = () => new Date() }) {
           distanceMeters: Math.round(route.distanceMeters),
           durationSeconds: Math.round(route.durationSeconds),
           polyline: route.polyline,
+          coordinates: route.coordinates,
           explanation,
           safetyFactors: {
             lightingScore: scoring.safetyFactors.lightingScore,
@@ -84,8 +85,14 @@ function createRoutesService({ orsClient, now = () => new Date() }) {
       return a.durationSeconds - b.durationSeconds;
     });
 
+    // 5. Mark the safest route (true only for the first route after sorting)
+    const routesWithSafest = routesWithFastest.map((r, index) => ({
+      ...r,
+      isSafest: index === 0
+    }));
+
     return {
-      routes: routesWithFastest,
+      routes: routesWithSafest,
       timeOfDay: period
     };
   }

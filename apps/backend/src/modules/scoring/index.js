@@ -10,6 +10,8 @@ const { encodePolyline, decodePolyline } = require('./polyline');
 const { createOrsClient } = require('./ors.client');
 const { createRoutesService } = require('./routes.service');
 const { createRoutesRouter } = require('./routes.router');
+const { getTimePeriod, getPeriodConfig } = require('./timeOfDay');
+const { buildExplanation } = require('./explain');
 
 module.exports = {
   createReportsRouter,
@@ -27,8 +29,12 @@ module.exports = {
   createOrsClient,
   createRoutesService,
   createRoutesRouter,
+  getTimePeriod,
+  getPeriodConfig,
+  buildExplanation,
   ...constants,
   ...models
 };
+
 
 

@@ -75,7 +75,7 @@ describe('Safe Routes API (POST /routes/safe)', () => {
 
     app = express();
     app.use(express.json());
-    app.use('/routes', createRoutesRouter({ orsClient: fakeOrsClient }));
+    app.use('/routes', createRoutesRouter({ orsClient: fakeOrsClient, now: () => new Date('2026-10-20T06:30:00Z') }));
   }, 30000);
 
   afterAll(async () => {
@@ -220,7 +220,7 @@ describe('Safe Routes API (POST /routes/safe)', () => {
 
     const failingApp = express();
     failingApp.use(express.json());
-    failingApp.use('/routes', createRoutesRouter({ orsClient: failingClient }));
+    failingApp.use('/routes', createRoutesRouter({ orsClient: failingClient, now: () => new Date('2026-10-20T06:30:00Z') }));
 
     const res = await request(failingApp)
       .post('/routes/safe')
@@ -244,7 +244,7 @@ describe('Safe Routes API (POST /routes/safe)', () => {
 
     const busyApp = express();
     busyApp.use(express.json());
-    busyApp.use('/routes', createRoutesRouter({ orsClient: busyClient }));
+    busyApp.use('/routes', createRoutesRouter({ orsClient: busyClient, now: () => new Date('2026-10-20T06:30:00Z') }));
 
     const res = await request(busyApp)
       .post('/routes/safe')

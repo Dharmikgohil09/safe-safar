@@ -12,7 +12,7 @@ const { safeRoutesBodySchema, validateRequest } = require('./routes.validation')
  * @param {Object} [options.orsClient] - Optional injected ORS client instance (for testing or mocking)
  * @returns {express.Router}
  */
-function createRoutesRouter({ orsClient } = {}) {
+function createRoutesRouter({ orsClient, now = () => new Date() } = {}) {
   const router = express.Router();
 
   // POST /safe (public, no authentication required)
@@ -27,7 +27,7 @@ function createRoutesRouter({ orsClient } = {}) {
             apiKey: process.env.ORS_API_KEY
           });
 
-        const routesService = createRoutesService({ orsClient: client });
+        const routesService = createRoutesService({ orsClient: client, now });
         const controller = createRoutesController({ routesService });
 
         return await controller.getSafeRoutes(req, res, next);

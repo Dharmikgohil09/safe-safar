@@ -321,3 +321,50 @@ curl -X POST http://localhost:5000/routes/safe \
   }'
 ```
 
+---
+
+## Surat Demo Seed
+
+`scripts/seed-surat.js` populates the safety map with realistic **red**, **yellow**, and **green** zones so the SafeSafar UI is not empty during development and demos.
+
+### Commands
+
+```bash
+# Always run a dry run first to see what would change
+MONGODB_URI=<uri> node scripts/seed-surat.js --dry-run
+
+# Reset tagged documents and re-create (safe to run repeatedly)
+MONGODB_URI=<uri> node scripts/seed-surat.js
+
+# Remove only the tagged documents (leaves everything else intact)
+MONGODB_URI=<uri> node scripts/seed-surat.js --reset-only
+```
+
+### What it creates (tag: `surat-demo-v1`)
+
+| Zone | Type | Light points | Active reports |
+| :--- | :---: | :---: | :---: |
+| SVNIT gate | 🟢 Green | ✅ 40 m grid, intensity 8 | 0 |
+| Umra/Athwa | 🟢 Green | ✅ 40 m grid, intensity 8 | 0 |
+| Vesu (VR Mall) | 🟡 Yellow | ✅ 90 m grid, intensity 5 (dim) | 1 active + 1 pending |
+| Adajan Gam canal | 🔴 Red | ❌ none | 3 active (incl. decayed) |
+| Railway Station east exit | 🔴 Red | ❌ none | 2 active |
+
+### seedTag safety rule
+
+`resetSeedData` **only** deletes documents where `{ seedTag: "surat-demo-v1" }`.  
+It **never** issues an unfiltered `deleteMany` and **never** touches the `landmarks` collection.
+
+### Landmarks
+
+Landmark documents (police stations, hospitals) are **not** created or deleted by this script.  
+They come from **Dharmik's** separate seed/OSM-import script.
+
+### Coordinates are approximate
+
+All zone centres and report locations are approximate demo values taken from public map references.  
+They should be verified and tuned by someone with detailed knowledge of Surat's streets before production deployment.
+
+> [!TIP]
+> Always run `--dry-run` first. Confirm the "Would insert / Would delete" counts look correct, then run the real seed.
+

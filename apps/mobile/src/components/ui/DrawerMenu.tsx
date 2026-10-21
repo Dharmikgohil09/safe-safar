@@ -178,9 +178,18 @@ export function DrawerMenu({
     },
     {
       id: 'share_live',
-      label: 'Share Live Location',
+      label: 'Share Live Location (Web Tracker)',
       icon: 'near-me',
-      action: 'message',
+      action: 'navigate',
+      route: '/live-location',
+    },
+    {
+      id: 'emergency_dev',
+      label: 'Kristal SOS Engine & Decoy',
+      icon: 'security',
+      action: 'navigate',
+      route: '/emergency-dev',
+      badge: 'ENGINE',
     },
     {
       id: 'profile',

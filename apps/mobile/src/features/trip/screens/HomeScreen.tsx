@@ -8,6 +8,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Linking,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
@@ -231,6 +232,32 @@ export default function HomeScreen() {
                 </Text>
               </View>
               <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
+            </View>
+          </Card>
+
+          {/* Card 5: Live Guardian Web Tracker (Priyavardhan) */}
+          <Card
+            onPress={() => {
+              const url = 'http://10.214.35.75:3000/track/safesafar-live-session-2026';
+              Linking.openURL(url).catch(() => {
+                Alert.alert('Tracker URL', url);
+              });
+            }}
+            style={styles.exploreCard}
+            accessibilityLabel="Live Guardian Web Tracker (Priyavardhan)"
+            entranceDelay={480}
+          >
+            <View style={styles.exploreCardInner}>
+              <View style={[styles.exploreIconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.15)' }]}>
+                <MaterialIcons name="language" size={22} color="#0284C7" />
+              </View>
+              <View style={styles.exploreTextGroup}>
+                <Text style={styles.exploreCardTitle}>Live Guardian Web Tracker</Text>
+                <Text style={styles.exploreCardDesc}>
+                  Priyavardhan's Next.js web map, live telemetry stream, and heatmap.
+                </Text>
+              </View>
+              <MaterialIcons name="open-in-browser" size={22} color="#0284C7" />
             </View>
           </Card>
         </View>

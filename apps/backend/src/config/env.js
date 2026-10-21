@@ -2,6 +2,7 @@ const dotenv = require('dotenv');
 const path = require('path');
 
 // Load environment variables from .env if present
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 const config = {

@@ -6,6 +6,10 @@ const reportsService = require('./reports.service');
 const reportsController = require('./reports.controller');
 const { scoreRoute, colorForScore } = require('./routeScoring.service');
 const { samplePath, haversineMeters, boundingBox } = require('./geo');
+const { encodePolyline, decodePolyline } = require('./polyline');
+const { createOrsClient } = require('./ors.client');
+const { createRoutesService } = require('./routes.service');
+const { createRoutesRouter } = require('./routes.router');
 
 module.exports = {
   createReportsRouter,
@@ -18,7 +22,13 @@ module.exports = {
   samplePath,
   haversineMeters,
   boundingBox,
+  encodePolyline,
+  decodePolyline,
+  createOrsClient,
+  createRoutesService,
+  createRoutesRouter,
   ...constants,
   ...models
 };
+
 

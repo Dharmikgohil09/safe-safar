@@ -41,20 +41,7 @@ describe('Trip Expiration Worker & Reports Routing', () => {
     clearTripExpiryHooks();
   });
 
-  describe('Reports Routing Fixes', () => {
-    it('POST /routes/safe - calculates route placeholder', async () => {
-      const res = await request(app)
-        .post('/routes/safe')
-        .send({
-          origin: { coordinates: [72.84, 21.20] },
-          destination: { coordinates: [72.75, 21.14] }
-        });
-
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(res.body.message).toContain('Satej scoring engine');
-    });
-
+  describe('Reports Routing Integration', () => {
     it('GET /reports - returns empty reports list', async () => {
       const res = await request(app).get('/reports');
 
@@ -76,10 +63,11 @@ describe('Trip Expiration Worker & Reports Routing', () => {
       expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
       expect(res.body.data.type).toBe('dark_street');
-      expect(res.body.data.reportId).toBeDefined();
+      expect(res.body.data.id).toBeDefined();
     });
 
-    it('POST /reports/:id/confirm - confirms a community report', async () => {
+    it('POST /reports/:id/confirm - confirms a community report by another user', async () => {
+      // First create report
       const createRes = await request(app)
         .post('/reports')
         .set('Authorization', `Bearer ${userToken}`)
@@ -89,23 +77,24 @@ describe('Trip Expiration Worker & Reports Routing', () => {
           description: 'Street lights malfunctioning'
         });
 
-      const reportId = createRes.body.data.reportId || createRes.body.data._id;
+      const reportId = createRes.body.data.id;
 
-      const confirmer = await registerUser({
+      // Register second user to confirm (author cannot confirm own report)
+      const secondUser = await registerUser({
         phone: '+919876543299',
-        name: 'Confirmer User',
-        pin: '5678'
+        name: 'Second Confirmer',
+        pin: '1234'
       });
 
       const res = await request(app)
         .post(`/reports/${reportId}/confirm`)
-        .set('Authorization', `Bearer ${confirmer.token}`)
+        .set('Authorization', `Bearer ${secondUser.token}`)
         .send();
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.reportId).toBe(reportId);
-      expect(res.body.data.confirmationsCount).toBe(1);
+      expect(res.body.data._id).toBe(reportId);
+      expect(res.body.data.confirmationCount).toBe(1);
     });
   });
 

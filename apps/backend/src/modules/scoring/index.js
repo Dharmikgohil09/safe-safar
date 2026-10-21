@@ -1,10 +1,15 @@
-const express = require('express');
 const models = require('./models');
-
-// Empty router ready to be mounted by Dharmik's bootstrap
-const router = express.Router();
+const { createReportsRouter } = require('./reports.router');
+const { calculateDecayWeight } = require('./decay');
+const constants = require('./constants');
+const reportsService = require('./reports.service');
+const reportsController = require('./reports.controller');
 
 module.exports = {
-  router,
+  createReportsRouter,
+  calculateDecayWeight,
+  constants,
+  reportsService,
+  reportsController,
   ...models
 };

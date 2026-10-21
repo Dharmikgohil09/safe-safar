@@ -135,8 +135,13 @@ async function scoreRoute(coordinates, { now = new Date(), timeOfDay = 'day' } =
       }
     }).lean(),
 
+    // Match landmarks by either the original 'category' field OR the teammate
+    // seed script's 'type' field. Both must be 'police' or 'hospital'.
     Landmark.find({
-      category: { $in: ['police', 'hospital'] },
+      $or: [
+        { category: { $in: ['police', 'hospital'] } },
+        { type: { $in: ['police', 'hospital'] } }
+      ],
       location: {
         $geoWithin: {
           $box: [
@@ -201,8 +206,18 @@ async function scoreRoute(coordinates, { now = new Date(), timeOfDay = 'day' } =
 
   // Step e: policeProximityScore
   // Average over samples of max(0, 1 - distanceToNearest / POLICE_MAX_DISTANCE_M) * 100
-  // If no landmark candidates in padded box, return NEUTRAL_SCORE
-  const landmarkDataAvailable = landmarkCandidates.length > 0;
+  // If no landmark candidates in padded box, return NEUTRAL_SCORE.
+  //
+  // Landmark documents may carry the category field (original schema) OR the type
+  // field (teammate's OSM seed script). Resolve the effective kind from whichever
+  // field is present; only 'police' and 'hospital' count.
+  const VALID_KINDS = new Set(['police', 'hospital']);
+  const scorableLandmarks = landmarkCandidates.filter((lm) => {
+    const kind = lm.category || lm.type;
+    return VALID_KINDS.has(kind);
+  });
+
+  const landmarkDataAvailable = scorableLandmarks.length > 0;
   let policeProximityScore;
   let nearestSafePlace = null;
 
@@ -215,7 +230,7 @@ async function scoreRoute(coordinates, { now = new Date(), timeOfDay = 'day' } =
 
     for (const sample of samples) {
       let minDistance = Infinity;
-      for (const lm of landmarkCandidates) {
+      for (const lm of scorableLandmarks) {
         const [lmLng, lmLat] = lm.location.coordinates;
         const d = haversineMeters(sample, [lmLng, lmLat]);
         if (d < minDistance) {
@@ -232,9 +247,11 @@ async function scoreRoute(coordinates, { now = new Date(), timeOfDay = 'day' } =
     policeProximityScore = Math.round(totalScore / samples.length);
 
     if (closestLandmark) {
+      // Resolve kind for nearestSafePlace so explain.js keeps working unchanged
+      const resolvedKind = closestLandmark.category || closestLandmark.type;
       nearestSafePlace = {
         name: closestLandmark.name,
-        category: closestLandmark.category,
+        category: resolvedKind,
         distanceMeters: Math.round(minDistanceToAnySample)
       };
     }

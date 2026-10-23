@@ -17,7 +17,9 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Card, PrimaryButton, ShieldLogo } from '../../../../components/ui';
 import { colors, radius, typography } from '../../../../theme';
 import { normalizePhone } from '../../../emergency';
-import { authService } from '../services/authService';
+import { useAuth } from '../../../../context/AuthContext';
+import CheckEmailModal from '../components/CheckEmailModal';
+import CompletePhoneModal from '../components/CompletePhoneModal';
 import type { AuthCredentials, AuthValidationErrors } from '../types';
 
 interface LoginScreenProps {
@@ -31,11 +33,15 @@ export default function LoginScreen({
   onNavigateToRegister,
   onClose,
 }: LoginScreenProps) {
+  const { login, googleLogin } = useAuth();
   const [credentials, setCredentials] = useState<AuthCredentials>({ phone: '', pin: '' });
   const [showPin, setShowPin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<AuthValidationErrors>({});
   const [focusedField, setFocusedField] = useState<'phone' | 'pin' | null>(null);
+  const [showCheckEmail, setShowCheckEmail] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState('');
+  const [showCompletePhone, setShowCompletePhone] = useState(false);
 
   // Entrance animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -58,17 +64,19 @@ export default function LoginScreen({
 
   const validate = (): boolean => {
     const errs: AuthValidationErrors = {};
-    const norm = normalizePhone(credentials.phone);
-    if (!credentials.phone.trim()) {
-      errs.phone = 'Phone number is required.';
-    } else if (!norm) {
-      errs.phone = 'Enter a valid 10-digit Indian phone number.';
+    const input = credentials.phone.trim();
+    const isEmail = input.includes('@');
+
+    if (!input) {
+      errs.phone = 'Phone number or email is required.';
+    } else if (!isEmail && !normalizePhone(input)) {
+      errs.phone = 'Enter a valid 10-digit Indian mobile number.';
     }
 
     if (!credentials.pin) {
       errs.pin = 'PIN is required.';
-    } else if (credentials.pin.length < 4) {
-      errs.pin = 'PIN must be at least 4 digits.';
+    } else if (credentials.pin.length !== 4) {
+      errs.pin = 'PIN must be exactly 4 digits.';
     }
 
     setErrors(errs);
@@ -81,13 +89,18 @@ export default function LoginScreen({
     setErrors({});
 
     try {
-      const res = await authService.login(credentials);
+      const res = await login(credentials.phone.trim(), credentials.pin);
       if (res.success) {
-        if (onSuccess) {
+        if (res.needsProfileCompletion) {
+          setShowCompletePhone(true);
+        } else if (onSuccess) {
           onSuccess();
         } else if (onClose) {
           onClose();
         }
+      } else if (res.isUnverified) {
+        setUnverifiedEmail(res.email || credentials.phone.trim());
+        setShowCheckEmail(true);
       } else {
         setErrors({ general: res.error || 'Invalid credentials. Please try again.' });
       }
@@ -98,7 +111,26 @@ export default function LoginScreen({
     }
   };
 
-  const isMock = authService.isUsingMock();
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsLoading(true);
+      Alert.alert(
+        'Google Sign-In',
+        'Enter Google ID token or test social login?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Test Google User',
+            onPress: async () => {
+              Alert.alert('Google Client ID Required', 'Configure GOOGLE_WEB_CLIENT_ID and GOOGLE_ANDROID_CLIENT_ID in Google Cloud Console.');
+            },
+          },
+        ]
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -290,7 +322,7 @@ export default function LoginScreen({
               <View style={styles.socialButtonsContainer}>
                 <TouchableOpacity
                   style={styles.socialButton}
-                  onPress={() => Alert.alert('Google Sign-In', 'Social sign-in will be connected during backend integration.')}
+                  onPress={handleGoogleSignIn}
                   activeOpacity={0.8}
                   accessibilityRole="button"
                   accessibilityLabel="Continue with Google"
@@ -328,6 +360,31 @@ export default function LoginScreen({
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <CheckEmailModal
+        visible={showCheckEmail}
+        email={unverifiedEmail}
+        onVerified={() => {
+          setShowCheckEmail(false);
+          if (onSuccess) onSuccess();
+          else if (onClose) onClose();
+        }}
+        onClose={() => setShowCheckEmail(false)}
+      />
+
+      <CompletePhoneModal
+        visible={showCompletePhone}
+        onSuccess={() => {
+          setShowCompletePhone(false);
+          if (onSuccess) onSuccess();
+          else if (onClose) onClose();
+        }}
+        onDismiss={() => {
+          setShowCompletePhone(false);
+          if (onSuccess) onSuccess();
+          else if (onClose) onClose();
+        }}
+      />
     </SafeAreaView>
   );
 }

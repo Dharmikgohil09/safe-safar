@@ -17,7 +17,9 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Card, PrimaryButton, ShieldLogo } from '../../../../components/ui';
 import { colors, radius, typography } from '../../../../theme';
 import { normalizePhone } from '../../../emergency';
-import { authService } from '../services/authService';
+import { useAuth } from '../../../../context/AuthContext';
+import CheckEmailModal from '../components/CheckEmailModal';
+import CompletePhoneModal from '../components/CompletePhoneModal';
 import type { AuthValidationErrors, RegisterCredentials } from '../types';
 
 interface RegisterScreenProps {
@@ -31,11 +33,13 @@ export default function RegisterScreen({
   onNavigateToLogin,
   onClose,
 }: RegisterScreenProps) {
+  const { signup, googleLogin } = useAuth();
   const [data, setData] = useState<RegisterCredentials>({
     phone: '',
     pin: '',
     confirmPin: '',
     name: '',
+    email: '',
   });
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState<string | undefined>(undefined);
@@ -44,6 +48,8 @@ export default function RegisterScreen({
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<AuthValidationErrors>({});
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [showCheckEmail, setShowCheckEmail] = useState(false);
+  const [showCompletePhone, setShowCompletePhone] = useState(false);
 
   // Entrance animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -124,18 +130,53 @@ export default function RegisterScreen({
     setErrors({});
 
     try {
-      const res = await authService.register(data);
+      const res = await signup({
+        name: data.name,
+        email: email.trim(),
+        phone: data.phone,
+        pin: data.pin,
+        confirmPin: data.confirmPin,
+      });
+
       if (res.success) {
-        if (onSuccess) {
-          onSuccess();
-        } else if (onClose) {
-          onClose();
-        }
+        setShowCheckEmail(true);
       } else {
-        setErrors({ general: res.error || 'Registration failed. Please try again.' });
+        if (res.field === 'email') {
+          setEmailError(res.error);
+        } else if (res.field === 'phone') {
+          setErrors({ phone: res.error });
+        } else if (res.field === 'password' || res.field === 'pin') {
+          setErrors({ pin: res.error });
+        } else {
+          setErrors({ general: res.error || 'Registration failed. Please try again.' });
+        }
       }
     } catch {
       setErrors({ general: 'Network error. Please check your connection and try again.' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsLoading(true);
+      // In development preview or testing, if Google Sign-In is invoked without native Google Play services client ID,
+      // prompt for Google OAuth token or provide helpful guidance
+      Alert.alert(
+        'Google Sign-In',
+        'Enter Google ID token or test social login?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Test Google User',
+            onPress: async () => {
+              // Test simulated payload or dev fallback
+              Alert.alert('Google Client ID Required', 'Configure GOOGLE_WEB_CLIENT_ID and GOOGLE_ANDROID_CLIENT_ID in Google Cloud Console.');
+            },
+          },
+        ]
+      );
     } finally {
       setIsLoading(false);
     }
@@ -293,9 +334,7 @@ export default function RegisterScreen({
               {/* Continue with Google */}
               <TouchableOpacity
                 style={[styles.socialButton, { marginBottom: 16 }]}
-                onPress={() =>
-                  Alert.alert('Google sign-in', 'Google sign-in will be connected later.')
-                }
+                onPress={handleGoogleSignIn}
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel="Continue with Google"
@@ -464,6 +503,31 @@ export default function RegisterScreen({
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <CheckEmailModal
+        visible={showCheckEmail}
+        email={email.trim()}
+        onVerified={() => {
+          setShowCheckEmail(false);
+          if (onSuccess) onSuccess();
+          else if (onClose) onClose();
+        }}
+        onClose={() => setShowCheckEmail(false)}
+      />
+
+      <CompletePhoneModal
+        visible={showCompletePhone}
+        onSuccess={() => {
+          setShowCompletePhone(false);
+          if (onSuccess) onSuccess();
+          else if (onClose) onClose();
+        }}
+        onDismiss={() => {
+          setShowCompletePhone(false);
+          if (onSuccess) onSuccess();
+          else if (onClose) onClose();
+        }}
+      />
     </SafeAreaView>
   );
 }

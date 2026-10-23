@@ -38,7 +38,11 @@ export async function apiFetch(
 
   let token: string | null = null;
   try {
-    token = await SecureStore.getItemAsync(TOKEN_KEY);
+    const { getAccessToken } = require('../services/api');
+    token = await getAccessToken();
+    if (!token) {
+      token = await SecureStore.getItemAsync(TOKEN_KEY);
+    }
   } catch {
     token = null;
   }

@@ -4,5 +4,8 @@
 export { default as LoginScreen } from './screens/LoginScreen';
 export { default as RegisterScreen } from './screens/RegisterScreen';
 export { default as AuthContainerScreen } from './screens/AuthContainerScreen';
+export { default as CheckEmailModal } from './components/CheckEmailModal';
+export { default as CompletePhoneModal } from './components/CompletePhoneModal';
 export { authService } from './services/authService';
+export { AuthProvider, useAuth } from '../../../context/AuthContext';
 export * from './types';

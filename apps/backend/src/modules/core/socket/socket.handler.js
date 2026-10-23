@@ -35,12 +35,21 @@ const initializeSocketIO = (httpServer) => {
     // Authenticated mobile users
     if (token) {
       try {
-        const decoded = jwt.verify(token, config.jwt.secret);
+        const { verifyAccessToken } = require('../../../utils/tokens');
+        const decoded = verifyAccessToken(token);
         socket.userId = decoded.userId;
         socket.userPhone = decoded.phone;
+        socket.userEmail = decoded.email;
         return next();
       } catch (err) {
-        return next(new Error('Authentication failed: Invalid or expired token'));
+        try {
+          const decoded = jwt.verify(token, config.jwt.secret);
+          socket.userId = decoded.userId;
+          socket.userPhone = decoded.phone;
+          return next();
+        } catch (jwtErr) {
+          return next(new Error('Authentication failed: Invalid or expired token'));
+        }
       }
     }
 

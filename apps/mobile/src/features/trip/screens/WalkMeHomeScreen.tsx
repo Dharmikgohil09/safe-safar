@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
   Platform,
   SafeAreaView,
@@ -21,6 +22,7 @@ import {
   DEFAULT_DESTINATION,
 } from '../mock/walkMeHomeMock';
 import { useTripContacts, type TripContact } from '../storage/useTripContacts';
+import { walkTelemetryService } from '../../../services/walkTelemetryService';
 
 function formatTime(totalSeconds: number): string {
   const mins = Math.floor(totalSeconds / 60);
@@ -44,6 +46,7 @@ export default function WalkMeHomeScreen() {
   }, [initialContacts]);
 
   const progressAnim = useRef(new Animated.Value(1)).current;
+  const sessionStartedRef = useRef<boolean>(false);
 
   // Countdown timer with cleanup on unmount
   useEffect(() => {
@@ -84,8 +87,30 @@ export default function WalkMeHomeScreen() {
     }
   }, [progress, reduceMotion, progressAnim]);
 
-  const handleStartJourney = () => {
-    if (hasArrived || isMissed) return;
+  const handleStartJourney = async () => {
+    if (hasArrived || isMissed || isRunning) return;
+
+    try {
+      await walkTelemetryService.startWalkSession({
+        destinationName: destination || 'Home',
+        routeName: 'Walk Me Home Journey',
+      });
+      sessionStartedRef.current = true;
+    } catch (err: any) {
+      if (err?.message === 'Add a trusted contact first') {
+        Alert.alert(
+          'Add a trusted contact first',
+          'Add someone in Trusted Contacts so they can receive your journey alerts.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Trusted Contacts', onPress: () => router.push('/contacts') },
+          ]
+        );
+        return;
+      }
+      console.warn('[WalkMeHome] startWalkSession error:', err);
+    }
+
     setIsRunning(true);
     if (!reduceMotion) {
       try {
@@ -99,6 +124,12 @@ export default function WalkMeHomeScreen() {
   const handleArrived = () => {
     setIsRunning(false);
     setHasArrived(true);
+    if (sessionStartedRef.current) {
+      walkTelemetryService.endWalkSession(true).catch((err) => {
+        console.warn('[WalkMeHome] endWalkSession error:', err);
+      });
+      sessionStartedRef.current = false;
+    }
     if (!reduceMotion) {
       try {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -113,6 +144,10 @@ export default function WalkMeHomeScreen() {
     setHasArrived(false);
     setIsMissed(false);
     setRemainingSeconds(DEFAULT_CHECK_IN_SECONDS);
+    if (sessionStartedRef.current) {
+      walkTelemetryService.endWalkSession(false).catch(() => {});
+      sessionStartedRef.current = false;
+    }
   };
 
   const toggleContact = (id: string) => {
@@ -305,6 +340,18 @@ export default function WalkMeHomeScreen() {
                 onPress={handleStartJourney}
                 icon={<MaterialIcons name="directions-walk" size={20} color={colors.primaryDark} />}
               />
+            )}
+            {isRunning && (
+              <TouchableOpacity
+                style={[styles.outlineButton, { borderColor: colors.accent, marginBottom: spacing.sm }]}
+                onPress={() => walkTelemetryService.shareTrackingLink()}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Share Live Tracking Link"
+              >
+                <MaterialIcons name="share" size={20} color={colors.accent} />
+                <Text style={[styles.outlineButtonText, { color: colors.accent }]}>Share Live Tracking Link</Text>
+              </TouchableOpacity>
             )}
             <TouchableOpacity
               style={[styles.outlineButton, !isRunning && styles.outlineButtonSecondary]}

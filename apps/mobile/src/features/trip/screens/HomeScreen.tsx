@@ -248,7 +248,7 @@ export default function HomeScreen() {
           {/* Card 5: Live Guardian Web Tracker (Priyavardhan) */}
           <Card
             onPress={() => {
-              const url = 'http://10.236.91.75:3000/track/safesafar-live-session-2026';
+              const url = 'https://safesafar-tracker.vercel.app/track/safesafar-live-session-2026';
               Linking.openURL(url).catch(() => {
                 Alert.alert('Tracker URL', url);
               });

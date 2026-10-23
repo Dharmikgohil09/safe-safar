@@ -17,6 +17,7 @@ import { router } from 'expo-router';
 import { Card, PrimaryButton, StateView, useReduceMotion } from '../../../components/ui';
 import { colors, radius, spacing, typography } from '../../../theme';
 import { mockShareContacts, MockShareContact } from '../mock/mockData';
+import { walkTelemetryService } from '../../../services/walkTelemetryService';
 
 const DURATION_OPTIONS = ['15 min', '1 hour', '8 hours', 'Until I stop'];
 
@@ -44,7 +45,7 @@ export default function LiveLocationScreen() {
     });
   };
 
-  const showMessage = (feature: string) => {
+  const showMessage = async (feature: string) => {
     if (!reduceMotion && feature === 'Live location sharing preview') {
       Animated.sequence([
         Animated.timing(pulseAnim, {
@@ -59,22 +60,35 @@ export default function LiveLocationScreen() {
         }),
       ]).start();
     }
-    Alert.alert(
-      'Live Sharing Active',
-      "Your live GPS journey is broadcasting to Priyavardhan's Live Guardian Tracker:\n\nhttp://10.236.91.75:3000/track/safesafar-live-session-2026",
-      [
-        {
-          text: 'Open Web Tracker',
-          onPress: () => {
-            const trackerUrl = 'http://10.236.91.75:3000/track/safesafar-live-session-2026';
-            Linking.openURL(trackerUrl).catch(() => {
-              Alert.alert('Tracker URL', trackerUrl);
-            });
+
+    try {
+      const session = await walkTelemetryService.startWalkSession({
+        destinationName: 'Live Location Sharing',
+        routeName: 'Active Safe Tracking',
+      });
+
+      Alert.alert(
+        '📡 Live Sharing Active',
+        `Your real-time GPS telemetry is streaming to the SafeSafar Live Tracker.\n\nSMS alert with your tracking link has been dispatched to your trusted contacts.\n\nTracking Link:\n${session.trackerUrl}`,
+        [
+          {
+            text: '📤 Share Link (WhatsApp/SMS)',
+            onPress: () => walkTelemetryService.shareTrackingLink(),
           },
-        },
-        { text: 'OK', style: 'default' },
-      ]
-    );
+          {
+            text: '🌐 Open Web Tracker',
+            onPress: () => {
+              Linking.openURL(session.trackerUrl).catch(() => {
+                Alert.alert('Tracker URL', session.trackerUrl);
+              });
+            },
+          },
+          { text: 'OK', style: 'default' },
+        ]
+      );
+    } catch (err) {
+      console.warn('[LiveLocation] Failed to start telemetry:', err);
+    }
   };
 
   const toggleContact = (id: string) => {

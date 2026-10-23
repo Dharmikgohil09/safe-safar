@@ -18,6 +18,7 @@ import { DemoService } from '../services/demoService';
 import { GeocodingService, PlaceSearchResult } from '../services/geocodingService';
 import * as Location from 'expo-location';
 import { MAP_CONFIG } from '../config/mapConfig';
+import { walkTelemetryService } from '../services/walkTelemetryService';
 
 export type MapStyleType = 'street' | 'dark' | 'satellite';
 
@@ -268,10 +269,23 @@ export const MapProvider: React.FC<{
         ? 'Safest Route Active: Continue on main illuminated corridor past Umra Police Station'
         : 'Navigation Active: Proceed cautiously. Keep phone ready.'
     );
+
+    // Initiate live telemetry stream and dispatch SMS to trusted contacts
+    walkTelemetryService.startWalkSession({
+      destinationName: destinationName || 'Destination',
+      routeName: selectedRoute?.name || 'Safest Route',
+      initialCoords: userLocation,
+    }).catch((err) => {
+      console.warn('[MapContext] startWalkSession error:', err);
+    });
   };
 
   const stopNavigation = () => {
     setIsNavigating(false);
+    // End live telemetry and dispatch arrival SMS
+    walkTelemetryService.endWalkSession(true).catch((err) => {
+      console.warn('[MapContext] endWalkSession error:', err);
+    });
   };
 
   const selectRoute = (route: RouteOption) => {

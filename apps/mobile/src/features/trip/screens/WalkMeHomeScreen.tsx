@@ -22,6 +22,7 @@ import {
   mockWalkMeHomeContacts,
   WalkMeHomeContact,
 } from '../mock/walkMeHomeMock';
+import { walkTelemetryService } from '../../../services/walkTelemetryService';
 
 function formatTime(totalSeconds: number): string {
   const mins = Math.floor(totalSeconds / 60);
@@ -89,6 +90,14 @@ export default function WalkMeHomeScreen() {
         // Fallback for non-supporting platforms
       }
     }
+
+    // Start live telemetry streaming and dispatch SMS to trusted contacts
+    walkTelemetryService.startWalkSession({
+      destinationName: destination || 'Home',
+      routeName: 'Walk Me Home Journey',
+    }).catch((err) => {
+      console.warn('[WalkMeHome] startWalkSession error:', err);
+    });
   };
 
   const handleArrived = () => {
@@ -101,6 +110,11 @@ export default function WalkMeHomeScreen() {
         // Fallback for non-supporting platforms
       }
     }
+
+    // Stop live telemetry and dispatch arrival SMS
+    walkTelemetryService.endWalkSession(true).catch((err) => {
+      console.warn('[WalkMeHome] endWalkSession error:', err);
+    });
   };
 
   const handleReset = () => {
@@ -108,6 +122,7 @@ export default function WalkMeHomeScreen() {
     setHasArrived(false);
     setIsMissed(false);
     setRemainingSeconds(DEFAULT_CHECK_IN_SECONDS);
+    walkTelemetryService.endWalkSession(false).catch(() => {});
   };
 
   const toggleContact = (id: string) => {
@@ -300,6 +315,16 @@ export default function WalkMeHomeScreen() {
                 onPress={handleStartJourney}
                 icon={<MaterialIcons name="directions-walk" size={20} color={colors.primaryDark} />}
               />
+            )}
+            {isRunning && (
+              <TouchableOpacity
+                style={[styles.outlineButton, { borderColor: colors.accent, marginBottom: spacing.sm }]}
+                onPress={() => walkTelemetryService.shareTrackingLink()}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="share" size={20} color={colors.accent} />
+                <Text style={[styles.outlineButtonText, { color: colors.accent }]}>Share Live Tracking Link</Text>
+              </TouchableOpacity>
             )}
             <TouchableOpacity
               style={[styles.outlineButton, !isRunning && styles.outlineButtonSecondary]}

@@ -14,14 +14,13 @@ import {
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import { Card, PrimaryButton, useReduceMotion } from '../../../components/ui';
+import { Card, PrimaryButton, StateView, useReduceMotion } from '../../../components/ui';
 import { colors, radius, spacing, typography } from '../../../theme';
 import {
   DEFAULT_CHECK_IN_SECONDS,
   DEFAULT_DESTINATION,
-  mockWalkMeHomeContacts,
-  WalkMeHomeContact,
 } from '../mock/walkMeHomeMock';
+import { useTripContacts, type TripContact } from '../storage/useTripContacts';
 
 function formatTime(totalSeconds: number): string {
   const mins = Math.floor(totalSeconds / 60);
@@ -36,7 +35,13 @@ export default function WalkMeHomeScreen() {
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [hasArrived, setHasArrived] = useState<boolean>(false);
   const [isMissed, setIsMissed] = useState<boolean>(false);
-  const [contacts, setContacts] = useState<WalkMeHomeContact[]>(mockWalkMeHomeContacts);
+
+  const { contacts: initialContacts, loading } = useTripContacts();
+  const [contacts, setContacts] = useState<TripContact[]>([]);
+
+  useEffect(() => {
+    setContacts(initialContacts);
+  }, [initialContacts]);
 
   const progressAnim = useRef(new Animated.Value(1)).current;
 
@@ -327,54 +332,68 @@ export default function WalkMeHomeScreen() {
           </Text>
         </View>
 
-        <View style={styles.contactsList}>
-          {contacts.map((contact, index) => {
-            const isChecked = contact.selected;
+        {loading ? (
+          <StateView
+            kind="loading"
+            title="Loading contacts"
+            message="Retrieving your trusted contacts..."
+          />
+        ) : contacts.length === 0 ? (
+          <StateView
+            kind="empty"
+            title="No trusted contacts yet"
+            message="Add contacts in Trusted Contacts to share your location."
+          />
+        ) : (
+          <View style={styles.contactsList}>
+            {contacts.map((contact, index) => {
+              const isChecked = contact.selected;
 
-            return (
-              <TouchableOpacity
-                key={contact.id}
-                activeOpacity={0.8}
-                onPress={() => toggleContact(contact.id)}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: isChecked }}
-                accessibilityLabel={`${contact.name}, ${contact.relationship}, ${isChecked ? 'selected' : 'unselected'}`}
-              >
-                <Card
-                  style={[
-                    styles.contactCard,
-                    isChecked && styles.contactCardChecked,
-                  ]}
-                  entranceDelay={index * 60}
+              return (
+                <TouchableOpacity
+                  key={contact.id}
+                  activeOpacity={0.8}
+                  onPress={() => toggleContact(contact.id)}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: isChecked }}
+                  accessibilityLabel={`${contact.name}, ${isChecked ? 'selected' : 'unselected'}`}
                 >
-                  <View style={styles.checkboxContainer}>
-                    <MaterialIcons
-                      name={isChecked ? 'check-box' : 'check-box-outline-blank'}
-                      size={24}
-                      color={isChecked ? colors.accent : colors.textMuted}
-                    />
-                  </View>
-
-                  <View style={styles.contactAvatar}>
-                    <Text style={styles.avatarInitials}>
-                      {contact.name.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-
-                  <View style={styles.contactInfo}>
-                    <View style={styles.contactTopRow}>
-                      <Text style={styles.contactName}>{contact.name}</Text>
-                      <View style={styles.relPill}>
-                        <Text style={styles.relPillText}>{contact.relationship}</Text>
-                      </View>
+                  <Card
+                    style={[
+                      styles.contactCard,
+                      isChecked && styles.contactCardChecked,
+                    ]}
+                    entranceDelay={index * 60}
+                  >
+                    <View style={styles.checkboxContainer}>
+                      <MaterialIcons
+                        name={isChecked ? 'check-box' : 'check-box-outline-blank'}
+                        size={24}
+                        color={isChecked ? colors.accent : colors.textMuted}
+                      />
                     </View>
-                    <Text style={styles.contactPhone}>{contact.phone}</Text>
-                  </View>
-                </Card>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+
+                    <View style={styles.contactAvatar}>
+                      <Text style={styles.avatarInitials}>
+                        {contact.name.charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+
+                    <View style={styles.contactInfo}>
+                      <View style={styles.contactTopRow}>
+                        <Text style={styles.contactName}>{contact.name}</Text>
+                        <View style={styles.relPill}>
+                          <Text style={styles.relPillText}>Trusted</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.contactPhone}>{contact.phone}</Text>
+                    </View>
+                  </Card>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

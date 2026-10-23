@@ -68,16 +68,7 @@ export const MAP_CONFIG: MapConfig = {
  * Get the tile URL for a given style and tile coordinates (z, x, y)
  */
 export function getTileUrl(style: 'street' | 'dark' | 'satellite', z: number, x: number, y: number): string {
-  // 1. If custom tile URL is configured in .env (skip blocked OSM volunteer server)
-  if (MAP_CONFIG.customTileUrl && !MAP_CONFIG.customTileUrl.includes('tile.openstreetmap.org')) {
-    return MAP_CONFIG.customTileUrl
-      .replace('{z}', String(z))
-      .replace('{x}', String(x))
-      .replace('{y}', String(y))
-      .replace('{s}', ['a', 'b', 'c'][(x + y) % 3]);
-  }
-
-  // 2. If Mapbox access token is configured
+  // 1. If Mapbox access token is configured, use crisp Mapbox tiles
   if (MAP_CONFIG.mapboxToken) {
     const mapboxStyles = {
       street: 'streets-v12',
@@ -85,6 +76,15 @@ export function getTileUrl(style: 'street' | 'dark' | 'satellite', z: number, x:
       satellite: 'satellite-v9',
     };
     return `https://api.mapbox.com/styles/v1/mapbox/${mapboxStyles[style]}/tiles/256/${z}/${x}/${y}@2x?access_token=${MAP_CONFIG.mapboxToken}`;
+  }
+
+  // 2. If custom tile URL is configured in .env (skip blocked OSM volunteer server)
+  if (MAP_CONFIG.customTileUrl && !MAP_CONFIG.customTileUrl.includes('tile.openstreetmap.org')) {
+    return MAP_CONFIG.customTileUrl
+      .replace('{z}', String(z))
+      .replace('{x}', String(x))
+      .replace('{y}', String(y))
+      .replace('{s}', ['a', 'b', 'c'][(x + y) % 3]);
   }
 
   // 3. Default high-uptime, free, no-API-key-required slippy tile servers:

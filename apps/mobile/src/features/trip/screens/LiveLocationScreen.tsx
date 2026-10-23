@@ -17,6 +17,7 @@ import { router } from 'expo-router';
 import { Card, PrimaryButton, StateView, useReduceMotion } from '../../../components/ui';
 import { colors, radius, spacing, typography } from '../../../theme';
 import { mockShareContacts, MockShareContact } from '../mock/mockData';
+import { tripLocationPublisher } from '../../../services/tripLocationPublisher';
 
 const DURATION_OPTIONS = ['15 min', '1 hour', '8 hours', 'Until I stop'];
 
@@ -59,14 +60,20 @@ export default function LiveLocationScreen() {
         }),
       ]).start();
     }
+    const pubStatus = tripLocationPublisher.getStatus();
+    const activeToken = pubStatus.trackingToken || 'safesafar-live-session-2026';
+    const trackerBaseUrl =
+      process.env.EXPO_PUBLIC_TRACKER_URL || 'http://localhost:3000';
+    const trackerUrl =
+      `${trackerBaseUrl.replace(/\/+$/, '')}/track/${activeToken}`;
+
     Alert.alert(
       'Live Sharing Active',
-      "Your live GPS journey is broadcasting to Priyavardhan's Live Guardian Tracker:\n\nhttp://10.236.91.75:3000/track/safesafar-live-session-2026",
+      `Your live GPS journey is broadcasting to Priyavardhan's Live Guardian Tracker:\n\n${trackerUrl}`,
       [
         {
           text: 'Open Web Tracker',
           onPress: () => {
-            const trackerUrl = 'http://10.236.91.75:3000/track/safesafar-live-session-2026';
             Linking.openURL(trackerUrl).catch(() => {
               Alert.alert('Tracker URL', trackerUrl);
             });

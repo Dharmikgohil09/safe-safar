@@ -194,7 +194,87 @@ export default function TrackPage() {
       };
     }
 
-    // MODE B: Real Socket.IO Backend Integration
+    // MODE B: Real Socket.IO & REST Backend Integration
+    let isCancelled = false;
+
+    // Fetch initial trip metadata from backend REST endpoint
+    const fetchSessionData = async () => {
+      try {
+        const response = await fetch(`${config.apiUrl}/trips/track/${encodeURIComponent(token)}`);
+        if (isCancelled) return;
+
+        if (response.status === 404) {
+          setConnectionStatus('invalid-token');
+          setErrorMessage('This tracking link could not be found or has expired.');
+          return;
+        }
+
+        if (!response.ok) {
+          setConnectionStatus('error');
+          setErrorMessage('Unable to load tracking session details from server.');
+          return;
+        }
+
+        const json = await response.json();
+        const trip = json.data;
+
+        if (!trip) {
+          setConnectionStatus('invalid-token');
+          setErrorMessage('Empty session data received from server.');
+          return;
+        }
+
+        const sessionData: TrackingSession = {
+          token: trip.trackingToken || token,
+          userName: trip.userName || 'SafeSafar User',
+          status: trip.status === 'arrived' ? 'completed' : trip.status,
+          destination:
+            trip.destination?.coordinates && trip.destination.coordinates.length === 2
+              ? {
+                  name: trip.destination.address || 'Destination',
+                  address: trip.destination.address,
+                  latitude: trip.destination.coordinates[1],
+                  longitude: trip.destination.coordinates[0],
+                }
+              : null,
+          currentLocation:
+            trip.lastKnownLocation?.coordinates && trip.lastKnownLocation.coordinates.length === 2
+              ? {
+                  latitude: trip.lastKnownLocation.coordinates[1],
+                  longitude: trip.lastKnownLocation.coordinates[0],
+                  speed: trip.lastKnownLocation.speed ?? null,
+                  heading: trip.lastKnownLocation.heading ?? null,
+                  accuracy: trip.lastKnownLocation.accuracy,
+                  timestamp: trip.lastKnownLocation.timestamp,
+                }
+              : null,
+          lastUpdated: trip.lastKnownLocation?.timestamp || trip.lastCheckinAt || trip.deadlineAt,
+          startedAt: trip.createdAt || Date.now(),
+          isMock: false,
+        };
+
+        setSession(sessionData);
+
+        if (sessionData.currentLocation) {
+          handleLocationUpdate(sessionData.currentLocation);
+        }
+
+        if (sessionData.status === 'completed' || sessionData.status === 'expired') {
+          setIsCompleted(true);
+          setConnectionStatus('ended');
+        }
+      } catch (err: any) {
+        if (!isCancelled) {
+          console.warn('[SafeSafar] Failed to fetch session metadata via REST:', err.message);
+          // If offline/fetch fails, keep status as connecting/error
+          setConnectionStatus('error');
+          setErrorMessage('Unable to connect to the tracking server. Please check your network connection.');
+        }
+      }
+    };
+
+    fetchSessionData();
+
     const handle = createTrackerSocketConnection(token, config.socketUrl, {
       onSessionInit: (sess) => {
         // Reconcile timestamps: If an early location update arrived before session:data,
@@ -252,6 +332,7 @@ export default function TrackPage() {
     socketHandleRef.current = handle;
 
     return () => {
+      isCancelled = true;
       handle.disconnect();
       socketHandleRef.current = null;
       latestProcessedTimestampRef.current = null;
@@ -299,11 +380,13 @@ export default function TrackPage() {
     }
   };
 
+  const isMockSession = Boolean(session ? session.isMock : config.isMockMode);
+
   // State condition screens
   if (connectionStatus === 'invalid-token') {
     return (
       <main className="tracker-page-layout">
-        <TrackerHeader status={connectionStatus} isMock={config.isMockMode} />
+        <TrackerHeader status={connectionStatus} isMock={isMockSession} />
         <ErrorState
           type="invalid-token"
           token={token}
@@ -316,7 +399,7 @@ export default function TrackPage() {
   if (connectionStatus === 'ended' || session?.status === 'completed' || session?.status === 'expired') {
     return (
       <main className="tracker-page-layout">
-        <TrackerHeader status={connectionStatus} isMock={config.isMockMode} />
+        <TrackerHeader status={connectionStatus} isMock={isMockSession} />
         <ErrorState
           type="ended"
           token={token}
@@ -329,7 +412,7 @@ export default function TrackPage() {
   if (connectionStatus === 'error') {
     return (
       <main className="tracker-page-layout">
-        <TrackerHeader status={connectionStatus} isMock={config.isMockMode} />
+        <TrackerHeader status={connectionStatus} isMock={isMockSession} />
         <ErrorState
           type="network-error"
           token={token}
@@ -345,7 +428,7 @@ export default function TrackPage() {
       {/* Top Header */}
       <TrackerHeader
         status={connectionStatus}
-        isMock={config.isMockMode}
+        isMock={isMockSession}
         isSos={sosState === 'active'}
         sosState={sosState}
         onRefresh={handleManualRefresh}
@@ -375,7 +458,7 @@ export default function TrackPage() {
 
       {/* Demo Floating Badge with 3-state SOS simulator controls */}
       <MockModeBadge
-        isMockActive={config.isMockMode}
+        isMockActive={isMockSession}
         isPaused={isPaused}
         isCompleted={isCompleted}
         sosState={sosState}

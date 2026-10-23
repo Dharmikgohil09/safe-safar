@@ -1,21 +1,28 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
   Platform,
   SafeAreaView,
   ScrollView,
+  Share,
   StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
+  Linking,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as Haptics from 'expo-haptics';
+import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { Card, PrimaryButton, useReduceMotion } from '../../../components/ui';
 import { colors, radius, spacing, typography } from '../../../theme';
+import { apiFetch } from '../../../lib/api';
+import { authService } from '../auth/services/authService';
+import { tripLocationPublisher } from '../../../services/tripLocationPublisher';
 import {
   DEFAULT_CHECK_IN_SECONDS,
   DEFAULT_DESTINATION,
@@ -34,9 +41,12 @@ export default function WalkMeHomeScreen() {
   const [destination, setDestination] = useState<string>(DEFAULT_DESTINATION);
   const [remainingSeconds, setRemainingSeconds] = useState<number>(DEFAULT_CHECK_IN_SECONDS);
   const [isRunning, setIsRunning] = useState<boolean>(false);
+  const [isStarting, setIsStarting] = useState<boolean>(false);
   const [hasArrived, setHasArrived] = useState<boolean>(false);
   const [isMissed, setIsMissed] = useState<boolean>(false);
   const [contacts, setContacts] = useState<WalkMeHomeContact[]>(mockWalkMeHomeContacts);
+  const [activeTripId, setActiveTripId] = useState<string | null>(null);
+  const [activeTripToken, setActiveTripToken] = useState<string | null>(null);
 
   const progressAnim = useRef(new Animated.Value(1)).current;
 
@@ -49,6 +59,7 @@ export default function WalkMeHomeScreen() {
           if (prev <= 1) {
             setIsRunning(false);
             setIsMissed(true);
+            tripLocationPublisher.stopPublishing();
             return 0;
           }
           return prev - 1;
@@ -79,9 +90,17 @@ export default function WalkMeHomeScreen() {
     }
   }, [progress, reduceMotion, progressAnim]);
 
-  const handleStartJourney = () => {
-    if (hasArrived || isMissed) return;
-    setIsRunning(true);
+  // Cleanup GPS publisher on unmount
+  useEffect(() => {
+    return () => {
+      tripLocationPublisher.stopPublishing();
+    };
+  }, []);
+
+  const handleStartJourney = async () => {
+    if (isRunning || isStarting || hasArrived || isMissed) return;
+    setIsStarting(true);
+
     if (!reduceMotion) {
       try {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -89,11 +108,135 @@ export default function WalkMeHomeScreen() {
         // Fallback for non-supporting platforms
       }
     }
+
+    try {
+      // 1. Check user authentication
+      const session = await authService.getSession();
+      if (!session?.token) {
+        setIsStarting(false);
+        Alert.alert(
+          'Sign-in Required',
+          'Please sign in to your SafeSafar account before starting a protected Walk Me Home journey.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Sign In', onPress: () => router.push('/(auth)/login') },
+          ]
+        );
+        return;
+      }
+
+      // 2. Request & verify location permissions
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setIsStarting(false);
+        Alert.alert(
+          'Location Permission Required',
+          'SafeSafar needs location access to broadcast your live GPS journey to your trusted guardians.'
+        );
+        return;
+      }
+
+      // 3. Acquire current device coordinates
+      let loc: Location.LocationObject;
+      try {
+        loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      } catch (locErr: any) {
+        setIsStarting(false);
+        Alert.alert(
+          'GPS Location Error',
+          'Could not retrieve your current location. Please verify that GPS/Location is turned on.'
+        );
+        return;
+      }
+
+      const originCoords = [loc.coords.longitude, loc.coords.latitude];
+
+      // 4. Create trip on backend
+      let res;
+      try {
+        res = await apiFetch('/trips', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            origin: {
+              address: 'Current Location',
+              coordinates: originCoords,
+            },
+            destination: {
+              address: destination?.trim() || 'Home',
+              coordinates: [originCoords[0] + 0.005, originCoords[1] + 0.005],
+            },
+            estimatedDurationMinutes: Math.max(1, Math.ceil(remainingSeconds / 60)),
+            emergencyContactIds: contacts.filter((c) => c.selected).map((c) => c.id),
+          }),
+        });
+      } catch (netErr: any) {
+        setIsStarting(false);
+        Alert.alert(
+          'Network Connection Error',
+          'Could not connect to SafeSafar server. Please check your internet connection and try again.'
+        );
+        return;
+      }
+
+      if (!res.ok) {
+        setIsStarting(false);
+        let errorMsg = 'Failed to create journey on server.';
+        try {
+          const errData = await res.json();
+          if (errData.error) errorMsg = errData.error;
+        } catch {}
+        Alert.alert('Trip Creation Failed', errorMsg);
+        return;
+      }
+
+      const json = await res.json();
+      const trip = json.data;
+
+      if (!trip?.tripId || !trip?.trackingToken) {
+        setIsStarting(false);
+        Alert.alert('Server Error', 'Received invalid session token from SafeSafar server.');
+        return;
+      }
+
+      // 5. Start live location publisher
+      const pubResult = await tripLocationPublisher.startPublishing({
+        tripId: trip.tripId,
+        trackingToken: trip.trackingToken,
+        authToken: session.token,
+      });
+
+      if (!pubResult.success) {
+        setIsStarting(false);
+        Alert.alert('Live Tracking Warning', pubResult.error || 'Failed to start GPS broadcast.');
+        return;
+      }
+
+      // 6. Successfully activated!
+      setActiveTripId(trip.tripId);
+      setActiveTripToken(trip.trackingToken);
+      setIsStarting(false);
+      setIsRunning(true);
+    } catch (err: any) {
+      setIsStarting(false);
+      console.warn('[WalkMeHome] Unexpected error starting journey:', err);
+      Alert.alert('Unexpected Error', err.message || 'An unexpected error occurred while starting your journey.');
+    }
   };
 
-  const handleArrived = () => {
+  const handleArrived = async () => {
     setIsRunning(false);
     setHasArrived(true);
+    await tripLocationPublisher.stopPublishing();
+
+    if (activeTripId) {
+      try {
+        await apiFetch(`/trips/${activeTripId}/arrived`, { method: 'POST' });
+      } catch {
+        // Ignore network errors on arrive
+      }
+    }
+
     if (!reduceMotion) {
       try {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -103,11 +246,14 @@ export default function WalkMeHomeScreen() {
     }
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     setIsRunning(false);
     setHasArrived(false);
     setIsMissed(false);
     setRemainingSeconds(DEFAULT_CHECK_IN_SECONDS);
+    await tripLocationPublisher.stopPublishing();
+    setActiveTripId(null);
+    setActiveTripToken(null);
   };
 
   const toggleContact = (id: string) => {
@@ -290,13 +436,58 @@ export default function WalkMeHomeScreen() {
           </Card>
         )}
 
+        {/* Active Live Tracking Card with Guardian Link */}
+        {isRunning && activeTripToken && (
+          <Card style={styles.trackingLinkCard}>
+            <View style={styles.trackingLinkHeader}>
+              <View style={styles.pulseDot} />
+              <Text style={styles.trackingLinkTitle}>Live Guardian Tracking Active</Text>
+            </View>
+            <Text style={styles.trackingLinkSubtitle}>
+              Your live GPS journey is broadcasting to the Live Guardian Tracker.
+            </Text>
+            <View style={styles.trackingLinkActions}>
+              <TouchableOpacity
+                style={styles.openTrackerButton}
+                onPress={() => {
+                  const base = (process.env.EXPO_PUBLIC_TRACKER_URL || 'http://localhost:3000').replace(/\/+$/, '');
+                  const url = `${base}/track/${activeTripToken}`;
+                  Linking.openURL(url).catch(() => Alert.alert('Tracker URL', url));
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Open Web Tracker"
+              >
+                <MaterialIcons name="open-in-new" size={16} color="#FFFFFF" />
+                <Text style={styles.openTrackerButtonText}>Open Web Tracker</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.shareTrackerButton}
+                onPress={() => {
+                  const base = (process.env.EXPO_PUBLIC_TRACKER_URL || 'http://localhost:3000').replace(/\/+$/, '');
+                  const url = `${base}/track/${activeTripToken}`;
+                  Share.share({
+                    message: `SafeSafar Live Walk Me Home: Track my journey in real-time: ${url}`,
+                    url,
+                  }).catch(() => {});
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Share tracking link"
+              >
+                <MaterialIcons name="share" size={16} color={colors.primary} />
+                <Text style={styles.shareTrackerButtonText}>Share Link</Text>
+              </TouchableOpacity>
+            </View>
+          </Card>
+        )}
+
         {/* Controls */}
         {!hasArrived && !isMissed && (
           <View style={styles.controlsSection}>
             {!isRunning && (
               <PrimaryButton
                 variant="accent"
-                label="Start journey"
+                label={isStarting ? 'Starting journey...' : 'Start journey'}
+                disabled={isStarting}
                 onPress={handleStartJourney}
                 icon={<MaterialIcons name="directions-walk" size={20} color={colors.primaryDark} />}
               />
@@ -698,5 +889,71 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textMuted,
     marginTop: 2,
+  },
+  trackingLinkCard: {
+    padding: 14,
+    marginVertical: 10,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1.5,
+    borderColor: '#93C5FD',
+  },
+  trackingLinkHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  pulseDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#2563EB',
+  },
+  trackingLinkTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1D4ED8',
+  },
+  trackingLinkSubtitle: {
+    fontSize: 12,
+    color: '#3B82F6',
+    marginBottom: 10,
+  },
+  trackingLinkActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  openTrackerButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: radius.card,
+    gap: 6,
+  },
+  openTrackerButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  shareTrackerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    borderRadius: radius.card,
+    gap: 6,
+  },
+  shareTrackerButtonText: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

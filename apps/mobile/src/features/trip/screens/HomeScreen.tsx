@@ -14,6 +14,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
 import { Card, DarkHeader, DrawerMenu, PrimaryButton, ShieldLogo } from '../../../components/ui';
 import { colors, radius, typography } from '../../../theme';
+import { tripLocationPublisher } from '../../../services/tripLocationPublisher';
 
 export default function HomeScreen() {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -238,7 +239,12 @@ export default function HomeScreen() {
           {/* Card 5: Live Guardian Web Tracker (Priyavardhan) */}
           <Card
             onPress={() => {
-              const url = 'http://10.236.91.75:3000/track/safesafar-live-session-2026';
+              const pubStatus = tripLocationPublisher.getStatus();
+              const token = pubStatus.trackingToken || 'safesafar-live-session-2026';
+              const trackerBaseUrl =
+                process.env.EXPO_PUBLIC_TRACKER_URL || 'http://localhost:3000';
+              const url =
+                `${trackerBaseUrl.replace(/\/+$/, '')}/track/${token}`;
               Linking.openURL(url).catch(() => {
                 Alert.alert('Tracker URL', url);
               });

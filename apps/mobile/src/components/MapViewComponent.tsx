@@ -20,6 +20,7 @@ import { getIncidentColor } from '../models/IncidentReport';
 import { getRouteColor, getSafetyTier } from '../models/RouteOption';
 import { formatDistance, formatDuration } from '../utils/geo';
 import { getTileUrl } from '../config/mapConfig';
+import { walkTelemetryService } from '../services/walkTelemetryService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -462,14 +463,26 @@ export const MapViewComponent: React.FC = () => {
         <View style={styles.navHudBanner}>
           <View style={styles.navHudLeft}>
             <Text style={styles.navTurnIcon}>↰</Text>
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={styles.navTurnText}>In 250m, Keep Left</Text>
               <Text style={styles.navStreetText}>{navigationStep}</Text>
+              <Text style={{ color: '#FCD34D', fontSize: 11, fontWeight: '700', marginTop: 2 }}>
+                📡 Live Telemetry Broadcasting via SMS & Web
+              </Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.navExitButton} onPress={stopNavigation}>
-            <Text style={styles.navExitText}>EXIT</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity
+              style={[styles.navExitButton, { backgroundColor: '#D97706', marginRight: 6 }]}
+              onPress={() => walkTelemetryService.shareTrackingLink()}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.navExitText}>SHARE</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.navExitButton} onPress={stopNavigation} activeOpacity={0.8}>
+              <Text style={styles.navExitText}>ARRIVED</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 

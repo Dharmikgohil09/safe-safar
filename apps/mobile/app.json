@@ -5,21 +5,21 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "safesafar",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.codecraft.safesafar",
       "config": {
-        "googleMapsApiKey": ""
+        "googleMapsApiKey": "AIzaSyCMKifIcZIjj_s_tQvSYE87uUSufeZ902w"
       }
     },
     "android": {
       "package": "com.codecraft.safesafar",
       "config": {
         "googleMaps": {
-          "apiKey": ""
+          "apiKey": "AIzaSyCMKifIcZIjj_s_tQvSYE87uUSufeZ902w"
         }
       },
       "permissions": [
@@ -41,7 +41,11 @@
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_BACKGROUND_LOCATION",
         "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_LOCATION"
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "READ_PHONE_STATE",
+        "READ_CALL_LOG",
+        "SCHEDULE_EXACT_ALARM",
+        "WAKE_LOCK"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -78,7 +82,17 @@
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true
         }
-      ]
+      ],
+      [
+        "react-native-vosk",
+        {
+          "models": [
+            "assets/model-en-en"
+          ]
+        }
+      ],
+      "./plugins/withLockScreenActivity",
+      "./plugins/withVoiceForegroundService"
     ],
     "experiments": {
       "typedRoutes": true,

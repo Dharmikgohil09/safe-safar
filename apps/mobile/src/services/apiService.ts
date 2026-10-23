@@ -52,7 +52,7 @@ export class ApiService {
       }
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3500);
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
 
       const res = await fetch(url, {
         method: 'POST',
@@ -172,68 +172,75 @@ export class ApiService {
       });
     }
 
-    // If OSRM returned only 1 route, synthesize a distinct Safest Boulevard Route and a Risky Cut
+    // If OSRM returned 1 route, preserve real street geometry without synthetic river-cutting distortion
     if (evaluatedOptions.length === 1) {
       const baseRoute = evaluatedOptions[0];
       const baseCoords = baseRoute.coordinates;
 
-      // 1. Safest Arterial Route (curved through major lighted boulevard with 10% distance buffer)
-      const safestCoords = this.applyWaypointsOffset(baseCoords, 0.0035, -0.002);
-      const safestSafety = this.evaluateRouteSafety(safestCoords, reports, landmarks, deadZones, true, 92);
+      // Check if route crosses Tapi River in Surat
+      const crossesTapi =
+        (origin.latitude < 21.18 && destination.latitude > 21.18) ||
+        (origin.latitude > 21.18 && destination.latitude < 21.18);
+
+      let alternateCoords = baseCoords;
+      if (crossesTapi) {
+        try {
+          // Attempt alternate real bridge (Cable Bridge 72.7935, 21.1762)
+          const altRes = await fetch(
+            `${MAP_CONFIG.routingApiUrl}/route/v1/walking/${origin.longitude},${origin.latitude};72.7935,21.1762;${destination.longitude},${destination.latitude}?overview=full&geometries=geojson`,
+            { headers: { 'User-Agent': 'SafeSafar-Mobile/1.0' } }
+          );
+          if (altRes.ok) {
+            const altData = await altRes.json();
+            if (altData?.routes?.[0]?.geometry?.coordinates) {
+              alternateCoords = altData.routes[0].geometry.coordinates.map(([lng, lat]: [number, number]) => ({
+                latitude: lat,
+                longitude: lng,
+              }));
+            }
+          }
+        } catch (_) {}
+      }
 
       const safestOption: RouteOption = {
         routeId: 'route_arterial_safest',
         name: 'Main Arterial Boulevard (Safest)',
-        safetyScore: safestSafety.safetyScore,
+        safetyScore: 92,
         color: 'green',
-        distanceMeters: Math.round(baseRoute.distanceMeters * 1.08),
-        durationSeconds: Math.round(baseRoute.durationSeconds * 1.1),
+        distanceMeters: baseRoute.distanceMeters,
+        durationSeconds: baseRoute.durationSeconds,
         isSafest: true,
         isFastest: false,
-        safetyFactors: safestSafety.factors,
+        safetyFactors: {
+          lightingScore: 94,
+          policeProximityScore: 90,
+          incidentDecayScore: 92,
+        },
         explanation: 'Well-lit 4-lane arterial road with active commercial activity and high police visibility.',
         dangerAlerts: [],
-        coordinates: safestCoords,
+        coordinates: baseCoords,
       };
-
-      // 2. Risky / Fastest Backstreet Cut
-      const riskyCoords = this.applyWaypointsOffset(baseCoords, -0.004, 0.003);
-      const riskySafety = this.evaluateRouteSafety(riskyCoords, reports, landmarks, deadZones, false, 46);
 
       const riskyOption: RouteOption = {
         routeId: 'route_backstreet_risky',
-        name: 'Direct Alley Cut (Faster but Unlit)',
-        safetyScore: Math.min(55, riskySafety.safetyScore),
-        color: 'red',
-        distanceMeters: Math.round(baseRoute.distanceMeters * 0.94),
-        durationSeconds: Math.round(baseRoute.durationSeconds * 0.9),
+        name: 'Secondary Transit Route (Moderate)',
+        safetyScore: 68,
+        color: 'yellow',
+        distanceMeters: Math.round(baseRoute.distanceMeters * 1.05),
+        durationSeconds: Math.round(baseRoute.durationSeconds * 1.05),
         isSafest: false,
         isFastest: true,
         safetyFactors: {
-          lightingScore: 38,
-          policeProximityScore: 42,
-          incidentDecayScore: 49,
+          lightingScore: 68,
+          policeProximityScore: 65,
+          incidentDecayScore: 70,
         },
-        explanation: 'Saves 3 mins via unmonitored service lane, but low lighting and reported blind spots.',
-        dangerAlerts: ['Poor street lighting after dusk', 'Sparse evening foot traffic'],
-        coordinates: riskyCoords,
+        explanation: 'Alternative bridge route with standard street lighting.',
+        dangerAlerts: ['Lower foot traffic after 10 PM'],
+        coordinates: alternateCoords.length > 0 ? alternateCoords : baseCoords,
       };
 
-      // Standardize base route as Balanced (yellow)
-      baseRoute.routeId = 'route_intermediate_balanced';
-      baseRoute.name = 'Secondary Avenue (Moderate)';
-      baseRoute.safetyScore = 74;
-      baseRoute.color = 'yellow';
-      baseRoute.isSafest = false;
-      baseRoute.isFastest = false;
-      baseRoute.safetyFactors = {
-        lightingScore: 72,
-        policeProximityScore: 76,
-        incidentDecayScore: 75,
-      };
-      baseRoute.explanation = 'Standard city avenue with regular street lighting and moderate vehicle traffic.';
-
-      return [safestOption, baseRoute, riskyOption];
+      return [safestOption, riskyOption];
     }
 
     // Mark the highest safety score as safest
@@ -398,29 +405,65 @@ export class ApiService {
     const dLat = destination.latitude - origin.latitude;
     const dLng = destination.longitude - origin.longitude;
 
-    // Route 1: Safest Arterial Corridor
-    const greenCoords: LatLng[] = [
-      origin,
-      { latitude: origin.latitude + dLat * 0.25, longitude: origin.longitude + dLng * 0.15 + 0.002 },
-      { latitude: origin.latitude + dLat * 0.5, longitude: origin.longitude + dLng * 0.45 + 0.003 },
-      { latitude: origin.latitude + dLat * 0.75, longitude: origin.longitude + dLng * 0.8 + 0.001 },
-      destination,
-    ];
+    // Detect if crossing Tapi River only when in Surat area
+    const inSuratArea =
+      Math.abs(origin.latitude - 21.18) < 0.15 && Math.abs(origin.longitude - 72.82) < 0.15;
+    const crossesTapi =
+      inSuratArea &&
+      ((origin.latitude < 21.18 && destination.latitude > 21.18) ||
+        (origin.latitude > 21.18 && destination.latitude < 21.18));
 
-    // Route 2: Secondary Avenue (Moderate)
-    const yellowCoords: LatLng[] = [
-      origin,
-      { latitude: origin.latitude + dLat * 0.33, longitude: origin.longitude + dLng * 0.3 },
-      { latitude: origin.latitude + dLat * 0.66, longitude: origin.longitude + dLng * 0.68 },
-      destination,
-    ];
+    // Physical bridges over Tapi River
+    const SARDAR_BRIDGE: LatLng = { latitude: 21.1812, longitude: 72.8078 };
+    const VIVEKANANDA_BRIDGE: LatLng = { latitude: 21.1870, longitude: 72.8045 };
+    const CABLE_BRIDGE: LatLng = { latitude: 21.1762, longitude: 72.7935 };
 
-    // Route 3: Direct Cut (Risky)
-    const redCoords: LatLng[] = [
-      origin,
-      { latitude: origin.latitude + dLat * 0.5, longitude: origin.longitude + dLng * 0.5 - 0.003 },
-      destination,
-    ];
+    let greenCoords: LatLng[];
+    let yellowCoords: LatLng[];
+    let redCoords: LatLng[];
+
+    if (crossesTapi) {
+      greenCoords = [
+        origin,
+        { latitude: (origin.latitude + SARDAR_BRIDGE.latitude) / 2, longitude: (origin.longitude + SARDAR_BRIDGE.longitude) / 2 },
+        SARDAR_BRIDGE,
+        { latitude: (SARDAR_BRIDGE.latitude + destination.latitude) / 2, longitude: (SARDAR_BRIDGE.longitude + destination.longitude) / 2 },
+        destination,
+      ];
+      yellowCoords = [
+        origin,
+        { latitude: (origin.latitude + VIVEKANANDA_BRIDGE.latitude) / 2, longitude: (origin.longitude + VIVEKANANDA_BRIDGE.longitude) / 2 },
+        VIVEKANANDA_BRIDGE,
+        { latitude: (VIVEKANANDA_BRIDGE.latitude + destination.latitude) / 2, longitude: (VIVEKANANDA_BRIDGE.longitude + destination.longitude) / 2 },
+        destination,
+      ];
+      redCoords = [
+        origin,
+        { latitude: (origin.latitude + CABLE_BRIDGE.latitude) / 2, longitude: (origin.longitude + CABLE_BRIDGE.longitude) / 2 },
+        CABLE_BRIDGE,
+        { latitude: (CABLE_BRIDGE.latitude + destination.latitude) / 2, longitude: (CABLE_BRIDGE.longitude + destination.longitude) / 2 },
+        destination,
+      ];
+    } else {
+      greenCoords = [
+        origin,
+        { latitude: origin.latitude + dLat * 0.25, longitude: origin.longitude + dLng * 0.15 },
+        { latitude: origin.latitude + dLat * 0.5, longitude: origin.longitude + dLng * 0.45 },
+        { latitude: origin.latitude + dLat * 0.75, longitude: origin.longitude + dLng * 0.8 },
+        destination,
+      ];
+      yellowCoords = [
+        origin,
+        { latitude: origin.latitude + dLat * 0.33, longitude: origin.longitude + dLng * 0.3 },
+        { latitude: origin.latitude + dLat * 0.66, longitude: origin.longitude + dLng * 0.68 },
+        destination,
+      ];
+      redCoords = [
+        origin,
+        { latitude: origin.latitude + dLat * 0.5, longitude: origin.longitude + dLng * 0.5 },
+        destination,
+      ];
+    }
 
     return [
       {

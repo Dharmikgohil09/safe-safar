@@ -10,7 +10,7 @@ class ApiService {
   final http.Client _client;
 
   ApiService({
-    this.baseUrl = 'https://safesafar-backend.onrender.com',
+    this.baseUrl = 'https://safe-safar-1.onrender.com',
     http.Client? client,
   }) : _client = client ?? http.Client();
 

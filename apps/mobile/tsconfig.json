@@ -3,8 +3,11 @@
   "compilerOptions": {
     "strict": true,
     "jsx": "react-jsx",
-    "lib": ["ES2021", "DOM"],
-    "moduleResolution": "node",
+    "lib": [
+      "ES2021",
+      "DOM"
+    ],
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "skipLibCheck": true,

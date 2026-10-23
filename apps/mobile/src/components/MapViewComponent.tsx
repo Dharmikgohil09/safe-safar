@@ -20,6 +20,7 @@ import { getIncidentColor } from '../models/IncidentReport';
 import { getRouteColor, getSafetyTier } from '../models/RouteOption';
 import { formatDistance, formatDuration } from '../utils/geo';
 import { getTileUrl } from '../config/mapConfig';
+import { walkTelemetryService } from '../services/walkTelemetryService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -40,6 +41,27 @@ function tile2lon(x: number, zoom: number): number {
 function tile2lat(y: number, zoom: number): number {
   const n = Math.PI - (2 * Math.PI * y) / Math.pow(2, zoom);
   return (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+}
+
+// Downsamples dense polyline points to smooth, high-fps screen segments (eliminates React View lag)
+function downsampleForScreen(
+  coords: LatLng[],
+  projectFn: (c: LatLng) => { x: number; y: number },
+  minPixelDist = 14
+): LatLng[] {
+  if (!coords || coords.length <= 25) return coords || [];
+  const result: LatLng[] = [coords[0]];
+  let lastPix = projectFn(coords[0]);
+  for (let i = 1; i < coords.length - 1; i++) {
+    const curPix = projectFn(coords[i]);
+    const d = Math.hypot(curPix.x - lastPix.x, curPix.y - lastPix.y);
+    if (d >= minPixelDist) {
+      result.push(coords[i]);
+      lastPix = curPix;
+    }
+  }
+  result.push(coords[coords.length - 1]);
+  return result;
 }
 
 export const MapViewComponent: React.FC = () => {
@@ -119,13 +141,21 @@ export const MapViewComponent: React.FC = () => {
     };
   };
 
-  // Pan gesture responder
+  const touchStartRef = useRef<{ x: number; y: number; time: number }>({ x: 0, y: 0, time: 0 });
+
+  // Viewport visibility checker for high-performance culling
+  const isVisible = (x: number, y: number, margin = 60) => {
+    return x >= -margin && x <= SCREEN_WIDTH + margin && y >= -margin && y <= SCREEN_HEIGHT + margin;
+  };
+
+  // Pan gesture responder with strict tap vs drag discrimination
   const panResponder = useMemo(
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 3 || Math.abs(gesture.dy) > 3,
-        onPanResponderGrant: () => {
+        onPanResponderGrant: (_, gesture) => {
+          touchStartRef.current = { x: gesture.x0, y: gesture.y0, time: Date.now() };
           setDragStart({ x: panOffset.x, y: panOffset.y });
         },
         onPanResponderMove: (_, gesture) => {
@@ -136,11 +166,18 @@ export const MapViewComponent: React.FC = () => {
             });
           }
         },
-        onPanResponderRelease: () => {
+        onPanResponderRelease: (_, gesture) => {
           setDragStart(null);
+          const moveDist = Math.hypot(gesture.dx, gesture.dy);
+          const duration = Date.now() - touchStartRef.current.time;
+          // ONLY trigger destination routing if it was a quick, stationary tap (NOT while panning)
+          if (moveDist < 6 && duration < 300) {
+            const coords = unprojectFromPixels(gesture.x0, gesture.y0);
+            handleMapTap(coords);
+          }
         },
       }),
-    [dragStart, panOffset]
+    [dragStart, panOffset, zoomLevel, mapCenter]
   );
 
   // Compute slippy tile grid covering the viewport
@@ -183,11 +220,12 @@ export const MapViewComponent: React.FC = () => {
   }, [mapCenter, zoomLevel, panOffset, mapStyle]);
 
   const handleZoomIn = () => {
-    setZoomLevel((prev) => Math.min(18, prev + 1));
+    setZoomLevel((prev) => Math.min(19, prev + 1));
   };
 
   const handleZoomOut = () => {
-    setZoomLevel((prev) => Math.max(11, prev - 1));
+    // Allows zooming out to level 4 to see entire states, countries, and any city!
+    setZoomLevel((prev) => Math.max(4, prev - 1));
   };
 
   const handleRecenter = async () => {
@@ -196,19 +234,13 @@ export const MapViewComponent: React.FC = () => {
     await recenterOnUser();
   };
 
-  const handleCanvasTap = (e: any) => {
-    const { locationX, locationY } = e.nativeEvent;
-    const coords = unprojectFromPixels(locationX, locationY);
-    handleMapTap(coords);
-  };
-
   const userPix = projectToPixels(userLocation);
   const destPix = destination ? projectToPixels(destination) : null;
 
   return (
     <View style={styles.container} {...panResponder.panHandlers}>
-      {/* 1. Real Slippy Raster Map Tile Layer */}
-      <View style={styles.tileCanvas} onTouchEnd={handleCanvasTap}>
+      {/* 1. Real Slippy Raster Map Tile Layer (smooth panning without accidental taps) */}
+      <View style={styles.tileCanvas}>
         {visibleTiles.map((tile) => (
           <Image
             key={tile.key}
@@ -224,11 +256,13 @@ export const MapViewComponent: React.FC = () => {
           />
         ))}
 
-        {/* 2. Dead Zones Layer */}
+        {/* 2. Dead Zones Layer (with viewport culling) */}
         {showDeadZones &&
           deadZones.map((dz) => {
             const pix = projectToPixels(dz.center);
             const radiusPix = (dz.radiusMeters / 1000) * (Math.pow(2, zoomLevel - 11) * 32);
+            if (!isVisible(pix.x, pix.y, radiusPix + 40)) return null;
+
             const circleColor = getDeadZoneCircleColor(dz.warningLevel);
             const borderColor = getDeadZoneBorderColor(dz.warningLevel);
 
@@ -258,10 +292,12 @@ export const MapViewComponent: React.FC = () => {
             );
           })}
 
-        {/* 3. Incident Heatmap & Report Markers */}
+        {/* 3. Incident Heatmap & Report Markers (with viewport culling) */}
         {showHeatmap &&
           reports.map((rep) => {
             const pix = projectToPixels(rep.coordinates);
+            if (!isVisible(pix.x, pix.y, 60)) return null;
+
             const color = getIncidentColor(rep.type);
             const heatRadius = Math.max(16, rep.severity * 8);
 
@@ -300,13 +336,14 @@ export const MapViewComponent: React.FC = () => {
             );
           })}
 
-        {/* 4. Real Street Route Polylines */}
+        {/* 4. Real Street Route Polylines (downsampled for smooth 60fps) */}
         {routes.map((route) => {
           const isSelected = selectedRoute?.routeId === route.routeId;
           const tier = getSafetyTier(route.safetyScore);
           const routeColor = getRouteColor(tier);
           const strokeWidth = isSelected ? 6 : 4;
-          const coords = route.coordinates;
+          // Downsample dense polyline to smooth lightweight screen segments
+          const coords = downsampleForScreen(route.coordinates, projectToPixels, 14);
 
           // Connect consecutive coordinate pairs with rotated line views
           const segments: React.ReactNode[] = [];
@@ -349,20 +386,13 @@ export const MapViewComponent: React.FC = () => {
 
           return (
             <React.Fragment key={route.routeId}>
-              {/* Outer soft glow for safest route */}
-              {route.isSafest && isSelected && (
-                <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-                  {segments}
-                </View>
-              )}
-
               {/* Main polyline segments */}
               <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
                 {segments}
               </View>
 
               {/* Tappable Route Score Pill on Map */}
-              {midPix && (
+              {midPix && isVisible(midPix.x, midPix.y, 60) && (
                 <TouchableOpacity
                   style={[
                     styles.routePillOnMap,
@@ -390,10 +420,12 @@ export const MapViewComponent: React.FC = () => {
           );
         })}
 
-        {/* 5. Safe Haven Landmark Markers */}
+        {/* 5. Safe Haven Landmark Markers (with viewport culling) */}
         {showLandmarks &&
           landmarks.map((lm) => {
             const pix = projectToPixels(lm.coordinates);
+            if (!isVisible(pix.x, pix.y, 40)) return null;
+
             const color = getLandmarkColor(lm.type);
             let icon = '🏛️';
             if (lm.type === 'police') icon = '🛡️';
@@ -462,14 +494,26 @@ export const MapViewComponent: React.FC = () => {
         <View style={styles.navHudBanner}>
           <View style={styles.navHudLeft}>
             <Text style={styles.navTurnIcon}>↰</Text>
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={styles.navTurnText}>In 250m, Keep Left</Text>
               <Text style={styles.navStreetText}>{navigationStep}</Text>
+              <Text style={{ color: '#FCD34D', fontSize: 11, fontWeight: '700', marginTop: 2 }}>
+                📡 Live Telemetry Broadcasting via SMS & Web
+              </Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.navExitButton} onPress={stopNavigation}>
-            <Text style={styles.navExitText}>EXIT</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity
+              style={[styles.navExitButton, { backgroundColor: '#D97706', marginRight: 6 }]}
+              onPress={() => walkTelemetryService.shareTrackingLink()}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.navExitText}>SHARE</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.navExitButton} onPress={stopNavigation} activeOpacity={0.8}>
+              <Text style={styles.navExitText}>ARRIVED</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 

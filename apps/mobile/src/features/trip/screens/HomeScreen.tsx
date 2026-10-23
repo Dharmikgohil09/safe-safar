@@ -98,15 +98,25 @@ export default function HomeScreen() {
 
           {/* Presentational input fields */}
           <View style={styles.inputsWrapper}>
-            <View style={styles.inputRow}>
+            <TouchableOpacity
+              style={styles.inputRow}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              onPress={() => router.push('/(tabs)/map')}
+            >
               <MaterialIcons name="my-location" size={20} color={colors.accent} />
               <Text style={styles.inputText}>Your Current Location</Text>
-            </View>
+            </TouchableOpacity>
             <View style={styles.inputDivider} />
-            <View style={styles.inputRow}>
+            <TouchableOpacity
+              style={styles.inputRow}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              onPress={() => router.push('/(tabs)/map')}
+            >
               <MaterialIcons name="place" size={20} color={colors.danger} />
               <Text style={styles.inputText}>Choose Destination</Text>
-            </View>
+            </TouchableOpacity>
           </View>
 
           <PrimaryButton
@@ -242,9 +252,8 @@ export default function HomeScreen() {
               const pubStatus = tripLocationPublisher.getStatus();
               const token = pubStatus.trackingToken || 'safesafar-live-session-2026';
               const trackerBaseUrl =
-                process.env.EXPO_PUBLIC_TRACKER_URL || 'http://localhost:3000';
-              const url =
-                `${trackerBaseUrl.replace(/\/+$/, '')}/track/${token}`;
+                process.env.EXPO_PUBLIC_TRACKER_URL || 'https://safesafar-tracker.vercel.app';
+              const url = `${trackerBaseUrl.replace(/\/+$/, '')}/track/${token}`;
               Linking.openURL(url).catch(() => {
                 Alert.alert('Tracker URL', url);
               });

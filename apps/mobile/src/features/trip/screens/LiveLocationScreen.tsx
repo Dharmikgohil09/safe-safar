@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -11,12 +11,13 @@ import {
   TouchableOpacity,
   View,
   Linking,
+  Share,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
 import { Card, PrimaryButton, StateView, useReduceMotion } from '../../../components/ui';
 import { colors, radius, spacing, typography } from '../../../theme';
-import { mockShareContacts, MockShareContact } from '../mock/mockData';
+import { useTripContacts } from '../storage/useTripContacts';
 import { tripLocationPublisher } from '../../../services/tripLocationPublisher';
 
 const DURATION_OPTIONS = ['15 min', '1 hour', '8 hours', 'Until I stop'];
@@ -25,13 +26,16 @@ export default function LiveLocationScreen() {
   const reduceMotion = useReduceMotion();
   const pulseAnim = React.useRef(new Animated.Value(1)).current;
 
-  const [selectedContactIds, setSelectedContactIds] = useState<Record<string, boolean>>(() => {
+  const { contacts, loading } = useTripContacts();
+  const [selectedContactIds, setSelectedContactIds] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
     const initial: Record<string, boolean> = {};
-    mockShareContacts.forEach((c) => {
-      initial[c.id] = c.initialChecked;
+    contacts.forEach((c) => {
+      initial[c.id] = true;
     });
-    return initial;
-  });
+    setSelectedContactIds(initial);
+  }, [contacts]);
 
   const [selectedDuration, setSelectedDuration] = useState<string>('1 hour');
   const [previewStatus, setPreviewStatus] = useState<'ready' | 'loading' | 'empty' | 'error'>('ready');
@@ -45,7 +49,7 @@ export default function LiveLocationScreen() {
     });
   };
 
-  const showMessage = (feature: string) => {
+  const showMessage = async (feature: string) => {
     if (!reduceMotion && feature === 'Live location sharing preview') {
       Animated.sequence([
         Animated.timing(pulseAnim, {
@@ -63,14 +67,22 @@ export default function LiveLocationScreen() {
     const pubStatus = tripLocationPublisher.getStatus();
     const activeToken = pubStatus.trackingToken || 'safesafar-live-session-2026';
     const trackerBaseUrl =
-      process.env.EXPO_PUBLIC_TRACKER_URL || 'http://localhost:3000';
-    const trackerUrl =
-      `${trackerBaseUrl.replace(/\/+$/, '')}/track/${activeToken}`;
+      (process.env.EXPO_PUBLIC_TRACKER_URL || 'https://safesafar-tracker.vercel.app').replace(/\/+$/, '');
+    const trackerUrl = `${trackerBaseUrl}/track/${activeToken}`;
 
     Alert.alert(
       'Live Sharing Active',
-      `Your live GPS journey is broadcasting to Priyavardhan's Live Guardian Tracker:\n\n${trackerUrl}`,
+      `Your real-time GPS telemetry is streaming to the SafeSafar Live Tracker.\n\nTracking Link:\n${trackerUrl}`,
       [
+        {
+          text: 'Share Link (WhatsApp/SMS)',
+          onPress: () => {
+            Share.share({
+              message: `SafeSafar Live Location: Track my journey in real-time:\n${trackerUrl}`,
+              url: trackerUrl,
+            }).catch(() => {});
+          },
+        },
         {
           text: 'Open Web Tracker',
           onPress: () => {
@@ -154,7 +166,19 @@ export default function LiveLocationScreen() {
           </Text>
         </View>
 
-        {previewStatus === 'loading' ? (
+        {loading ? (
+          <StateView
+            kind="loading"
+            title="Loading contacts"
+            message="Retrieving your trusted contacts..."
+          />
+        ) : contacts.length === 0 ? (
+          <StateView
+            kind="empty"
+            title="No trusted contacts yet"
+            message="Add contacts in Trusted Contacts to share your location."
+          />
+        ) : previewStatus === 'loading' ? (
           <StateView
             kind="loading"
             title="Loading contacts"
@@ -164,7 +188,7 @@ export default function LiveLocationScreen() {
           <StateView
             kind="empty"
             title="No trusted contacts yet"
-            message="Add contacts to share your location."
+            message="Add contacts in Trusted Contacts to share your location."
           />
         ) : previewStatus === 'error' ? (
           <StateView
@@ -176,17 +200,17 @@ export default function LiveLocationScreen() {
           />
         ) : (
           <View style={styles.contactsList}>
-            {mockShareContacts.map((contact: MockShareContact, index: number) => {
+            {contacts.map((contact, index: number) => {
               const isChecked = !!selectedContactIds[contact.id];
 
               return (
                 <TouchableOpacity
                   key={contact.id}
                   activeOpacity={0.8}
-                onPress={() => toggleContact(contact.id)}
+                  onPress={() => toggleContact(contact.id)}
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked: isChecked }}
-                  accessibilityLabel={`${contact.name}, ${contact.relationship}, ${isChecked ? 'selected' : 'unselected'}`}
+                  accessibilityLabel={`${contact.name}, ${isChecked ? 'selected' : 'unselected'}`}
                 >
                   <Card
                     style={[
@@ -213,7 +237,7 @@ export default function LiveLocationScreen() {
                       <View style={styles.contactTopRow}>
                         <Text style={styles.contactName}>{contact.name}</Text>
                         <View style={styles.relPill}>
-                          <Text style={styles.relPillText}>{contact.relationship}</Text>
+                          <Text style={styles.relPillText}>Trusted</Text>
                         </View>
                       </View>
                       <Text style={styles.contactPhone}>{contact.phone}</Text>

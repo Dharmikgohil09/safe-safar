@@ -7,13 +7,14 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
+  Linking,
 } from 'react-native';
 import { RouteOption } from '../types';
 import { getRouteColor, getSafetyTier } from '../models/RouteOption';
 import { formatDistance, formatDuration } from '../utils/geo';
 import { SafetyBadge } from './SafetyBadge';
-
 import { useMapState } from '../context/MapContext';
+import { walkTelemetryService } from '../services/walkTelemetryService';
 
 interface RouteDetailModalProps {
   route: RouteOption | null;
@@ -32,10 +33,29 @@ export const RouteDetailModal: React.FC<RouteDetailModalProps> = ({ route, visib
   const handleStartWalk = () => {
     onClose();
     startNavigation();
-    Alert.alert(
-      'Walk Me Home Activated',
-      `Trip navigation initiated via ${route.name}. Sharing live telemetry with trusted contacts.`
-    );
+
+    setTimeout(() => {
+      const session = walkTelemetryService.getActiveSession();
+      const trackerUrl = session?.trackerUrl || 'https://safesafar-tracker.vercel.app';
+
+      Alert.alert(
+        '🚶 Walk With Me Home Activated',
+        `Live journey started via ${route.name}.\n\n📡 Live GPS Telemetry is now streaming to your guardian tracking room.\n\n📱 SMS with your live tracking link has been dispatched to your trusted contacts.`,
+        [
+          {
+            text: '📤 Share Link (WhatsApp/SMS)',
+            onPress: () => walkTelemetryService.shareTrackingLink(),
+          },
+          {
+            text: '🌐 Open Web Tracker',
+            onPress: () => {
+              Linking.openURL(trackerUrl).catch(() => {});
+            },
+          },
+          { text: 'Start Navigation', style: 'default' },
+        ]
+      );
+    }, 400);
   };
 
   return (

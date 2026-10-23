@@ -35,12 +35,21 @@ const initializeSocketIO = (httpServer) => {
     // Authenticated mobile users
     if (token) {
       try {
-        const decoded = jwt.verify(token, config.jwt.secret);
+        const { verifyAccessToken } = require('../../../utils/tokens');
+        const decoded = verifyAccessToken(token);
         socket.userId = decoded.userId;
         socket.userPhone = decoded.phone;
+        socket.userEmail = decoded.email;
         return next();
       } catch (err) {
-        return next(new Error('Authentication failed: Invalid or expired token'));
+        try {
+          const decoded = jwt.verify(token, config.jwt.secret);
+          socket.userId = decoded.userId;
+          socket.userPhone = decoded.phone;
+          return next();
+        } catch (jwtErr) {
+          return next(new Error('Authentication failed: Invalid or expired token'));
+        }
       }
     }
 
@@ -102,6 +111,38 @@ const initializeSocketIO = (httpServer) => {
       if (tripId) {
         socket.leave(`trip:${tripId}`);
         socket.emit('trip:left', { tripId });
+      }
+    });
+
+    /**
+     * Tracker / Mobile universal session room join
+     */
+    socket.on('join-session', (payload) => {
+      const token = payload?.token || payload?.trackingToken;
+      if (token) {
+        socket.join(`session:${token}`);
+        socket.join(`trip:${token}`);
+        socket.emit('session:joined', { token });
+      }
+    });
+
+    /**
+     * Universal live GPS coordinate telemetry broadcast for Walk With Me Home & Live Tracking
+     */
+    socket.on('location:update', (payload) => {
+      const token = payload?.token || payload?.trackingToken || payload?.tripId;
+      if (token) {
+        const telemetry = {
+          latitude: payload.latitude,
+          longitude: payload.longitude,
+          speed: payload.speed || 0,
+          heading: payload.heading || 0,
+          accuracy: payload.accuracy || 5,
+          timestamp: payload.timestamp || new Date().toISOString()
+        };
+        io.to(`session:${token}`).to(`trip:${token}`).emit('location', telemetry);
+        io.to(`session:${token}`).to(`trip:${token}`).emit('location:update', telemetry);
+        io.to(`session:${token}`).to(`trip:${token}`).emit('trip:location_broadcast', telemetry);
       }
     });
 

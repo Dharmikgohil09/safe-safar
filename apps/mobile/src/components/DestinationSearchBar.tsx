@@ -16,53 +16,41 @@ import { PlaceSearchResult } from '../services/geocodingService';
 
 interface QuickSpot {
   name: string;
-  coords: LatLng;
+  query: string;
   tag: string;
   icon: string;
 }
 
 const QUICK_SPOTS: QuickSpot[] = [
   {
-    name: 'Adajan Gam Circle',
-    coords: { latitude: 21.1963, longitude: 72.7952 },
-    tag: 'Demo End',
-    icon: '📍',
+    name: 'Police Station',
+    query: 'Police Station',
+    tag: 'Safe Haven',
+    icon: '🛡️',
   },
   {
-    name: 'SVNIT Campus Dumas Rd',
-    coords: { latitude: 21.1648, longitude: 72.7848 },
-    tag: 'Demo Start',
-    icon: '🎓',
+    name: 'Civil Hospital',
+    query: 'Hospital',
+    tag: '24/7 Medical',
+    icon: '🏥',
   },
   {
-    name: 'VR Mall Surat',
-    coords: { latitude: 21.1442, longitude: 72.7565 },
-    tag: 'Commercial Hub',
-    icon: '🏬',
+    name: 'Pharmacy',
+    query: 'Pharmacy',
+    tag: 'Open Chemist',
+    icon: '💊',
   },
   {
-    name: 'Surat Railway Station',
-    coords: { latitude: 21.2044, longitude: 72.8407 },
+    name: 'Railway Station',
+    query: 'Railway Station',
     tag: 'Transit Hub',
     icon: '🚉',
   },
   {
-    name: 'Umra Police Station',
-    coords: { latitude: 21.1685, longitude: 72.7935 },
-    tag: 'Police Haven',
-    icon: '🛡️',
-  },
-  {
-    name: 'Civil Hospital Surat',
-    coords: { latitude: 21.1784, longitude: 72.8211 },
-    tag: '24/7 Hospital',
-    icon: '🏥',
-  },
-  {
-    name: 'Dumas Silent Zone',
-    coords: { latitude: 21.0921, longitude: 72.7154 },
-    tag: 'Dead Zone Test',
-    icon: '📵',
+    name: 'Shopping Mall',
+    query: 'Mall',
+    tag: 'Commercial Hub',
+    icon: '🏬',
   },
 ];
 
@@ -123,11 +111,26 @@ export const DestinationSearchBar: React.FC = () => {
     calculateRoutes(place.coordinates, place.name);
   };
 
-  const handleSelectQuickSpot = (spot: QuickSpot) => {
+  const handleSelectQuickSpot = async (spot: QuickSpot) => {
     setInputText(spot.name);
     setShowDropdown(false);
     Keyboard.dismiss();
-    calculateRoutes(spot.coords, spot.name);
+    setIsSearching(true);
+    try {
+      const results = await searchPlaces(spot.query);
+      if (results.length > 0) {
+        handleSelectPlace(results[0]);
+      } else {
+        Alert.alert(
+          'Location Search',
+          `Could not locate nearest ${spot.name.toLowerCase()} in this area. You can type any address or landmark in the search box.`
+        );
+      }
+    } catch (_) {
+      // Fallback
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   const handleManualSearchSubmit = async () => {
@@ -196,7 +199,7 @@ export const DestinationSearchBar: React.FC = () => {
             onFocus={() => {
               if (inputText.length > 0) setShowDropdown(true);
             }}
-            placeholder="Search destination, landmark, safe haven..."
+            placeholder="Search any city, destination, landmark..."
             placeholderTextColor="#8E8E93"
             onSubmitEditing={handleManualSearchSubmit}
             returnKeyType="search"

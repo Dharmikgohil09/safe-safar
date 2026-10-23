@@ -54,7 +54,7 @@ export const MAP_CONFIG: MapConfig = {
   googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '',
   mapboxToken: process.env.EXPO_PUBLIC_MAPBOX_TOKEN || '',
   customTileUrl: process.env.EXPO_PUBLIC_MAP_TILE_URL || '',
-  apiUrl: process.env.EXPO_PUBLIC_API_URL || 'https://safesafar-backend.onrender.com',
+  apiUrl: process.env.EXPO_PUBLIC_API_URL || 'https://safe-safar-1.onrender.com',
   routingApiUrl: process.env.EXPO_PUBLIC_ROUTING_API_URL || 'https://router.project-osrm.org',
   isDemoMode: process.env.EXPO_PUBLIC_DEMO_MODE === 'true',
   defaultFallbackLocation: {

@@ -12,14 +12,14 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.codecraft.safesafar",
       "config": {
-        "googleMapsApiKey": ""
+        "googleMapsApiKey": "AIzaSyCMKifIcZIjj_s_tQvSYE87uUSufeZ902w"
       }
     },
     "android": {
       "package": "com.codecraft.safesafar",
       "config": {
         "googleMaps": {
-          "apiKey": ""
+          "apiKey": "AIzaSyCMKifIcZIjj_s_tQvSYE87uUSufeZ902w"
         }
       },
       "permissions": [

@@ -405,10 +405,13 @@ export class ApiService {
     const dLat = destination.latitude - origin.latitude;
     const dLng = destination.longitude - origin.longitude;
 
-    // Detect if crossing Tapi River in Surat (approx latitude 21.18 boundary)
+    // Detect if crossing Tapi River only when in Surat area
+    const inSuratArea =
+      Math.abs(origin.latitude - 21.18) < 0.15 && Math.abs(origin.longitude - 72.82) < 0.15;
     const crossesTapi =
-      (origin.latitude < 21.18 && destination.latitude > 21.18) ||
-      (origin.latitude > 21.18 && destination.latitude < 21.18);
+      inSuratArea &&
+      ((origin.latitude < 21.18 && destination.latitude > 21.18) ||
+        (origin.latitude > 21.18 && destination.latitude < 21.18));
 
     // Physical bridges over Tapi River
     const SARDAR_BRIDGE: LatLng = { latitude: 21.1812, longitude: 72.8078 };

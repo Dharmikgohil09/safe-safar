@@ -144,19 +144,10 @@ export class GeocodingService {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 2500);
 
-        // Query directly with user's input without hardcoding any specific city
-        const searchQuery = cleaned;
+        // Query globally without restricting viewbox so any city/destination worldwide can be searched
         let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          searchQuery
-        )}&addressdetails=1&limit=5`;
-        if (userLocation) {
-          // Bias search towards user's real GPS bounding area (+- 0.5 degrees ~ 55km)
-          const left = userLocation.longitude - 0.5;
-          const right = userLocation.longitude + 0.5;
-          const top = userLocation.latitude + 0.5;
-          const bottom = userLocation.latitude - 0.5;
-          url += `&viewbox=${left},${top},${right},${bottom}`;
-        }
+          cleaned
+        )}&addressdetails=1&limit=8`;
 
         const res = await fetch(url, {
           signal: controller.signal,
@@ -265,7 +256,8 @@ export class GeocodingService {
       if (res.ok) {
         const data = await res.json();
         const road = data.address?.road || data.address?.suburb || data.address?.neighbourhood;
-        const name = road ? `${road}, Surat` : data.display_name.split(',')[0];
+        const city = data.address?.city || data.address?.town || data.address?.village || data.address?.state_district;
+        const name = road && city ? `${road}, ${city}` : road || data.display_name.split(',')[0];
         return {
           name: name || 'Selected Map Location',
           address: data.display_name || `Lat: ${coords.latitude.toFixed(4)}, Lng: ${coords.longitude.toFixed(4)}`,

@@ -33,6 +33,24 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 // Apply general rate limiting
 app.use(generalLimiter);
 
+// Root / Welcome Endpoint
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'SafeSafar Backend API is live and healthy',
+    version: '1.0.0',
+    endpoints: {
+      health: '/health',
+      auth: '/auth',
+      contacts: '/contacts',
+      trips: '/trips',
+      routes: '/routes',
+      reports: '/reports',
+      sos: '/sos'
+    }
+  });
+});
+
 // Core Modules
 app.use('/health', healthRouter);
 app.use('/auth', authRouter);

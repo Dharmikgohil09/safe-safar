@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: safesafar-backend
+    name: safe-safar
     env: node
     rootDir: apps/backend
     plan: free

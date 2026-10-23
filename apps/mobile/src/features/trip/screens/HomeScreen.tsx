@@ -97,15 +97,25 @@ export default function HomeScreen() {
 
           {/* Presentational input fields */}
           <View style={styles.inputsWrapper}>
-            <View style={styles.inputRow}>
+            <TouchableOpacity
+              style={styles.inputRow}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              onPress={() => router.push('/(tabs)/map')}
+            >
               <MaterialIcons name="my-location" size={20} color={colors.accent} />
               <Text style={styles.inputText}>Your Current Location</Text>
-            </View>
+            </TouchableOpacity>
             <View style={styles.inputDivider} />
-            <View style={styles.inputRow}>
+            <TouchableOpacity
+              style={styles.inputRow}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              onPress={() => router.push('/(tabs)/map')}
+            >
               <MaterialIcons name="place" size={20} color={colors.danger} />
               <Text style={styles.inputText}>Choose Destination</Text>
-            </View>
+            </TouchableOpacity>
           </View>
 
           <PrimaryButton

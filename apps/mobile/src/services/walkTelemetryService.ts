@@ -4,7 +4,6 @@ import { io, Socket } from 'socket.io-client';
 import SmsAndroid from 'react-native-get-sms-android';
 import { MAP_CONFIG } from '../config/mapConfig';
 import { getTripContacts } from '../features/trip/storage/contactsStorage';
-import { mockWalkMeHomeContacts } from '../features/trip/mock/walkMeHomeMock';
 import { LatLng } from '../types';
 
 export interface WalkSessionInfo {
@@ -71,13 +70,9 @@ class WalkTelemetryService {
     const trackerUrl = `https://safesafar-tracker.vercel.app/track/${token}`;
 
     // 1. Retrieve trusted contacts
-    let contacts = await getTripContacts();
+    const contacts = await getTripContacts();
     if (!contacts || contacts.length === 0) {
-      contacts = mockWalkMeHomeContacts.map((c) => ({
-        id: c.id,
-        name: c.name,
-        phone: c.phone,
-      }));
+      throw new Error('Add a trusted contact first');
     }
 
     const sessionInfo: WalkSessionInfo = {
@@ -193,7 +188,7 @@ class WalkTelemetryService {
       this.socket?.emit('trip:join', { trackingToken: token });
     });
 
-    this.socket.on('disconnect', (reason) => {
+    this.socket.on('disconnect', (reason: any) => {
       console.log('[WalkTelemetry] Socket disconnected:', reason);
     });
   }
@@ -285,20 +280,14 @@ class WalkTelemetryService {
     }
 
     // 3. Dispatch Arrival SMS to trusted contacts
-    let contacts = await getTripContacts();
-    if (!contacts || contacts.length === 0) {
-      contacts = mockWalkMeHomeContacts.map((c) => ({
-        id: c.id,
-        name: c.name,
-        phone: c.phone,
-      }));
+    const contacts = await getTripContacts();
+    if (contacts && contacts.length > 0) {
+      const arrivalMsg = hasArrived
+        ? `SafeSafar: I have arrived safely at ${session.destinationName}. Walk With Me Home session completed.`
+        : `SafeSafar: Walk With Me Home session to ${session.destinationName} has ended.`;
+
+      await this.dispatchSmsToContacts(contacts, arrivalMsg);
     }
-
-    const arrivalMsg = hasArrived
-      ? `SafeSafar: I have arrived safely at ${session.destinationName}. Walk With Me Home session completed.`
-      : `SafeSafar: Walk With Me Home session to ${session.destinationName} has ended.`;
-
-    await this.dispatchSmsToContacts(contacts, arrivalMsg);
 
     this.activeSession = null;
     this.telemetryCount = 0;

@@ -61,12 +61,12 @@ export default function LiveLocationScreen() {
     }
     Alert.alert(
       'Live Sharing Active',
-      "Your live GPS journey is broadcasting to Priyavardhan's Live Guardian Tracker:\n\nhttp://10.214.35.75:3000/track/safesafar-live-session-2026",
+      "Your live GPS journey is broadcasting to Priyavardhan's Live Guardian Tracker:\n\nhttp://10.236.91.75:3000/track/safesafar-live-session-2026",
       [
         {
           text: 'Open Web Tracker',
           onPress: () => {
-            const trackerUrl = 'http://10.214.35.75:3000/track/safesafar-live-session-2026';
+            const trackerUrl = 'http://10.236.91.75:3000/track/safesafar-live-session-2026';
             Linking.openURL(trackerUrl).catch(() => {
               Alert.alert('Tracker URL', trackerUrl);
             });

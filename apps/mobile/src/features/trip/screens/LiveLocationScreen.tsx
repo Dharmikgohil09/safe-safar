@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -16,7 +16,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
 import { Card, PrimaryButton, StateView, useReduceMotion } from '../../../components/ui';
 import { colors, radius, spacing, typography } from '../../../theme';
-import { mockShareContacts, MockShareContact } from '../mock/mockData';
+import { useTripContacts } from '../storage/useTripContacts';
 
 const DURATION_OPTIONS = ['15 min', '1 hour', '8 hours', 'Until I stop'];
 
@@ -24,13 +24,16 @@ export default function LiveLocationScreen() {
   const reduceMotion = useReduceMotion();
   const pulseAnim = React.useRef(new Animated.Value(1)).current;
 
-  const [selectedContactIds, setSelectedContactIds] = useState<Record<string, boolean>>(() => {
+  const { contacts, loading } = useTripContacts();
+  const [selectedContactIds, setSelectedContactIds] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
     const initial: Record<string, boolean> = {};
-    mockShareContacts.forEach((c) => {
-      initial[c.id] = c.initialChecked;
+    contacts.forEach((c) => {
+      initial[c.id] = true;
     });
-    return initial;
-  });
+    setSelectedContactIds(initial);
+  }, [contacts]);
 
   const [selectedDuration, setSelectedDuration] = useState<string>('1 hour');
   const [previewStatus, setPreviewStatus] = useState<'ready' | 'loading' | 'empty' | 'error'>('ready');
@@ -147,7 +150,19 @@ export default function LiveLocationScreen() {
           </Text>
         </View>
 
-        {previewStatus === 'loading' ? (
+        {loading ? (
+          <StateView
+            kind="loading"
+            title="Loading contacts"
+            message="Retrieving your trusted contacts..."
+          />
+        ) : contacts.length === 0 ? (
+          <StateView
+            kind="empty"
+            title="No trusted contacts yet"
+            message="Add contacts in Trusted Contacts to share your location."
+          />
+        ) : previewStatus === 'loading' ? (
           <StateView
             kind="loading"
             title="Loading contacts"
@@ -157,7 +172,7 @@ export default function LiveLocationScreen() {
           <StateView
             kind="empty"
             title="No trusted contacts yet"
-            message="Add contacts to share your location."
+            message="Add contacts in Trusted Contacts to share your location."
           />
         ) : previewStatus === 'error' ? (
           <StateView
@@ -169,17 +184,17 @@ export default function LiveLocationScreen() {
           />
         ) : (
           <View style={styles.contactsList}>
-            {mockShareContacts.map((contact: MockShareContact, index: number) => {
+            {contacts.map((contact, index: number) => {
               const isChecked = !!selectedContactIds[contact.id];
 
               return (
                 <TouchableOpacity
                   key={contact.id}
                   activeOpacity={0.8}
-                onPress={() => toggleContact(contact.id)}
+                  onPress={() => toggleContact(contact.id)}
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked: isChecked }}
-                  accessibilityLabel={`${contact.name}, ${contact.relationship}, ${isChecked ? 'selected' : 'unselected'}`}
+                  accessibilityLabel={`${contact.name}, ${isChecked ? 'selected' : 'unselected'}`}
                 >
                   <Card
                     style={[
@@ -206,7 +221,7 @@ export default function LiveLocationScreen() {
                       <View style={styles.contactTopRow}>
                         <Text style={styles.contactName}>{contact.name}</Text>
                         <View style={styles.relPill}>
-                          <Text style={styles.relPillText}>{contact.relationship}</Text>
+                          <Text style={styles.relPillText}>Trusted</Text>
                         </View>
                       </View>
                       <Text style={styles.contactPhone}>{contact.phone}</Text>

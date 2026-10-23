@@ -1,4 +1,5 @@
 import { sosEngine } from '../engine/sosEngine';
+import { backendChannel } from './backend';
 import { callChannel } from './call';
 import { smsChannel } from './sms';
 
@@ -10,4 +11,5 @@ import { smsChannel } from './sms';
 export function registerDefaultChannels(): void {
   sosEngine.registerChannel(smsChannel);
   sosEngine.registerChannel(callChannel);
+  sosEngine.registerChannel(backendChannel); // does nothing until a server address is set
 }

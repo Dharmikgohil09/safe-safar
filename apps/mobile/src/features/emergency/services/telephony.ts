@@ -20,6 +20,9 @@ function native(): Native | null {
   }
 }
 
+/** False when the native module is not in this build (old build or Expo Go). The call chain must not run then. */
+export const isTelephonyAvailable = (): boolean => native() !== null;
+
 /** idle = no call. offhook = dialing or talking. ringing = an incoming call is ringing. */
 export const getCallState = async (): Promise<CallState> => {
   const n = native();

@@ -3,7 +3,7 @@ import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as ImmediateCall from 'react-native-immediate-phone-call';
 import { runCallChain } from '../services/callChain';
 import type { ChainOutcome } from '../services/callChain';
-import { findOutgoingCall, getCallState } from '../services/telephony';
+import { findOutgoingCall, getCallState, isTelephonyAvailable } from '../services/telephony';
 import { hasPermission } from '../permissions';
 import { SILENT_SOURCES } from '../types';
 import type { Channel, Contact } from '../types';
@@ -51,7 +51,7 @@ export async function callContact(contact: Contact): Promise<void> {
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 async function canDetectAnswer(): Promise<boolean> {
-  if (isExpoGo) return false;
+  if (isExpoGo || !isTelephonyAvailable()) return false;
   try {
     const [state, log] = await Promise.all([hasPermission('READ_PHONE_STATE'), hasPermission('READ_CALL_LOG')]);
     if (!state || !log) return false;

@@ -79,6 +79,12 @@ async function sendVerificationEmail({ to, name, rawToken }) {
     .replace(/{{NAME}}/g, name || 'SafeSafar User')
     .replace(/{{VERIFY_URL}}/g, verifyUrl);
 
+  const pass = process.env.EMAIL_APP_PASSWORD || process.env.EMAIL_PASS;
+  if (!pass && !process.env.SMTP_HOST) {
+    console.log(`[Mailer] EMAIL_APP_PASSWORD not configured. Instant dev verification link generated: ${verifyUrl}`);
+    return { success: true, devLink: verifyUrl };
+  }
+
   const transporter = createTransporter();
   const senderEmail = process.env.EMAIL_USER || 'safesafar.auth@gmail.com';
 

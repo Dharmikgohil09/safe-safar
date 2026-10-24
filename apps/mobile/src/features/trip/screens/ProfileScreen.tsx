@@ -75,16 +75,6 @@ export default function ProfileScreen() {
           <Text style={styles.headerTitle}>My Profile</Text>
           <Text style={styles.headerSubtitle}>Safety Settings & Personal Account</Text>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <TouchableOpacity
-            onPress={() => showMessage('Settings')}
-            style={styles.settingsIconButton}
-            accessibilityRole="button"
-            accessibilityLabel="Open settings"
-          >
-            <MaterialIcons name="settings" size={22} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -324,11 +314,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#CBD5E1',
     marginTop: 2,
-  },
-  settingsIconButton: {
-    padding: 6,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
   },
   container: {
     paddingHorizontal: 16,

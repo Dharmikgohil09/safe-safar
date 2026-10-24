@@ -1,5 +1,5 @@
 import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
+import { Linking } from 'react-native';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -48,16 +48,13 @@ export async function promptGoogleSignIn(): Promise<{ idToken: string }> {
     }
   }
 
-  // 2. WebBrowser / AuthSession fallback (Expo Go & Web)
+  // 2. WebBrowser fallback (Expo Go & Web) without broken expo-auth-session dependency
   const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '';
   if (!webClientId) {
     throw new Error('Google Client ID is not configured in .env');
   }
 
-  const redirectUri = AuthSession.makeRedirectUri({
-    scheme: 'safesafar',
-  });
-
+  const redirectUri = 'safesafar://auth-callback';
   const nonce = Math.random().toString(36).substring(2, 15);
   const authUrl =
     `https://accounts.google.com/o/oauth2/v2/auth?` +
@@ -71,7 +68,6 @@ export async function promptGoogleSignIn(): Promise<{ idToken: string }> {
   const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
 
   if (result.type === 'success' && result.url) {
-    // Parse response URL hash or query params
     const rawFragment = result.url.includes('#') ? result.url.split('#')[1] : result.url.split('?')[1] || '';
     const params = new URLSearchParams(rawFragment);
     const idToken = params.get('id_token') || params.get('access_token');

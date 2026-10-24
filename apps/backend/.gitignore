@@ -1,0 +1,22 @@
+# Backend dependencies
+node_modules/
+
+# Environment configuration
+.env
+.env.*
+!.env.example
+
+# Logs & Debug
+logs
+*.log
+npm-debug.log*
+
+# Test coverage & database dumps
+coverage/
+.nyc_output/
+*.dump
+*.seed
+
+# OS & Editor
+.DS_Store
+Thumbs.db

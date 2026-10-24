@@ -277,26 +277,6 @@ export default function ProfileScreen() {
             </View>
             <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
           </TouchableOpacity>
-
-          <View style={styles.menuDivider} />
-
-          {/* About SafeSafar */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => showMessage('About SafeSafar')}
-            style={styles.menuRow}
-            accessibilityRole="button"
-            accessibilityLabel="About SafeSafar"
-          >
-            <View style={[styles.menuIconCircle, styles.iconBgSoft]}>
-              <MaterialIcons name="info-outline" size={20} color={colors.primary} />
-            </View>
-            <View style={styles.menuTextGroup}>
-              <Text style={styles.menuLabel}>About SafeSafar</Text>
-              <Text style={styles.menuSubLabel}>Version 1.0.0 · Privacy policy & terms</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
-          </TouchableOpacity>
         </Card>
 
         {/* Section 3: Logout */}

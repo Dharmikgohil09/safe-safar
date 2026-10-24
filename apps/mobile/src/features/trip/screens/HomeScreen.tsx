@@ -192,12 +192,22 @@ export default function HomeScreen() {
           </Text>
 
           <View style={styles.inputsWrapper}>
-            <View style={styles.inputRow}>
+            <TouchableOpacity
+              style={styles.inputRow}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              onPress={() => router.push('/(tabs)/map')}
+            >
               <MaterialIcons name="my-location" size={20} color={colors.accent} />
               <Text style={styles.inputText}>Your Current Location</Text>
-            </View>
+            </TouchableOpacity>
             <View style={styles.inputDivider} />
-            <View style={styles.inputRow}>
+            <TouchableOpacity
+              style={styles.inputRow}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              onPress={() => router.push('/(tabs)/map')}
+            >
               <MaterialIcons name="place" size={20} color={colors.danger} />
               <TextInput
                 style={styles.destInput}
@@ -223,7 +233,7 @@ export default function HomeScreen() {
                   <MaterialIcons name="close" size={18} color={colors.textMuted} />
                 </TouchableOpacity>
               ) : null}
-            </View>
+            </TouchableOpacity>
           </View>
 
           {suggestions.length > 0 && (

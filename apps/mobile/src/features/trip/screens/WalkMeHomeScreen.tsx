@@ -24,11 +24,20 @@ import { apiFetch } from '../../../lib/api';
 import { getAccessToken } from '../../../services/api';
 import { authService } from '../auth/services/authService';
 import { tripLocationPublisher } from '../../../services/tripLocationPublisher';
+import { GeocodingService } from '../../../services/geocodingService';
 import {
   DEFAULT_CHECK_IN_SECONDS,
   DEFAULT_DESTINATION,
 } from '../mock/walkMeHomeMock';
 import { useTripContacts, type TripContact } from '../storage/useTripContacts';
+
+const QUICK_DESTINATIONS = [
+  'SVNIT Surat',
+  'VR Mall Surat',
+  'Surat Railway Station',
+  'Adajan Gam Circle',
+  'Home',
+];
 
 function formatTime(totalSeconds: number): string {
   const mins = Math.floor(totalSeconds / 60);
@@ -160,6 +169,19 @@ export default function WalkMeHomeScreen() {
 
       const originCoords = [loc.coords.longitude, loc.coords.latitude];
 
+      // Geocode destination address to determine actual coordinates
+      const destAddress = destination?.trim() || DEFAULT_DESTINATION;
+      let destCoords = [originCoords[0] + 0.005, originCoords[1] + 0.005];
+      try {
+        const geocoder = new GeocodingService();
+        const searchResults = await geocoder.searchPlaces(destAddress);
+        if (searchResults && searchResults.length > 0 && searchResults[0].coordinates) {
+          destCoords = [searchResults[0].coordinates.longitude, searchResults[0].coordinates.latitude];
+        }
+      } catch (geoErr) {
+        console.warn('[WalkMeHome] Geocoding lookup fallback:', geoErr);
+      }
+
       // 4. Create trip on backend
       let res;
       try {
@@ -172,8 +194,8 @@ export default function WalkMeHomeScreen() {
               coordinates: originCoords,
             },
             destination: {
-              address: destination?.trim() || 'Home',
-              coordinates: [originCoords[0] + 0.005, originCoords[1] + 0.005],
+              address: destAddress,
+              coordinates: destCoords,
             },
             estimatedDurationMinutes: Math.max(1, Math.ceil(remainingSeconds / 60)),
             emergencyContactIds: contacts
@@ -320,6 +342,31 @@ export default function WalkMeHomeScreen() {
             </View>
           </View>
         </Card>
+
+        {/* Quick Destination Suggestions */}
+        {!isRunning && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.quickDestContainer}
+          >
+            {QUICK_DESTINATIONS.map((destName) => {
+              const isSelected = destination.trim().toLowerCase() === destName.toLowerCase();
+              return (
+                <TouchableOpacity
+                  key={destName}
+                  style={[styles.quickDestChip, isSelected && styles.quickDestChipActive]}
+                  onPress={() => setDestination(destName)}
+                  accessibilityRole="button"
+                >
+                  <Text style={[styles.quickDestText, isSelected && styles.quickDestTextActive]}>
+                    {destName}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
 
         {/* Circular Countdown Ring */}
         <View style={styles.circleOuterWrapper}>
@@ -982,5 +1029,31 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: 12,
     fontWeight: '700',
+  },
+  quickDestContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 4,
+    marginBottom: 16,
+  },
+  quickDestChip: {
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  quickDestChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  quickDestText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  quickDestTextActive: {
+    color: '#FFFFFF',
   },
 });

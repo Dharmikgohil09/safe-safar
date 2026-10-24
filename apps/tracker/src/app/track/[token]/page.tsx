@@ -47,6 +47,8 @@ export default function TrackPage() {
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
   const mockEmitterRef = useRef<MockLocationEmitter | null>(null);
   const socketHandleRef = useRef<TrackerConnectionHandle | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const fetchSessionRef = useRef<(() => Promise<void>) | null>(null);
 
   // Out-of-order tracking watermark and location timestamp buffer
   const latestProcessedTimestampRef = useRef<number | null>(null);
@@ -206,18 +208,23 @@ export default function TrackPage() {
     // Fetch initial trip metadata from backend REST endpoint
     const fetchSessionData = async () => {
       try {
+        setApiError(null);
         const response = await fetch(`${config.apiUrl}/trips/track/${encodeURIComponent(token)}`);
         if (isCancelled) return;
 
         if (response.status === 404) {
           setConnectionStatus('invalid-token');
-          setErrorMessage('This tracking link could not be found or has expired.');
+          const msg = 'This tracking link could not be found or has expired.';
+          setErrorMessage(msg);
+          setApiError(msg);
           return;
         }
 
         if (!response.ok) {
           setConnectionStatus('error');
-          setErrorMessage('Unable to load tracking session details from server.');
+          const msg = 'Unable to load tracking session details from server.';
+          setErrorMessage(msg);
+          setApiError(msg);
           return;
         }
 
@@ -226,7 +233,9 @@ export default function TrackPage() {
 
         if (!trip) {
           setConnectionStatus('invalid-token');
-          setErrorMessage('Empty session data received from server.');
+          const msg = 'Empty session data received from server.';
+          setErrorMessage(msg);
+          setApiError(msg);
           return;
         }
 
@@ -237,8 +246,8 @@ export default function TrackPage() {
           destination:
             trip.destination?.coordinates && trip.destination.coordinates.length === 2
               ? {
-                  name: trip.destination.address || 'Destination',
-                  address: trip.destination.address,
+                  name: trip.destination.address || trip.destination.name || 'Destination',
+                  address: trip.destination.address || trip.destination.name,
                   latitude: trip.destination.coordinates[1],
                   longitude: trip.destination.coordinates[0],
                 }
@@ -260,6 +269,7 @@ export default function TrackPage() {
         };
 
         setSession(sessionData);
+        setApiError(null);
 
         if (sessionData.currentLocation) {
           handleLocationUpdate(sessionData.currentLocation);
@@ -272,13 +282,15 @@ export default function TrackPage() {
       } catch (err: any) {
         if (!isCancelled) {
           console.warn('[SafeSafar] Failed to fetch session metadata via REST:', err.message);
-          // If offline/fetch fails, keep status as connecting/error
           setConnectionStatus('error');
-          setErrorMessage('Unable to connect to the tracking server. Please check your network connection.');
+          const msg = 'Unable to connect to the tracking server. Please check your network connection.';
+          setErrorMessage(msg);
+          setApiError(msg);
         }
       }
     };
 
+    fetchSessionRef.current = fetchSessionData;
     fetchSessionData();
 
     const handle = createTrackerSocketConnection(token, config.socketUrl, {
@@ -324,7 +336,11 @@ export default function TrackPage() {
         handleLocationUpdate(loc);
       },
       onStatusChange: (status, message) => {
-        setConnectionStatus(status);
+        setConnectionStatus((prev) => {
+          if (prev === 'invalid-token' || prev === 'ended') return prev;
+          if (apiError && status !== 'error') return 'error';
+          return status;
+        });
         if (message) setErrorMessage(message);
       },
       onSosStateChange: (state) => {
@@ -344,7 +360,7 @@ export default function TrackPage() {
       latestProcessedTimestampRef.current = null;
       latestLocationTimestampRef.current = null;
     };
-  }, [token, handleLocationUpdate]);
+  }, [token, handleLocationUpdate, apiError]);
 
   // Mock Control Toggles
   const handleTogglePause = () => {
@@ -372,6 +388,11 @@ export default function TrackPage() {
   };
 
   const handleManualRefresh = () => {
+    setApiError(null);
+    if (fetchSessionRef.current) {
+      setConnectionStatus('connecting');
+      fetchSessionRef.current();
+    }
     if (socketHandleRef.current) {
       socketHandleRef.current.reconnect();
     } else if (mockEmitterRef.current) {
@@ -415,16 +436,26 @@ export default function TrackPage() {
     );
   }
 
-  if (connectionStatus === 'error') {
+  if (apiError || connectionStatus === 'error') {
     return (
       <main className="tracker-page-layout">
-        <TrackerHeader status={connectionStatus} isMock={isMockSession} />
+        <TrackerHeader status="error" isMock={isMockSession} />
         <ErrorState
           type="network-error"
           token={token}
-          errorMessage={errorMessage || 'Failed to connect to tracking server.'}
+          errorMessage={apiError || errorMessage || 'Failed to connect to tracking server.'}
           onRetry={handleManualRefresh}
         />
+      </main>
+    );
+  }
+
+  // Guard against displaying empty placeholder data while initial session is loading from backend
+  if (!isMockSession && !session) {
+    return (
+      <main className="tracker-page-layout">
+        <TrackerHeader status={connectionStatus} isMock={isMockSession} />
+        <LoadingState message="Connecting to SafeSafar Live Telemetry..." />
       </main>
     );
   }

@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import * as Location from 'expo-location';
+import { Platform } from 'react-native';
 
 export interface ActiveTripSession {
   tripId: string;
@@ -92,7 +93,7 @@ class TripLocationPublisher {
         {
           accuracy: Location.Accuracy.High,
           timeInterval: 3000,
-          distanceInterval: 5,
+          distanceInterval: Platform.OS === 'web' ? 0 : 5,
         },
         (loc) => {
           this.emitUpdate(loc);
@@ -160,6 +161,7 @@ class TripLocationPublisher {
       speed: Math.max(0, loc.coords.speed ?? 0),
       heading: Math.max(0, loc.coords.heading ?? 0),
       accuracy: Math.max(0, loc.coords.accuracy ?? 0),
+      timestamp: loc.timestamp ? new Date(loc.timestamp).toISOString() : new Date().toISOString(),
     };
 
     this.socket.emit('trip:location_update', payload);
@@ -203,6 +205,7 @@ class TripLocationPublisher {
     speed?: number;
     heading?: number;
     accuracy?: number;
+    timestamp?: number | string;
   }): void {
     if (!this.socket || !this.currentSession) return;
 
@@ -226,6 +229,7 @@ class TripLocationPublisher {
       speed: Math.max(0, coords.speed ?? 0),
       heading: Math.max(0, coords.heading ?? 0),
       accuracy: Math.max(0, coords.accuracy ?? 0),
+      timestamp: coords.timestamp ? new Date(coords.timestamp).toISOString() : new Date().toISOString(),
     });
     this.lastPublishedAt = Date.now();
     this.lastCoords = {

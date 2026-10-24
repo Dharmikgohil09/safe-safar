@@ -155,7 +155,7 @@ const initializeSocketIO = (httpServer) => {
           return socket.emit('trip:error', { message: 'Authentication required to publish location updates' });
         }
 
-        const { tripId, latitude, longitude, speed = 0, heading = 0, accuracy = 0 } = payload || {};
+        const { tripId, latitude, longitude, speed = 0, heading = 0, accuracy = 0, timestamp } = payload || {};
 
         if (!tripId) {
           return socket.emit('trip:error', { message: 'tripId is required in location update' });
@@ -167,12 +167,16 @@ const initializeSocketIO = (httpServer) => {
           return socket.emit('trip:error', { message: 'Invalid coordinates: latitude (-90..90), longitude (-180..180)' });
         }
 
+        // Preserve genuine GPS fix timestamp, avoiding fabricated current timestamps
+        const fixTimestamp = timestamp ? new Date(timestamp) : new Date();
+
         // Update database and verify ownership
         const updatedTrip = await updateTripLocation(tripId, socket.userId, {
           coordinates: [longitude, latitude],
           speed,
           heading,
-          accuracy
+          accuracy,
+          timestamp: fixTimestamp
         });
 
         if (!updatedTrip) {
@@ -186,7 +190,7 @@ const initializeSocketIO = (httpServer) => {
           speed,
           heading,
           accuracy,
-          timestamp: new Date().toISOString()
+          timestamp: fixTimestamp.toISOString()
         };
 
         // Broadcast to all viewers listening in the trip room

@@ -143,11 +143,17 @@ export class GeocodingService {
     }
 
     // 1. Search local indexed landmarks & presets
+    const tokens = cleaned.split(/\s+/).filter(Boolean);
     const localMatches = this.localLandmarks.filter((place) => {
       const matchName = place.name.toLowerCase().includes(cleaned);
       const matchAddr = place.address.toLowerCase().includes(cleaned);
       const matchCat = place.category.toLowerCase().includes(cleaned);
-      return matchName || matchAddr || matchCat;
+      if (matchName || matchAddr || matchCat) return true;
+      if (tokens.length > 1) {
+        const full = `${place.name} ${place.address} ${place.category}`.toLowerCase();
+        return tokens.every((t) => full.includes(t));
+      }
+      return false;
     });
 
     // 2. Query Nominatim OpenStreetMap Geocoding API if query >= 2 chars

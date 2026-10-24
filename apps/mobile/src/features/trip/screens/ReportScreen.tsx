@@ -180,7 +180,7 @@ export default function ReportScreen() {
               <MaterialIcons name="check" size={48} color="#FFFFFF" />
             </View>
 
-            <Text style={styles.successHeading}>Report Submitted</Text>
+            <Text style={styles.successHeading}>Thanks, rating noted</Text>
             <Text style={styles.successText}>
               Your safety report has been recorded in the SafeSafar Atlas database to protect travellers.
             </Text>

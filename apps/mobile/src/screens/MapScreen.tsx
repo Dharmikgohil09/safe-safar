@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, StyleSheet, SafeAreaView, StatusBar, Platform } from 'react-native';
+import { View, StyleSheet, StatusBar } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMapState } from '../context/MapContext';
 import { MapViewComponent } from '../components/MapViewComponent';
 import { DestinationSearchBar } from '../components/DestinationSearchBar';
@@ -9,6 +10,7 @@ import { MapLayerControls } from '../components/MapLayerControls';
 
 export const MapScreen: React.FC = () => {
   const { deadZoneAlert } = useMapState();
+  const insets = useSafeAreaInsets();
 
   return (
     <View style={styles.container}>
@@ -18,20 +20,20 @@ export const MapScreen: React.FC = () => {
       <MapViewComponent />
 
       {/* 2. Top Header HUD: Search Bar & Dead Zone Warning Banner */}
-      <SafeAreaView style={styles.topHudSafeArea}>
+      <View style={[styles.topHudSafeArea, { top: insets.top }]}>
         <View style={styles.topHudContainer}>
           <DestinationSearchBar />
           <DeadZoneWarningBanner alert={deadZoneAlert} />
         </View>
-      </SafeAreaView>
+      </View>
 
       {/* 3. Right Floating Action Buttons Cluster */}
       <MapLayerControls />
 
       {/* 4. Bottom Route Alternatives Carousel HUD */}
-      <SafeAreaView style={styles.bottomHudSafeArea}>
+      <View style={styles.bottomHudSafeArea}>
         <RouteSelectionPanel />
-      </SafeAreaView>
+      </View>
     </View>
   );
 };
@@ -43,7 +45,6 @@ const styles = StyleSheet.create({
   },
   topHudSafeArea: {
     position: 'absolute',
-    top: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0,
     left: 0,
     right: 0,
     zIndex: 10,

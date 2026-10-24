@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Alert,
   Animated,
   Platform,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -13,6 +12,7 @@ import {
   Linking,
   Share,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
 import { Card, PrimaryButton, StateView, useReduceMotion } from '../../../components/ui';
@@ -29,7 +29,7 @@ export default function LiveLocationScreen() {
   const { contacts, loading } = useTripContacts();
   const [selectedContactIds, setSelectedContactIds] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
+  React.useEffect(() => {
     const initial: Record<string, boolean> = {};
     contacts.forEach((c) => {
       initial[c.id] = true;
@@ -71,11 +71,11 @@ export default function LiveLocationScreen() {
     const trackerUrl = `${trackerBaseUrl}/track/${activeToken}`;
 
     Alert.alert(
-      'Live Sharing Active',
+      '📡 Live Sharing Active',
       `Your real-time GPS telemetry is streaming to the SafeSafar Live Tracker.\n\nTracking Link:\n${trackerUrl}`,
       [
         {
-          text: 'Share Link (WhatsApp/SMS)',
+          text: '📤 Share Link (WhatsApp/SMS)',
           onPress: () => {
             Share.share({
               message: `SafeSafar Live Location: Track my journey in real-time:\n${trackerUrl}`,
@@ -84,7 +84,7 @@ export default function LiveLocationScreen() {
           },
         },
         {
-          text: 'Open Web Tracker',
+          text: '🌐 Open Web Tracker',
           onPress: () => {
             Linking.openURL(trackerUrl).catch(() => {
               Alert.alert('Tracker URL', trackerUrl);
@@ -166,25 +166,13 @@ export default function LiveLocationScreen() {
           </Text>
         </View>
 
-        {loading ? (
+        {loading || previewStatus === 'loading' ? (
           <StateView
             kind="loading"
             title="Loading contacts"
             message="Retrieving your trusted contacts..."
           />
-        ) : contacts.length === 0 ? (
-          <StateView
-            kind="empty"
-            title="No trusted contacts yet"
-            message="Add contacts in Trusted Contacts to share your location."
-          />
-        ) : previewStatus === 'loading' ? (
-          <StateView
-            kind="loading"
-            title="Loading contacts"
-            message="Retrieving your trusted contacts..."
-          />
-        ) : previewStatus === 'empty' ? (
+        ) : contacts.length === 0 || previewStatus === 'empty' ? (
           <StateView
             kind="empty"
             title="No trusted contacts yet"

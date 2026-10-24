@@ -3,6 +3,7 @@
 export { registerDefaultChannels } from './channels/defaults';
 
 export { sosEngine } from './engine/sosEngine';
+export { useSos } from './hooks/useSos';
 export { sendTestSms } from './channels/sms';
 export { setCallChainListener } from './channels/call';
 export {

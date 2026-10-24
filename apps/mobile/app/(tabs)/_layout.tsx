@@ -2,12 +2,17 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Tabs } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { colors } from '../../src/theme';
+import { MapProvider } from '../../src/context/MapContext';
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 8);
   return (
+    <MapProvider>
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: colors.primary,
@@ -18,9 +23,10 @@ export default function TabLayout() {
           backgroundColor: colors.surface,
           borderTopWidth: 1,
           borderTopColor: colors.border,
-          height: 60,
-          paddingBottom: 8,
+          height: 56 + bottomInset,
+          paddingBottom: bottomInset,
           paddingTop: 6,
+          overflow: 'visible',
         },
         tabBarLabelStyle: {
           fontSize: 11,
@@ -38,8 +44,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="map"
         options={{
-          title: 'Map',
-          tabBarIcon: ({ color }) => <MaterialIcons name="map" size={24} color={color} />,
+          title: 'Safe Route',
+          tabBarIcon: ({ color }) => <MaterialIcons name="alt-route" size={24} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -72,13 +78,8 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <MaterialIcons name="person" size={24} color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          href: null,
-        }}
-      />
     </Tabs>
+    </MapProvider>
   );
 }
 

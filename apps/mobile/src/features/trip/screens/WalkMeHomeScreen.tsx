@@ -1,9 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   Animated,
   Platform,
-  SafeAreaView,
   ScrollView,
   Share,
   StatusBar,
@@ -14,11 +12,12 @@ import {
   View,
   Linking,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
-import { Card, PrimaryButton, StateView, useReduceMotion } from '../../../components/ui';
+import { Card, PrimaryButton, useReduceMotion } from '../../../components/ui';
 import { colors, radius, spacing, typography } from '../../../theme';
 import { apiFetch } from '../../../lib/api';
 import { getAccessToken } from '../../../services/api';
@@ -27,6 +26,8 @@ import { tripLocationPublisher } from '../../../services/tripLocationPublisher';
 import {
   DEFAULT_CHECK_IN_SECONDS,
   DEFAULT_DESTINATION,
+  mockWalkMeHomeContacts,
+  WalkMeHomeContact,
 } from '../mock/walkMeHomeMock';
 import { useTripContacts, type TripContact } from '../storage/useTripContacts';
 import { walkTelemetryService } from '../../../services/walkTelemetryService';
@@ -55,7 +56,6 @@ export default function WalkMeHomeScreen() {
   }, [initialContacts]);
 
   const progressAnim = useRef(new Animated.Value(1)).current;
-  const sessionStartedRef = useRef<boolean>(false);
 
   // Countdown timer with cleanup on unmount
   useEffect(() => {
@@ -244,12 +244,6 @@ export default function WalkMeHomeScreen() {
       }
     }
 
-    if (sessionStartedRef.current) {
-      walkTelemetryService.endWalkSession(true).catch((err) => {
-        console.warn('[WalkMeHome] endWalkSession error:', err);
-      });
-      sessionStartedRef.current = false;
-    }
     if (!reduceMotion) {
       try {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -267,10 +261,6 @@ export default function WalkMeHomeScreen() {
     await tripLocationPublisher.stopPublishing();
     setActiveTripId(null);
     setActiveTripToken(null);
-    if (sessionStartedRef.current) {
-      walkTelemetryService.endWalkSession(false).catch(() => {});
-      sessionStartedRef.current = false;
-    }
   };
 
   const toggleContact = (id: string) => {
@@ -514,8 +504,6 @@ export default function WalkMeHomeScreen() {
                 style={[styles.outlineButton, { borderColor: colors.accent, marginBottom: spacing.sm }]}
                 onPress={() => walkTelemetryService.shareTrackingLink()}
                 activeOpacity={0.8}
-                accessibilityRole="button"
-                accessibilityLabel="Share Live Tracking Link"
               >
                 <MaterialIcons name="share" size={20} color={colors.accent} />
                 <Text style={[styles.outlineButtonText, { color: colors.accent }]}>Share Live Tracking Link</Text>
@@ -547,68 +535,54 @@ export default function WalkMeHomeScreen() {
           </Text>
         </View>
 
-        {loading ? (
-          <StateView
-            kind="loading"
-            title="Loading contacts"
-            message="Retrieving your trusted contacts..."
-          />
-        ) : contacts.length === 0 ? (
-          <StateView
-            kind="empty"
-            title="No trusted contacts yet"
-            message="Add contacts in Trusted Contacts to share your location."
-          />
-        ) : (
-          <View style={styles.contactsList}>
-            {contacts.map((contact, index) => {
-              const isChecked = contact.selected;
+        <View style={styles.contactsList}>
+          {contacts.map((contact, index) => {
+            const isChecked = contact.selected;
 
-              return (
-                <TouchableOpacity
-                  key={contact.id}
-                  activeOpacity={0.8}
-                  onPress={() => toggleContact(contact.id)}
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: isChecked }}
-                  accessibilityLabel={`${contact.name}, ${isChecked ? 'selected' : 'unselected'}`}
+            return (
+              <TouchableOpacity
+                key={contact.id}
+                activeOpacity={0.8}
+                onPress={() => toggleContact(contact.id)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: isChecked }}
+                accessibilityLabel={`${contact.name}, Trusted, ${isChecked ? 'selected' : 'unselected'}`}
+              >
+                <Card
+                  style={[
+                    styles.contactCard,
+                    isChecked && styles.contactCardChecked,
+                  ]}
+                  entranceDelay={index * 60}
                 >
-                  <Card
-                    style={[
-                      styles.contactCard,
-                      isChecked && styles.contactCardChecked,
-                    ]}
-                    entranceDelay={index * 60}
-                  >
-                    <View style={styles.checkboxContainer}>
-                      <MaterialIcons
-                        name={isChecked ? 'check-box' : 'check-box-outline-blank'}
-                        size={24}
-                        color={isChecked ? colors.accent : colors.textMuted}
-                      />
-                    </View>
+                  <View style={styles.checkboxContainer}>
+                    <MaterialIcons
+                      name={isChecked ? 'check-box' : 'check-box-outline-blank'}
+                      size={24}
+                      color={isChecked ? colors.accent : colors.textMuted}
+                    />
+                  </View>
 
-                    <View style={styles.contactAvatar}>
-                      <Text style={styles.avatarInitials}>
-                        {contact.name.charAt(0).toUpperCase()}
-                      </Text>
-                    </View>
+                  <View style={styles.contactAvatar}>
+                    <Text style={styles.avatarInitials}>
+                      {contact.name.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
 
-                    <View style={styles.contactInfo}>
-                      <View style={styles.contactTopRow}>
-                        <Text style={styles.contactName}>{contact.name}</Text>
-                        <View style={styles.relPill}>
-                          <Text style={styles.relPillText}>Trusted</Text>
-                        </View>
+                  <View style={styles.contactInfo}>
+                    <View style={styles.contactTopRow}>
+                      <Text style={styles.contactName}>{contact.name}</Text>
+                      <View style={styles.relPill}>
+                        <Text style={styles.relPillText}>Trusted</Text>
                       </View>
-                      <Text style={styles.contactPhone}>{contact.phone}</Text>
                     </View>
-                  </Card>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
+                    <Text style={styles.contactPhone}>{contact.phone}</Text>
+                  </View>
+                </Card>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

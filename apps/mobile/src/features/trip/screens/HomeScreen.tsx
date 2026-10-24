@@ -1,40 +1,124 @@
-import React from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
-  SafeAreaView,
+  Keyboard,
+  Linking,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
-  Linking,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Card, DarkHeader, DrawerMenu, PrimaryButton, ShieldLogo } from '../../../components/ui';
 import { colors, radius, typography } from '../../../theme';
 import { tripLocationPublisher } from '../../../services/tripLocationPublisher';
+import { useMapState } from '../../../context/MapContext';
+import type { PlaceSearchResult } from '../../../services/geocodingService';
+import { getContacts } from '../../emergency';
+
+const QUICK_PICKS = [
+  { name: 'Adajan Gam Circle', coords: { latitude: 21.1963, longitude: 72.7952 } },
+  { name: 'VR Mall Surat', coords: { latitude: 21.1442, longitude: 72.7565 } },
+  { name: 'Surat Railway Station', coords: { latitude: 21.2044, longitude: 72.8407 } },
+];
 
 export default function HomeScreen() {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
+  const { searchPlaces, calculateRoutes, isLoading } = useMapState();
+
+  const [guardianCount, setGuardianCount] = useState<number | null>(null);
+  const [query, setQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<PlaceSearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [picked, setPicked] = useState<{ name: string; coords: { latitude: number; longitude: number } } | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      void getContacts().then((c) => setGuardianCount(c.length));
+    }, []),
+  );
+
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
 
   const showMessage = (feature: string) => {
     Alert.alert(feature, 'This feature will be connected during development.');
   };
 
+  const onChangeQuery = (text: string) => {
+    setQuery(text);
+    setPicked(null);
+    if (timer.current) clearTimeout(timer.current);
+    if (text.trim().length < 2) {
+      setSuggestions([]);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    timer.current = setTimeout(async () => {
+      try {
+        setSuggestions((await searchPlaces(text)).slice(0, 4));
+      } catch {
+        setSuggestions([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 350);
+  };
+
+  const choose = (name: string, coords: { latitude: number; longitude: number }) => {
+    setQuery(name);
+    setPicked({ name, coords });
+    setSuggestions([]);
+    Keyboard.dismiss();
+  };
+
+  const findRoute = async () => {
+    Keyboard.dismiss();
+    let target = picked;
+    if (!target && query.trim().length >= 2) {
+      try {
+        const results = await searchPlaces(query);
+        if (results[0]) target = { name: results[0].name, coords: results[0].coordinates };
+      } catch {
+        // fall through to the alert below
+      }
+    }
+    if (!target) {
+      Alert.alert('Where to?', 'Type a destination or pick one of the quick options.');
+      return;
+    }
+    setSuggestions([]);
+    void calculateRoutes(target.coords, target.name);
+    router.push('/(tabs)/map');
+  };
+
+  const openTracker = () => {
+    const pubStatus = tripLocationPublisher.getStatus();
+    const token = pubStatus.trackingToken || 'safesafar-live-session-2026';
+    const trackerBaseUrl =
+      process.env.EXPO_PUBLIC_TRACKER_URL || 'https://safesafar-tracker.vercel.app';
+    const url = `${trackerBaseUrl.replace(/\/+$/, '')}/track/${token}`;
+    Linking.openURL(url).catch(() => Alert.alert('Tracker URL', url));
+  };
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
 
-      {/* Navigation Drawer */}
-      <DrawerMenu
-        visible={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        showMessage={showMessage}
-      />
+      <DrawerMenu visible={drawerOpen} onClose={() => setDrawerOpen(false)} showMessage={showMessage} />
 
-      {/* DarkHeader with menu icon, brand, tagline, logo, bell, and avatar */}
       <DarkHeader
         title="SafeSafar"
         subtitle="Safer routes. Brighter journeys."
@@ -63,10 +147,10 @@ export default function HomeScreen() {
               <MaterialIcons name="notifications-none" size={24} color="#FFFFFF" />
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => router.push('/auth')}
+              onPress={() => router.push('/(tabs)/profile')}
               style={styles.avatarCircle}
               accessibilityRole="button"
-              accessibilityLabel="User profile or sign in"
+              accessibilityLabel="Open profile"
             >
               <Text style={styles.avatarText}>HB</Text>
             </TouchableOpacity>
@@ -74,77 +158,136 @@ export default function HomeScreen() {
         }
       />
 
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Slate Greeting Card */}
-        <Card style={styles.greetingCard} entranceDelay={0}>
-          <View style={styles.greetingContent}>
-            <Text style={styles.greetingTitle}>Hi there!</Text>
-            <Text style={styles.greetingSubtitle}>Travel safer, every day.</Text>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* 1. SOS first: the one thing that must always be one tap away */}
+        <Card
+          onPress={() => router.push('/(tabs)/sos')}
+          style={styles.sosHero}
+          accessibilityLabel="Emergency SOS. Opens the SOS screen."
+          entranceDelay={0}
+        >
+          <View style={styles.sosHeroIcon}>
+            <MaterialIcons name="warning" size={30} color="#FFFFFF" />
           </View>
-          <View style={styles.shieldBadge}>
-            <MaterialIcons name="verified-user" size={22} color={colors.accent} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.sosHeroTitle}>Emergency SOS</Text>
+            <Text style={styles.sosHeroSub}>
+              {guardianCount === null
+                ? 'Alert your guardians with your live location'
+                : guardianCount === 0
+                  ? 'Add a guardian so SOS can reach someone'
+                  : `Alerts ${guardianCount} guardian${guardianCount === 1 ? '' : 's'} with your live location`}
+            </Text>
           </View>
+          <MaterialIcons name="chevron-right" size={26} color="#FECACA" />
         </Card>
 
-        {/* Plan a Safe Route Card */}
+        {/* 2. Plan a Safe Route: the main purpose of the app */}
         <Card style={styles.planRouteCard} entranceDelay={60}>
           <View style={styles.planRouteHeader}>
-            <MaterialIcons name="map" size={22} color={colors.primary} />
+            <MaterialIcons name="alt-route" size={22} color={colors.primary} />
             <Text style={styles.planRouteTitle}>Plan a Safe Route</Text>
           </View>
           <Text style={styles.planRouteSubtitle}>
-            Find streets scored by lighting, landmarks, and real-time safety.
+            Streets scored by lighting, incidents, and nearby police and hospitals.
           </Text>
 
-          {/* Presentational input fields */}
           <View style={styles.inputsWrapper}>
-            <TouchableOpacity
-              style={styles.inputRow}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              onPress={() => router.push('/(tabs)/map')}
-            >
+            <View style={styles.inputRow}>
               <MaterialIcons name="my-location" size={20} color={colors.accent} />
               <Text style={styles.inputText}>Your Current Location</Text>
-            </TouchableOpacity>
+            </View>
             <View style={styles.inputDivider} />
-            <TouchableOpacity
-              style={styles.inputRow}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              onPress={() => router.push('/(tabs)/map')}
-            >
+            <View style={styles.inputRow}>
               <MaterialIcons name="place" size={20} color={colors.danger} />
-              <Text style={styles.inputText}>Choose Destination</Text>
-            </TouchableOpacity>
+              <TextInput
+                style={styles.destInput}
+                value={query}
+                onChangeText={onChangeQuery}
+                placeholder="Where are you going?"
+                placeholderTextColor={colors.textMuted}
+                returnKeyType="search"
+                onSubmitEditing={() => void findRoute()}
+                accessibilityLabel="Destination"
+              />
+              {searching ? <ActivityIndicator size="small" color={colors.primary} /> : null}
+              {query.length > 0 && !searching ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    setQuery('');
+                    setPicked(null);
+                    setSuggestions([]);
+                  }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel="Clear destination"
+                >
+                  <MaterialIcons name="close" size={18} color={colors.textMuted} />
+                </TouchableOpacity>
+              ) : null}
+            </View>
           </View>
+
+          {suggestions.length > 0 && (
+            <View style={styles.suggestions}>
+              {suggestions.map((p) => (
+                <TouchableOpacity
+                  key={p.id}
+                  style={styles.suggestionRow}
+                  onPress={() => choose(p.name, p.coordinates)}
+                  accessibilityRole="button"
+                >
+                  <MaterialIcons name="place" size={18} color={colors.textMuted} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.suggestionName} numberOfLines={1}>{p.name}</Text>
+                    {p.address ? <Text style={styles.suggestionAddr} numberOfLines={1}>{p.address}</Text> : null}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+            {QUICK_PICKS.map((q) => (
+              <TouchableOpacity
+                key={q.name}
+                style={[styles.chip, picked?.name === q.name && styles.chipActive]}
+                onPress={() => choose(q.name, q.coords)}
+                accessibilityRole="button"
+              >
+                <Text style={[styles.chipText, picked?.name === q.name && styles.chipTextActive]}>{q.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
 
           <PrimaryButton
             variant="accent"
-            label="Find Safe Route"
-            onPress={() => router.push('/(tabs)/map')}
+            label={isLoading ? 'Finding routes…' : 'Find Safe Route'}
+            onPress={() => void findRoute()}
+            disabled={isLoading}
             icon={<MaterialIcons name="search" size={20} color={colors.primaryDark} />}
             style={styles.findRouteButton}
           />
         </Card>
 
-        {/* Two Tiles Side by Side: Emergency SOS & Share Live Location */}
+        {/* 3. Trip tools */}
         <View style={styles.tilesRow}>
-          {/* Tile 1: Emergency SOS */}
           <Card
-            onPress={() => router.push('/(tabs)/sos')}
-            style={styles.sosTile}
-            accessibilityLabel="Emergency SOS"
+            onPress={() => router.push('/walk-me-home')}
+            style={styles.walkTile}
+            accessibilityLabel="Walk Me Home"
             entranceDelay={120}
           >
-            <View style={styles.sosIconCircle}>
-              <MaterialIcons name="warning" size={26} color={colors.sosRed} />
+            <View style={styles.walkIconCircle}>
+              <MaterialIcons name="directions-walk" size={26} color={colors.safe} />
             </View>
-            <Text style={styles.tileTitle}>Emergency SOS</Text>
-            <Text style={styles.tileSubtitle}>Instant 4-channel alert</Text>
+            <Text style={styles.tileTitle}>Walk Me Home</Text>
+            <Text style={styles.tileSubtitle}>Guardians check in on you</Text>
           </Card>
 
-          {/* Tile 2: Share Live Location */}
           <Card
             onPress={() => router.push('/live-location')}
             style={styles.shareTile}
@@ -159,125 +302,48 @@ export default function HomeScreen() {
           </Card>
         </View>
 
-        {/* Section: Explore SafeSafar */}
-        <Text style={styles.sectionTitle}>Explore SafeSafar</Text>
+        {/* 4. Get ready & help others */}
+        <Text style={styles.sectionTitle}>Be prepared</Text>
         <View style={styles.exploreList}>
-          {/* Card 1: Complete your Safety Profile */}
-          <Card
-            onPress={() => router.push('/onboarding')}
-            style={styles.exploreCard}
-            accessibilityLabel="Complete your Safety Profile"
-            entranceDelay={240}
-          >
-            <View style={styles.exploreCardInner}>
-              <View style={styles.exploreIconCircle}>
-                <MaterialIcons name="shield" size={22} color={colors.primary} />
-              </View>
-              <View style={styles.exploreTextGroup}>
-                <Text style={styles.exploreCardTitle}>Complete your Safety Profile</Text>
-                <Text style={styles.exploreCardDesc}>
-                  Configure automated countdowns and hardware safety permissions.
-                </Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
-            </View>
-          </Card>
-
-          {/* Card 2: Trusted Contacts */}
-          <Card
+          <ExploreCard
+            icon="security"
+            title="Safety Toolkit"
+            desc="Shake and voice triggers, fake call, duress PIN and decoy calculator."
+            onPress={() => router.push('/safety-toolkit' as any)}
+            delay={240}
+          />
+          <ExploreCard
+            icon="group"
+            title="Trusted Contacts"
+            desc="Manage the guardians who are alerted when you need help."
             onPress={() => router.push('/contacts')}
-            style={styles.exploreCard}
-            accessibilityLabel="Trusted Contacts"
-            entranceDelay={300}
-          >
-            <View style={styles.exploreCardInner}>
-              <View style={styles.exploreIconCircle}>
-                <MaterialIcons name="group" size={22} color={colors.primary} />
-              </View>
-              <View style={styles.exploreTextGroup}>
-                <Text style={styles.exploreCardTitle}>Trusted Contacts</Text>
-                <Text style={styles.exploreCardDesc}>
-                  Manage the guardian network alerted when you need assistance.
-                </Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
-            </View>
-          </Card>
-
-          {/* Card 3: Walk Me Home */}
-          <Card
-            onPress={() => router.push('/walk-me-home')}
-            style={styles.exploreCard}
-            accessibilityLabel="Walk Me Home"
-            entranceDelay={360}
-          >
-            <View style={styles.exploreCardInner}>
-              <View style={styles.exploreIconCircle}>
-                <MaterialIcons name="directions-walk" size={22} color={colors.primary} />
-              </View>
-              <View style={styles.exploreTextGroup}>
-                <Text style={styles.exploreCardTitle}>Walk Me Home</Text>
-                <Text style={styles.exploreCardDesc}>
-                  Automated journey timer and emergency contact check-ins.
-                </Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
-            </View>
-          </Card>
-
-          {/* Card 4: Report an unsafe location */}
-          <Card
+            delay={300}
+          />
+          <ExploreCard
+            icon="flag"
+            title="Report an unsafe place"
+            desc="Help other travellers make informed decisions."
             onPress={() => router.push('/report')}
-            style={styles.exploreCard}
-            accessibilityLabel="Report an unsafe location"
-            entranceDelay={420}
-          >
-            <View style={styles.exploreCardInner}>
-              <View style={styles.exploreIconCircle}>
-                <MaterialIcons name="flag" size={22} color={colors.primary} />
-              </View>
-              <View style={styles.exploreTextGroup}>
-                <Text style={styles.exploreCardTitle}>Report an unsafe location</Text>
-                <Text style={styles.exploreCardDesc}>
-                  Help other travellers make informed decisions.
-                </Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
-            </View>
-          </Card>
-
-          {/* Card 5: Live Guardian Web Tracker (Priyavardhan) */}
-          <Card
-            onPress={() => {
-              const pubStatus = tripLocationPublisher.getStatus();
-              const token = pubStatus.trackingToken || 'safesafar-live-session-2026';
-              const trackerBaseUrl =
-                process.env.EXPO_PUBLIC_TRACKER_URL || 'https://safesafar-tracker.vercel.app';
-              const url = `${trackerBaseUrl.replace(/\/+$/, '')}/track/${token}`;
-              Linking.openURL(url).catch(() => {
-                Alert.alert('Tracker URL', url);
-              });
-            }}
-            style={styles.exploreCard}
-            accessibilityLabel="Live Guardian Web Tracker (Priyavardhan)"
-            entranceDelay={480}
-          >
-            <View style={styles.exploreCardInner}>
-              <View style={[styles.exploreIconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.15)' }]}>
-                <MaterialIcons name="language" size={22} color="#0284C7" />
-              </View>
-              <View style={styles.exploreTextGroup}>
-                <Text style={styles.exploreCardTitle}>Live Guardian Web Tracker</Text>
-                <Text style={styles.exploreCardDesc}>
-                  Priyavardhan's Next.js web map, live telemetry stream, and heatmap.
-                </Text>
-              </View>
-              <MaterialIcons name="open-in-browser" size={22} color="#0284C7" />
-            </View>
-          </Card>
+            delay={360}
+          />
+          <ExploreCard
+            icon="verified-user"
+            title="Complete your Safety Profile"
+            desc="Set countdowns and hardware safety permissions."
+            onPress={() => router.push('/onboarding')}
+            delay={420}
+          />
+          <ExploreCard
+            icon="language"
+            title="Guardian Web Tracker"
+            desc="See what your guardians see: live map and safety heatmap."
+            onPress={openTracker}
+            delay={480}
+            tint="#0284C7"
+            trailing="open-in-browser"
+          />
         </View>
 
-        {/* Footer Sign In Row */}
         <View style={styles.footerRow}>
           <Text style={styles.footerText}>Already have an account? </Text>
           <TouchableOpacity
@@ -290,6 +356,39 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function ExploreCard({
+  icon,
+  title,
+  desc,
+  onPress,
+  delay,
+  tint,
+  trailing = 'chevron-right',
+}: {
+  icon: keyof typeof MaterialIcons.glyphMap;
+  title: string;
+  desc: string;
+  onPress: () => void;
+  delay: number;
+  tint?: string;
+  trailing?: keyof typeof MaterialIcons.glyphMap;
+}) {
+  return (
+    <Card onPress={onPress} style={styles.exploreCard} accessibilityLabel={title} entranceDelay={delay}>
+      <View style={styles.exploreCardInner}>
+        <View style={[styles.exploreIconCircle, tint ? { backgroundColor: 'rgba(56, 189, 248, 0.15)' } : null]}>
+          <MaterialIcons name={icon} size={22} color={tint ?? colors.primary} />
+        </View>
+        <View style={styles.exploreTextGroup}>
+          <Text style={styles.exploreCardTitle}>{title}</Text>
+          <Text style={styles.exploreCardDesc}>{desc}</Text>
+        </View>
+        <MaterialIcons name={trailing} size={22} color={tint ?? colors.textMuted} />
+      </View>
+    </Card>
   );
 }
 
@@ -339,7 +438,7 @@ const styles = StyleSheet.create({
     color: colors.primaryDark,
   },
 
-  /* Greeting Slate Card */
+  /* (greeting card removed) */
   greetingCard: {
     backgroundColor: colors.primaryDark,
     borderColor: colors.primary,
@@ -529,5 +628,72 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: colors.accent,
+  },
+
+  /* SOS hero */
+  sosHero: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: colors.sosRed,
+    borderColor: '#A93236',
+    padding: 16,
+    marginBottom: 16,
+  },
+  sosHeroIcon: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sosHeroTitle: { fontSize: 19, fontWeight: '800', color: '#FFFFFF' },
+  sosHeroSub: { fontSize: 12, color: '#FEE2E2', marginTop: 2, lineHeight: 17 },
+
+  destInput: { flex: 1, fontSize: 14, color: colors.textPrimary, fontWeight: '500', paddingVertical: 0 },
+  suggestions: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.card,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  suggestionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  suggestionName: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+  suggestionAddr: { fontSize: 11, color: colors.textMuted, marginTop: 1 },
+  chipRow: { gap: 8, paddingBottom: 14 },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 18,
+    backgroundColor: colors.primarySoft,
+  },
+  chipActive: { backgroundColor: colors.primary },
+  chipText: { fontSize: 12, fontWeight: '600', color: colors.primary },
+  chipTextActive: { color: '#FFFFFF' },
+  walkTile: {
+    flex: 1,
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+    padding: 16,
+    alignItems: 'flex-start',
+  },
+  walkIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#DCFCE7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
   },
 });

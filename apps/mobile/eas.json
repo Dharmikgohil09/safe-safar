@@ -15,7 +15,9 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://safe-safar.onrender.com",
         "EXPO_PUBLIC_MAPBOX_TOKEN": "pk.eyJ1IjoiZGhhcm1pazA5IiwiYSI6ImNtdmpxM3FtMjBpZTIyenNjOHp3dG00ZnYifQ.WMi8RducwylzH6OQL5MXyg",
-        "EXPO_PUBLIC_DEMO_MODE": "true"
+        "EXPO_PUBLIC_DEMO_MODE": "true",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "118598297749-35gdlpekfsgrfdtq7ehr6k36scrj2vjl.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "118598297749-hs7v7kjfdimd8s0nfebag09ktdcme7f4.apps.googleusercontent.com"
       }
     }
   }

@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -11,22 +13,139 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
+import * as Location from 'expo-location';
 import { Card, PrimaryButton } from '../../../components/ui';
+import { LocationPickerModal } from '../../../components/LocationPickerModal';
 import { colors, radius, spacing, typography } from '../../../theme';
+import { LatLng } from '../../../types';
+import { geocodingService } from '../../../services/geocodingService';
 import {
-  DEFAULT_REPORT_TYPE,
-  REPORT_TYPES,
-  ReportType,
-  SAMPLE_LOCATION,
-} from '../mock/reportMock';
+  reportService,
+  REPORT_CATEGORY_MAP,
+  ReportCategory,
+  ReportItem,
+} from '../../../services/reportService';
+
+export const REPORT_TYPES = [
+  'Poor lighting',
+  'Harassment',
+  'Suspicious activity',
+  'Road hazard',
+  'Other',
+] as const;
+
+export type ReportType = typeof REPORT_TYPES[number];
 
 export default function ReportScreen() {
-  const [selectedType, setSelectedType] = useState<ReportType>(DEFAULT_REPORT_TYPE);
+  const [selectedType, setSelectedType] = useState<ReportType>('Poor lighting');
   const [note, setNote] = useState<string>('');
   const [submitted, setSubmitted] = useState<boolean>(false);
+  const [submittedReport, setSubmittedReport] = useState<ReportItem | null>(null);
 
-  const handleSubmit = () => {
-    setSubmitted(true);
+  // Real location state
+  const [selectedLocation, setSelectedLocation] = useState<LatLng | null>(null);
+  const [addressText, setAddressText] = useState<string>('');
+  const [locationStatusText, setLocationStatusText] = useState<string>('Detecting device GPS...');
+  const [isLocating, setIsLocating] = useState<boolean>(true);
+  const [permissionDenied, setPermissionDenied] = useState<boolean>(false);
+
+  // Modal & submission state
+  const [isPickerOpen, setIsPickerOpen] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchInitialDeviceLocation();
+  }, []);
+
+  const fetchInitialDeviceLocation = async () => {
+    setIsLocating(true);
+    setPermissionDenied(false);
+
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setPermissionDenied(true);
+        setIsLocating(false);
+        setLocationStatusText('Permission denied');
+        return;
+      }
+
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      const coords: LatLng = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      };
+      setSelectedLocation(coords);
+
+      try {
+        const geoRes = await geocodingService.reverseGeocode(coords);
+        if (geoRes && (geoRes.address || geoRes.name)) {
+          setAddressText(geoRes.address || geoRes.name);
+        } else {
+          setAddressText(`Pinned location (${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)})`);
+        }
+      } catch {
+        setAddressText(`Pinned location (${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)})`);
+      }
+
+      setLocationStatusText('GPS pinned coordinates');
+    } catch (err: any) {
+      setLocationStatusText('Could not detect GPS');
+    } finally {
+      setIsLocating(false);
+    }
+  };
+
+  const handleLocationPicked = (loc: { latitude: number; longitude: number; address: string }) => {
+    setSelectedLocation({ latitude: loc.latitude, longitude: loc.longitude });
+    setAddressText(loc.address);
+    setLocationStatusText('Custom pinned coordinates');
+    setPermissionDenied(false);
+    setSubmitError(null);
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedLocation) {
+      Alert.alert(
+        'Location Required',
+        'Please select a location on the map before submitting your report.',
+        [{ text: 'Pick Location', onPress: () => setIsPickerOpen(true) }, { text: 'Cancel' }]
+      );
+      return;
+    }
+
+    setSubmitError(null);
+    setIsSubmitting(true);
+
+    try {
+      const category: ReportCategory = REPORT_CATEGORY_MAP[selectedType] || 'other';
+      const result = await reportService.submitReport({
+        category,
+        latitude: selectedLocation.latitude,
+        longitude: selectedLocation.longitude,
+        description: note.trim(),
+        address: addressText,
+      });
+
+      if (result && result.report) {
+        setSubmittedReport(result.report);
+      }
+      setSubmitted(true);
+    } catch (err: any) {
+      const serverMsg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        'Could not submit report. Please check your network and try again.';
+      setSubmitError(serverMsg);
+      Alert.alert('Report Submission Failed', serverMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -55,15 +174,15 @@ export default function ReportScreen() {
 
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {submitted ? (
-          /* Success View */
+          /* Real Success View (Atlas-persisted confirmation) */
           <Card style={styles.successCard}>
             <View style={styles.successIconCircle}>
               <MaterialIcons name="check" size={48} color="#FFFFFF" />
             </View>
 
-            <Text style={styles.successHeading}>Thanks for reporting</Text>
+            <Text style={styles.successHeading}>Report Submitted</Text>
             <Text style={styles.successText}>
-              Your report is saved for this demo only.
+              Your safety report has been recorded in the SafeSafar Atlas database to protect travellers.
             </Text>
 
             <View style={styles.summaryBox}>
@@ -73,8 +192,24 @@ export default function ReportScreen() {
               </View>
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Location:</Text>
-                <Text style={styles.summaryValue}>{SAMPLE_LOCATION}</Text>
+                <Text style={styles.summaryValue}>{addressText || 'Pinned coordinates'}</Text>
               </View>
+              {selectedLocation && (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Coordinates:</Text>
+                  <Text style={styles.summaryValue}>
+                    {selectedLocation.latitude.toFixed(5)}, {selectedLocation.longitude.toFixed(5)}
+                  </Text>
+                </View>
+              )}
+              {submittedReport?.status && (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Status:</Text>
+                  <Text style={[styles.summaryValue, { color: colors.safe, textTransform: 'capitalize' }]}>
+                    {submittedReport.status}
+                  </Text>
+                </View>
+              )}
               {note.trim() ? (
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Notes:</Text>
@@ -93,17 +228,61 @@ export default function ReportScreen() {
         ) : (
           /* Report Form View */
           <>
-            {/* Location Row Card */}
+            {/* Dynamic Real Location Card */}
             <Card style={styles.locationCard}>
               <View style={styles.locationRow}>
                 <View style={styles.locationIconCircle}>
-                  <MaterialIcons name="location-on" size={24} color={colors.accent} />
+                  <MaterialIcons
+                    name={permissionDenied && !selectedLocation ? 'location-off' : 'location-on'}
+                    size={24}
+                    color={permissionDenied && !selectedLocation ? colors.danger : colors.accent}
+                  />
                 </View>
+
                 <View style={styles.locationTextGroup}>
                   <Text style={styles.fieldSectionLabel}>LOCATION</Text>
-                  <Text style={styles.locationTitle}>{SAMPLE_LOCATION}</Text>
-                  <Text style={styles.locationSubtitle}>GPS pinned coordinates</Text>
+
+                  {isLocating ? (
+                    <View style={styles.detectingRow}>
+                      <ActivityIndicator size="small" color={colors.accent} style={{ marginRight: 6 }} />
+                      <Text style={styles.detectingText}>Detecting device location...</Text>
+                    </View>
+                  ) : permissionDenied && !selectedLocation ? (
+                    <>
+                      <Text style={[styles.locationTitle, { color: colors.danger }]}>
+                        Permission Denied
+                      </Text>
+                      <Text style={styles.locationSubtitle}>
+                        GPS permission was denied. Tap "Change" to pick on map.
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.locationTitle} numberOfLines={2}>
+                        {addressText ||
+                          (selectedLocation
+                            ? `Pinned location (${selectedLocation.latitude.toFixed(5)}, ${selectedLocation.longitude.toFixed(5)})`
+                            : 'No location selected')}
+                      </Text>
+                      <Text style={styles.locationSubtitle}>
+                        {selectedLocation
+                          ? `${selectedLocation.latitude.toFixed(5)}, ${selectedLocation.longitude.toFixed(5)} • ${locationStatusText}`
+                          : 'Please pick a spot on the map'}
+                      </Text>
+                    </>
+                  )}
                 </View>
+
+                <TouchableOpacity
+                  style={styles.changeLocationButton}
+                  onPress={() => setIsPickerOpen(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Change location"
+                  activeOpacity={0.8}
+                >
+                  <MaterialIcons name="edit-location-alt" size={16} color={colors.primary} />
+                  <Text style={styles.changeLocationButtonText}>Change</Text>
+                </TouchableOpacity>
               </View>
             </Card>
 
@@ -120,21 +299,13 @@ export default function ReportScreen() {
                     <TouchableOpacity
                       key={type}
                       onPress={() => setSelectedType(type)}
-                      style={[
-                        styles.chip,
-                        isSelected && styles.chipSelected,
-                      ]}
+                      style={[styles.chip, isSelected && styles.chipSelected]}
                       activeOpacity={0.8}
                       accessibilityRole="radio"
                       accessibilityState={{ selected: isSelected }}
                       accessibilityLabel={type}
                     >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          isSelected && styles.chipTextSelected,
-                        ]}
-                      >
+                      <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
                         {type}
                       </Text>
                     </TouchableOpacity>
@@ -150,27 +321,46 @@ export default function ReportScreen() {
                 style={styles.noteInput}
                 value={note}
                 onChangeText={setNote}
-                placeholder="Describe what you saw (optional)"
+                placeholder="Describe what you saw (optional, max 500 characters)"
                 placeholderTextColor={colors.textMuted}
                 multiline
                 numberOfLines={4}
+                maxLength={500}
                 textAlignVertical="top"
-                accessibilityLabel="Describe what you saw (optional)"
+                accessibilityLabel="Describe what you saw"
               />
             </Card>
+
+            {/* Submit Error Banner (if error occurred) */}
+            {submitError && (
+              <View style={styles.errorBanner}>
+                <MaterialIcons name="error-outline" size={20} color={colors.danger} style={{ marginRight: 8 }} />
+                <Text style={styles.errorBannerText}>{submitError}</Text>
+              </View>
+            )}
 
             {/* Submit Button */}
             <View style={styles.actionContainer}>
               <PrimaryButton
-                label="Submit report"
+                label={isSubmitting ? 'Submitting to Atlas...' : 'Submit report'}
                 onPress={handleSubmit}
                 variant="accent"
-                icon={<MaterialIcons name="send" size={20} color={colors.primaryDark} />}
+                loading={isSubmitting}
+                disabled={isSubmitting || (!selectedLocation && !isLocating)}
+                icon={!isSubmitting ? <MaterialIcons name="send" size={20} color={colors.primaryDark} /> : undefined}
               />
             </View>
           </>
         )}
       </ScrollView>
+
+      {/* Full-screen Location Map Picker */}
+      <LocationPickerModal
+        visible={isPickerOpen}
+        initialLocation={selectedLocation}
+        onClose={() => setIsPickerOpen(false)}
+        onConfirm={handleLocationPicked}
+      />
     </SafeAreaView>
   );
 }
@@ -241,6 +431,7 @@ const styles = StyleSheet.create({
   },
   locationTextGroup: {
     flex: 1,
+    marginRight: 8,
   },
   fieldSectionLabel: {
     fontSize: 11,
@@ -250,14 +441,38 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   locationTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: colors.textPrimary,
+    lineHeight: 20,
   },
   locationSubtitle: {
     fontSize: 12,
     color: colors.textMuted,
     marginTop: 2,
+  },
+  detectingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  detectingText: {
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+  changeLocationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primarySoft,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: radius.pill,
+    gap: 4,
+  },
+  changeLocationButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.primary,
   },
   sectionCard: {
     padding: 16,
@@ -306,6 +521,22 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     minHeight: 90,
     marginTop: 6,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: radius.card,
+    padding: 12,
+    marginBottom: 12,
+  },
+  errorBannerText: {
+    flex: 1,
+    fontSize: 13,
+    color: colors.danger,
+    fontWeight: '500',
   },
   actionContainer: {
     marginTop: 8,

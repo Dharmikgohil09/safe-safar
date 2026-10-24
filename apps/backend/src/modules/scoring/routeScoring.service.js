@@ -119,9 +119,10 @@ async function scoreRoute(coordinates, { now = new Date(), timeOfDay = 'day' } =
           ]
         }
       },
-      $expr: {
-        $gte: [{ $size: '$confirmations' }, MIN_CONFIRMATIONS]
-      }
+      $or: [
+        { $expr: { $gte: [{ $size: '$confirmations' }, MIN_CONFIRMATIONS] } },
+        { status: 'active' }
+      ]
     }).lean(),
 
     LightPoint.find({

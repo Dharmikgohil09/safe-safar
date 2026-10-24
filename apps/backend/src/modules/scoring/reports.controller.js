@@ -19,6 +19,7 @@ async function createReport(req, res, next) {
     return res.status(201).json({
       success: true,
       message: 'Report submitted',
+      report,
       data: report
     });
   } catch (error) {
@@ -95,8 +96,52 @@ async function listReports(req, res, next) {
   }
 }
 
+/**
+ * GET /reports/nearby?lat=&lng=&radius=
+ * Retrieve reports near coordinates using $geoNear (public)
+ */
+async function getNearbyReports(req, res, next) {
+  try {
+    let lat, lng;
+    if (req.query.lat !== undefined && req.query.lng !== undefined) {
+      lat = Number(req.query.lat);
+      lng = Number(req.query.lng);
+    } else if (req.query.near) {
+      const parts = req.query.near.split(',').map(Number);
+      lng = parts[0];
+      lat = parts[1];
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: 'Query parameter lat and lng (or near=lng,lat) are required.'
+      });
+    }
+
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid coordinates: latitude must be between -90 and 90, longitude between -180 and 180.'
+      });
+    }
+
+    const radius = req.query.radius ? Number(req.query.radius) : 1000;
+    const limit = req.query.limit ? Number(req.query.limit) : 50;
+
+    const reports = await reportsService.getNearbyReports({ lat, lng, radius, limit });
+    return res.status(200).json({
+      success: true,
+      count: reports.length,
+      reports,
+      data: reports
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   createReport,
   confirmReport,
-  listReports
+  listReports,
+  getNearbyReports
 };

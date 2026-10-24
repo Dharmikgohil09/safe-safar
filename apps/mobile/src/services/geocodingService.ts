@@ -88,6 +88,12 @@ const SURAT_PRESET_LOCATIONS: PlaceSearchResult[] = [
 
 export class GeocodingService {
   private localLandmarks: PlaceSearchResult[] = [];
+  private searchCache = new Map<string, PlaceSearchResult[]>();
+  private reverseCache = new Map<string, { name: string; address: string }>();
+  private searchAbortController: AbortController | null = null;
+  private reverseAbortController: AbortController | null = null;
+
+  private static USER_AGENT = 'SafeSafar-Mobile/1.0 (contact: support@safesafar.app)';
 
   constructor() {
     this.indexLocalLandmarks();
@@ -121,12 +127,19 @@ export class GeocodingService {
 
   /**
    * Search for places by text query.
-   * Checks local curated Surat locations and landmarks, and if online queries OpenStreetMap Nominatim.
+   * Checks cache, local indexed landmarks & presets, cancels stale inflight queries,
+   * and queries OpenStreetMap Nominatim with caching.
    */
   async searchPlaces(query: string, userLocation?: LatLng): Promise<PlaceSearchResult[]> {
     const cleaned = query.trim().toLowerCase();
     if (!cleaned) {
       return this.getPopularSpots(userLocation);
+    }
+
+    const cacheKey = cleaned;
+    if (this.searchCache.has(cacheKey)) {
+      const cached = this.searchCache.get(cacheKey)!;
+      return this.attachDistanceMetrics(cached, userLocation);
     }
 
     // 1. Search local indexed landmarks & presets
@@ -140,19 +153,23 @@ export class GeocodingService {
     // 2. Query Nominatim OpenStreetMap Geocoding API if query >= 2 chars
     let remoteMatches: PlaceSearchResult[] = [];
     if (cleaned.length >= 2) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2500);
+      // Cancel any stale inflight search request
+      if (this.searchAbortController) {
+        this.searchAbortController.abort();
+      }
+      this.searchAbortController = new AbortController();
+      const controller = this.searchAbortController;
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
 
-        // Query globally without restricting viewbox so any city/destination worldwide can be searched
-        let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
           cleaned
         )}&addressdetails=1&limit=8`;
 
         const res = await fetch(url, {
           signal: controller.signal,
           headers: {
-            'User-Agent': 'SafeSafar-Mobile/1.0',
+            'User-Agent': GeocodingService.USER_AGENT,
             Accept: 'application/json',
           },
         });
@@ -184,8 +201,15 @@ export class GeocodingService {
             });
           }
         }
-      } catch (_) {
-        // Fall back gracefully to local matches
+      } catch (err: any) {
+        // Ignore aborted errors
+        if (err?.name !== 'AbortError') {
+          // Fall back gracefully to local matches
+        }
+      } finally {
+        if (this.searchAbortController === controller) {
+          this.searchAbortController = null;
+        }
       }
     }
 
@@ -202,23 +226,42 @@ export class GeocodingService {
       }
     }
 
-    // Add distance metrics if userLocation is available
+    // Store in cache (capped to 100 items)
+    if (this.searchCache.size > 100) {
+      const firstKey = this.searchCache.keys().next().value;
+      if (firstKey) this.searchCache.delete(firstKey);
+    }
+    this.searchCache.set(cacheKey, combined);
+
+    return this.attachDistanceMetrics(combined, userLocation);
+  }
+
+  private attachDistanceMetrics(
+    items: PlaceSearchResult[],
+    userLocation?: LatLng
+  ): PlaceSearchResult[] {
+    const cloned = items.map((i) => ({ ...i }));
     if (userLocation) {
-      for (const item of combined) {
+      for (const item of cloned) {
         const d = calculateDistanceMeters(userLocation, item.coordinates);
         item.distanceMeters = d;
         item.formattedDistance = formatDistance(d);
       }
-      combined.sort((a, b) => (a.distanceMeters || 0) - (b.distanceMeters || 0));
+      cloned.sort((a, b) => (a.distanceMeters || 0) - (b.distanceMeters || 0));
     }
-
-    return combined.slice(0, 8);
+    return cloned.slice(0, 8);
   }
 
   /**
    * Reverse geocode a latitude/longitude coordinate to a human-readable place name.
+   * Checks cache, local landmarks, cancels previous stale reverse queries, and caches results.
    */
   async reverseGeocode(coords: LatLng): Promise<{ name: string; address: string }> {
+    const cacheKey = `${coords.latitude.toFixed(4)},${coords.longitude.toFixed(4)}`;
+    if (this.reverseCache.has(cacheKey)) {
+      return this.reverseCache.get(cacheKey)!;
+    }
+
     // 1. Check nearest local landmark (< 300m)
     let closestLandmark: PlaceSearchResult | null = null;
     let minDistance = 300;
@@ -232,22 +275,28 @@ export class GeocodingService {
     }
 
     if (closestLandmark) {
-      return {
+      const result = {
         name: closestLandmark.name,
         address: `Near ${closestLandmark.name}, ${closestLandmark.address}`,
       };
+      this.reverseCache.set(cacheKey, result);
+      return result;
     }
 
     // 2. Query Nominatim reverse geocoding API
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2000);
+    if (this.reverseAbortController) {
+      this.reverseAbortController.abort();
+    }
+    this.reverseAbortController = new AbortController();
+    const controller = this.reverseAbortController;
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
 
+    try {
       const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}&zoom=16&addressdetails=1`;
       const res = await fetch(url, {
         signal: controller.signal,
         headers: {
-          'User-Agent': 'SafeSafar-Mobile/1.0',
+          'User-Agent': GeocodingService.USER_AGENT,
           Accept: 'application/json',
         },
       });
@@ -256,14 +305,33 @@ export class GeocodingService {
       if (res.ok) {
         const data = await res.json();
         const road = data.address?.road || data.address?.suburb || data.address?.neighbourhood;
-        const city = data.address?.city || data.address?.town || data.address?.village || data.address?.state_district;
+        const city =
+          data.address?.city ||
+          data.address?.town ||
+          data.address?.village ||
+          data.address?.state_district;
         const name = road && city ? `${road}, ${city}` : road || data.display_name.split(',')[0];
-        return {
+        const result = {
           name: name || 'Selected Map Location',
-          address: data.display_name || `Lat: ${coords.latitude.toFixed(4)}, Lng: ${coords.longitude.toFixed(4)}`,
+          address:
+            data.display_name ||
+            `Lat: ${coords.latitude.toFixed(4)}, Lng: ${coords.longitude.toFixed(4)}`,
         };
+
+        if (this.reverseCache.size > 100) {
+          const firstKey = this.reverseCache.keys().next().value;
+          if (firstKey) this.reverseCache.delete(firstKey);
+        }
+        this.reverseCache.set(cacheKey, result);
+        return result;
       }
-    } catch (_) {}
+    } catch (_) {
+      // Fallback
+    } finally {
+      if (this.reverseAbortController === controller) {
+        this.reverseAbortController = null;
+      }
+    }
 
     return {
       name: `Dropped Pin (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`,
@@ -292,3 +360,5 @@ export class GeocodingService {
     return list;
   }
 }
+
+export const geocodingService = new GeocodingService();

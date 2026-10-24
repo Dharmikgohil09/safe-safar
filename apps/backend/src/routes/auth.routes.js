@@ -28,8 +28,6 @@ router.get('/verification-status', authController.getVerificationStatus);
 router.post('/resend-verification', resendVerificationLimiter, authController.resendVerification);
 
 router.post('/login', loginLimiter, authController.login);
-router.post('/google', loginLimiter, authController.googleAuth);
-router.get('/google/callback', authController.googleWebCallback);
 router.post('/refresh', authController.refresh);
 router.post('/logout', authController.logout);
 

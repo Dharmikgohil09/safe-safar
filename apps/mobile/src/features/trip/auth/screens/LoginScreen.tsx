@@ -19,8 +19,6 @@ import { colors, radius, typography } from '../../../../theme';
 import { normalizePhone } from '../../../emergency';
 import { useAuth } from '../../../../context/AuthContext';
 import CheckEmailModal from '../components/CheckEmailModal';
-import CompletePhoneModal from '../components/CompletePhoneModal';
-import { promptGoogleSignIn, statusCodes } from '../../../../services/googleAuth';
 import type { AuthCredentials, AuthValidationErrors } from '../types';
 
 interface LoginScreenProps {
@@ -34,16 +32,14 @@ export default function LoginScreen({
   onNavigateToRegister,
   onClose,
 }: LoginScreenProps) {
-  const { login, googleLogin } = useAuth();
+  const { login } = useAuth();
   const [credentials, setCredentials] = useState<AuthCredentials>({ phone: '', pin: '' });
   const [showPin, setShowPin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errors, setErrors] = useState<AuthValidationErrors>({});
   const [focusedField, setFocusedField] = useState<'phone' | 'pin' | null>(null);
   const [showCheckEmail, setShowCheckEmail] = useState(false);
   const [unverifiedEmail, setUnverifiedEmail] = useState('');
-  const [showCompletePhone, setShowCompletePhone] = useState(false);
 
   // Entrance animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -94,9 +90,7 @@ export default function LoginScreen({
       const cleanPhone = normalizePhone(rawPhone) || rawPhone.trim();
       const res = await login(cleanPhone, credentials.pin);
       if (res.success) {
-        if (res.needsProfileCompletion) {
-          setShowCompletePhone(true);
-        } else if (onSuccess) {
+        if (onSuccess) {
           onSuccess();
         } else if (onClose) {
           onClose();
@@ -111,68 +105,6 @@ export default function LoginScreen({
       setErrors({ general: err.message || 'Network error. Please check your connection and try again.' });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const isGoogleLoadingRef = useRef(false);
-
-  const handleGoogleSignIn = async () => {
-    // Ignore double taps
-    if (isGoogleLoadingRef.current || isGoogleLoading) {
-      console.log('[GoogleAuth] Sign-in already in progress, ignoring duplicate tap');
-      return;
-    }
-
-    isGoogleLoadingRef.current = true;
-    setIsGoogleLoading(true);
-    setErrors({});
-
-    try {
-      console.log('[GoogleAuth:Login] Starting Google Sign-In...');
-      const { idToken, nonce } = await promptGoogleSignIn();
-      console.log('[GoogleAuth:Login] idToken acquired, invoking backend googleLogin...');
-
-      const res = await googleLogin(idToken, nonce);
-      console.log('[GoogleAuth:Login] Backend response success:', res.success);
-
-      if (res.success) {
-        if (res.needsProfileCompletion) {
-          setShowCompletePhone(true);
-        } else if (onSuccess) {
-          onSuccess();
-        } else if (onClose) {
-          onClose();
-        }
-      } else {
-        console.warn('[GoogleAuth:Login] Backend rejected login:', res.error);
-        setErrors({ general: res.error || 'Google Sign-In failed. Please try again.' });
-      }
-    } catch (err: any) {
-      console.warn('[GoogleAuth:Login] Error caught:', err.code, err.message);
-      if (
-        err.code === statusCodes?.SIGN_IN_CANCELLED ||
-        err.code === 'SIGN_IN_CANCELLED' ||
-        err.message?.toLowerCase().includes('cancel')
-      ) {
-        // User cancelled sign-in - do not show alert
-      } else if (err.code === statusCodes?.IN_PROGRESS || err.code === 'IN_PROGRESS') {
-        setErrors({ general: 'Google sign-in already in progress.' });
-      } else if (err.code === statusCodes?.PLAY_SERVICES_NOT_AVAILABLE) {
-        setErrors({ general: 'Google Play Services is not available or outdated on this device.' });
-      } else if (err.code === '10' || err.code === 10 || err.message?.includes('DEVELOPER_ERROR') || err.message?.includes('code 10')) {
-        setErrors({
-          general: 'Google Sign-In configuration error (Developer Error 10). Verify SHA-1 fingerprint and package name in Google Cloud Console.',
-        });
-      } else if (err.message?.includes('timed out') || err.message?.includes('timeout')) {
-        setErrors({ general: 'Google sign-in timed out. Please try again.' });
-      } else if (err.message?.includes('Network') || err.message?.includes('network')) {
-        setErrors({ general: 'Network connection failed. Please check your internet.' });
-      } else {
-        setErrors({ general: err.message || 'Google Sign-In failed.' });
-      }
-    } finally {
-      isGoogleLoadingRef.current = false;
-      setIsGoogleLoading(false);
     }
   };
 
@@ -344,41 +276,6 @@ export default function LoginScreen({
                 disabled={isLoading}
                 accessibilityLabel="Sign In"
               />
-
-              {/* Divider "OR" */}
-              <View style={styles.dividerRow}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>OR</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              {/* Social Login Buttons */}
-              <View style={styles.socialButtonsContainer}>
-                <TouchableOpacity
-                  style={styles.socialButton}
-                  onPress={handleGoogleSignIn}
-                  disabled={isLoading || isGoogleLoading}
-                  activeOpacity={0.8}
-                  accessibilityRole="button"
-                  accessibilityLabel="Continue with Google"
-                >
-                  <MaterialIcons name="g-mobiledata" size={24} color={colors.textPrimary} />
-                  <Text style={styles.socialButtonText}>
-                    {isGoogleLoading ? 'Connecting...' : 'Continue with Google'}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.socialButton}
-                  onPress={() => Alert.alert('Apple Sign-In', 'Apple sign-in will be enabled in a future release.')}
-                  activeOpacity={0.8}
-                  accessibilityRole="button"
-                  accessibilityLabel="Continue with Apple"
-                >
-                  <MaterialIcons name="apple" size={20} color={colors.textPrimary} />
-                  <Text style={styles.socialButtonText}>Continue with Apple</Text>
-                </TouchableOpacity>
-              </View>
             </Card>
 
             {/* Footer Navigation */}
@@ -407,20 +304,6 @@ export default function LoginScreen({
           else if (onClose) onClose();
         }}
         onClose={() => setShowCheckEmail(false)}
-      />
-
-      <CompletePhoneModal
-        visible={showCompletePhone}
-        onSuccess={() => {
-          setShowCompletePhone(false);
-          if (onSuccess) onSuccess();
-          else if (onClose) onClose();
-        }}
-        onDismiss={() => {
-          setShowCompletePhone(false);
-          if (onSuccess) onSuccess();
-          else if (onClose) onClose();
-        }}
       />
     </SafeAreaView>
   );
@@ -642,45 +525,6 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontWeight: '600',
     marginTop: 5,
-  },
-
-  /* Divider */
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 18,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.border,
-  },
-  dividerText: {
-    marginHorizontal: 12,
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textMuted,
-  },
-
-  /* Social Buttons */
-  socialButtonsContainer: {
-    gap: 10,
-  },
-  socialButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 44,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    gap: 8,
-  },
-  socialButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textPrimary,
   },
 
   /* Footer */

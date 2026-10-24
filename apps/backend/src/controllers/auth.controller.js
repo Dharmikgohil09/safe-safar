@@ -1,5 +1,4 @@
 const bcrypt = require('bcryptjs');
-const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const {
   generateAccessToken,
@@ -9,8 +8,6 @@ const {
   hashToken,
 } = require('../utils/tokens');
 const { validateEmailMx, sendVerificationEmail } = require('../utils/mailer');
-
-const googleClient = new OAuth2Client(process.env.GOOGLE_WEB_CLIENT_ID);
 
 /**
  * Normalize Indian phone numbers to 10 digits
@@ -376,11 +373,11 @@ async function login(req, res) {
       });
     }
 
-    // Google-only user without PIN
+    // User without PIN
     if (!user.passwordHash) {
       return res.status(401).json({
         success: false,
-        error: 'This account was created with Google. Please use Continue with Google.',
+        error: 'This account has no PIN set. Please sign up with email and PIN.',
       });
     }
 
@@ -532,115 +529,9 @@ async function me(req, res) {
   }
 }
 
-/**
- * 9. CONTINUE WITH GOOGLE
- * POST /api/auth/google
- */
-async function googleAuth(req, res) {
-  try {
-    const { idToken, nonce } = req.body;
-    if (!idToken) {
-      return res.status(400).json({ success: false, error: 'Google ID token required.' });
-    }
-
-    let payload;
-    try {
-      const audience = [
-        process.env.GOOGLE_WEB_CLIENT_ID,
-        process.env.GOOGLE_ANDROID_CLIENT_ID,
-        process.env.GOOGLE_IOS_CLIENT_ID,
-      ].filter(Boolean);
-
-      const ticket = await googleClient.verifyIdToken({
-        idToken,
-        audience: audience.length > 0 ? audience : undefined,
-      });
-      payload = ticket.getPayload();
-
-      // Verify nonce if provided in browser flow
-      if (nonce && payload && payload.nonce && payload.nonce !== nonce) {
-        console.warn('[GoogleAuth] Nonce mismatch detected in token verification');
-        return res.status(401).json({ success: false, error: 'Google authentication failed: nonce mismatch.' });
-      }
-    } catch (gErr) {
-      // Fallback: verify via Google UserInfo endpoint (supports OAuth access tokens and web flow tokens)
-      try {
-        const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { Authorization: `Bearer ${idToken}` },
-        });
-        if (userInfoRes.ok) {
-          const uData = await userInfoRes.json();
-          payload = {
-            email: uData.email,
-            name: uData.name,
-            picture: uData.picture,
-            sub: uData.sub,
-          };
-        } else {
-          throw new Error('HTTP ' + userInfoRes.status);
-        }
-      } catch (uiErr) {
-        console.warn('[GoogleAuth] Token verification failed:', gErr.message, uiErr.message);
-        return res.status(401).json({ success: false, error: 'Google authentication failed: ' + gErr.message });
-      }
-    }
-
-    const { email, name, picture, sub: googleId } = payload;
-    if (!email) {
-      return res.status(400).json({ success: false, error: 'Google account missing email address.' });
-    }
-
-    let user = await User.findOne({ email: email.toLowerCase().trim() });
-
-    if (user) {
-      // Link Google ID if not present
-      if (!user.googleId) user.googleId = googleId;
-      if (!user.avatar && picture) user.avatar = picture;
-      user.isEmailVerified = true; // Google already verified this email
-      await user.save();
-    } else {
-      // Create user
-      user = await User.create({
-        name: name || 'Google User',
-        email: email.toLowerCase().trim(),
-        googleId,
-        avatar: picture || '',
-        authProvider: 'google',
-        isEmailVerified: true,
-      });
-    }
-
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user);
-
-    const refreshHash = hashToken(refreshToken);
-    user.refreshTokenHash = [refreshHash];
-    await user.save();
-
-    const needsProfileCompletion = !user.phone;
-
-    return res.status(200).json({
-      success: true,
-      accessToken,
-      refreshToken,
-      needsProfileCompletion,
-      user: {
-        id: user._id.toString(),
-        name: user.name,
-        email: user.email,
-        phone: user.phone || null,
-        avatar: user.avatar,
-        authProvider: user.authProvider,
-      },
-    });
-  } catch (err) {
-    console.error('[Auth:Google Error]', err);
-    return res.status(500).json({ success: false, error: 'Server error' });
-  }
-}
 
 /**
- * 10. COMPLETE PROFILE (Attach phone number for Google users)
+ * COMPLETE PROFILE (Attach phone number if missing)
  * PATCH /api/auth/complete-profile
  */
 async function completeProfile(req, res) {
@@ -767,106 +658,6 @@ function renderVerifyResultHtml({ success, title, message }) {
 </html>`;
 }
 
-function googleWebCallback(req, res) {
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SafeSafar - Google Sign-In</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0A192F; color: #FFFFFF; text-align: center; }
-    .box { padding: 36px 24px; border-radius: 16px; background: #112240; box-shadow: 0 10px 30px rgba(0,0,0,0.4); max-width: 360px; width: 90%; }
-    .spinner { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.2); border-top-color: #10B981; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    h2 { font-size: 18px; margin: 0 0 8px; font-weight: 600; }
-    p { font-size: 13px; color: #94A3B8; margin: 0 0 20px; line-height: 1.5; }
-    .btn { display: inline-block; background: #10B981; color: #0A192F; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 16px; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4); transition: transform 0.1s; cursor: pointer; }
-    .btn:active { transform: scale(0.97); }
-    .intent-link { display: block; margin-top: 14px; font-size: 12px; color: #64748B; text-decoration: underline; }
-  </style>
-</head>
-<body>
-  <div class="box">
-    <div id="spinner" class="spinner"></div>
-    <h2 id="title">Connecting to SafeSafar...</h2>
-    <p id="desc">Returning to app</p>
-    <a id="btn" class="btn" style="display:none;" href="#">Open SafeSafar App</a>
-    <a id="intentBtn" class="intent-link" style="display:none;" href="#">Open via Android Intent</a>
-  </div>
-  <script>
-    (function() {
-      function getTokens() {
-        var hashStr = window.location.hash ? window.location.hash.substring(1) : '';
-        var searchStr = window.location.search ? window.location.search.substring(1) : '';
-        var hashParams = new URLSearchParams(hashStr);
-        var searchParams = new URLSearchParams(searchStr);
-        var idToken = hashParams.get('id_token') || searchParams.get('id_token') || hashParams.get('access_token') || searchParams.get('access_token');
-        var error = hashParams.get('error') || searchParams.get('error') || hashParams.get('error_description') || searchParams.get('error_description');
-        var state = hashParams.get('state') || searchParams.get('state');
-        return { idToken: idToken, error: error, state: state };
-      }
-
-      var btn = document.getElementById('btn');
-      var intentBtn = document.getElementById('intentBtn');
-      var title = document.getElementById('title');
-      var desc = document.getElementById('desc');
-      var spinner = document.getElementById('spinner');
-
-      function route(tokens) {
-        var base = tokens.state ? decodeURIComponent(tokens.state) : 'safesafar://auth-callback';
-        if (tokens.idToken) {
-          var sep = (base.indexOf('#') !== -1 || base.indexOf('?') !== -1) ? '&' : '#';
-          var finalUrl = base + sep + 'id_token=' + encodeURIComponent(tokens.idToken);
-          var intentUrl = 'intent://auth-callback#id_token=' + encodeURIComponent(tokens.idToken) + '#Intent;scheme=safesafar;package=com.codecraft.safesafar;end;';
-
-          btn.href = finalUrl;
-          btn.style.display = 'inline-block';
-
-          if (base.indexOf('safesafar://') === 0) {
-            intentBtn.href = intentUrl;
-            intentBtn.style.display = 'block';
-          }
-
-          if (title) title.textContent = 'Account Verified!';
-          if (desc) desc.textContent = 'Returning to app... Tap the button below if SafeSafar did not open automatically.';
-
-          // Automatic navigation
-          window.location.href = finalUrl;
-          return true;
-        } else if (tokens.error) {
-          if (spinner) spinner.style.display = 'none';
-          if (title) { title.textContent = 'Sign-In Error'; title.style.color = '#EF4444'; }
-          if (desc) desc.textContent = tokens.error;
-          var errUrl = base + (base.indexOf('?') !== -1 ? '&' : '?') + 'error=' + encodeURIComponent(tokens.error);
-          btn.href = errUrl;
-          btn.textContent = 'Back to SafeSafar';
-          btn.style.display = 'inline-block';
-          window.location.href = errUrl;
-          return true;
-        }
-        return false;
-      }
-
-      var info = getTokens();
-      if (!route(info)) {
-        setTimeout(function() {
-          var retryInfo = getTokens();
-          if (!route(retryInfo)) {
-            btn.style.display = 'inline-block';
-            btn.href = retryInfo.state ? decodeURIComponent(retryInfo.state) : 'safesafar://auth-callback';
-            if (desc) desc.textContent = 'Tap below to return to SafeSafar.';
-          }
-        }, 300);
-      }
-    })();
-  </script>
-</body>
-</html>`;
-
-  return res.send(html);
-}
-
 module.exports = {
   signup,
   verifyEmail,
@@ -876,7 +667,5 @@ module.exports = {
   refresh,
   logout,
   me,
-  googleAuth,
-  googleWebCallback,
   completeProfile,
 };

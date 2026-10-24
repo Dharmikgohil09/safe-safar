@@ -70,6 +70,7 @@ app.use('/api/auth', authRouter);
 app.use('/auth', authRouter); // Backward compatibility
 app.use('/contacts', contactsRouter);
 app.use('/trips', tripsRouter);
+app.use('/api/trips', tripsRouter);
 
 // Teammate Module Mount Points
 app.use('/routes', routesRouter);

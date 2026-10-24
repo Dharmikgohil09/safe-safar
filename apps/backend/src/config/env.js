@@ -15,6 +15,11 @@ const parseCorsOrigins = () => {
     'http://127.0.0.1:8082'
   ];
 
+  // Deployed SafeSafar web tracker origin
+  const deployedTrackerOrigins = [
+    'https://safesafar-tracker.onrender.com'
+  ];
+
   // Regex matching LAN private IP origins on ports 3000, 8081, 8082 for local mobile/hotspot testing
   const lanOriginRegex = /^http:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+):(3000|8081|8082)$/;
 
@@ -26,11 +31,11 @@ const parseCorsOrigins = () => {
   const validEnvOrigins = envOrigins.filter(o => o !== '*');
 
   if (process.env.NODE_ENV === 'production') {
-    return validEnvOrigins.length > 0 ? validEnvOrigins : localDefaults;
+    return Array.from(new Set([...deployedTrackerOrigins, ...(validEnvOrigins.length > 0 ? validEnvOrigins : localDefaults)]));
   }
 
-  // Development/Test: union of explicit local origins, configured origins, and LAN regex
-  const explicitOrigins = Array.from(new Set([...localDefaults, ...validEnvOrigins]));
+  // Development/Test: union of explicit local origins, deployed tracker origins, configured origins, and LAN regex
+  const explicitOrigins = Array.from(new Set([...localDefaults, ...deployedTrackerOrigins, ...validEnvOrigins]));
   return [...explicitOrigins, lanOriginRegex];
 };
 

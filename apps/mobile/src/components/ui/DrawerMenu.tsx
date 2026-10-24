@@ -5,13 +5,13 @@ import {
   Animated,
   Modal,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
 import { mockUser } from '../../features/trip/mock/mockData';
@@ -153,20 +153,11 @@ export function DrawerMenu({
   };
 
   const navItems: DrawerItem[] = [
-    {
-      id: 'home',
-      label: 'Home',
-      icon: 'home',
-      action: 'navigate',
-      route: '/',
-    },
-    {
-      id: 'map',
-      label: 'Map',
-      icon: 'map',
-      action: 'navigate',
-      route: '/map',
-    },
+    { id: 'home', label: 'Home', icon: 'home', action: 'navigate', route: '/' },
+    { id: 'map', label: 'Safe Route Map', icon: 'map', action: 'navigate', route: '/map' },
+    { id: 'walk', label: 'Walk Me Home', icon: 'directions-walk', action: 'navigate', route: '/walk-me-home' },
+    { id: 'share_live', label: 'Share Live Location', icon: 'near-me', action: 'navigate', route: '/live-location' },
+    { id: 'report', label: 'Report Unsafe Place', icon: 'flag', action: 'navigate', route: '/report' },
     {
       id: 'sos',
       label: 'Emergency SOS',
@@ -176,54 +167,12 @@ export function DrawerMenu({
       badge: 'SOS',
       isDanger: true,
     },
-    {
-      id: 'share_live',
-      label: 'Share Live Location (Web Tracker)',
-      icon: 'near-me',
-      action: 'navigate',
-      route: '/live-location',
-    },
-    {
-      id: 'emergency_dev',
-      label: 'Kristal SOS Engine & Decoy',
-      icon: 'security',
-      action: 'navigate',
-      route: '/emergency-dev',
-      badge: 'ENGINE',
-    },
-    {
-      id: 'profile',
-      label: 'Safety Profile',
-      icon: 'verified-user',
-      action: 'navigate',
-      route: '/onboarding',
-    },
-    {
-      id: 'contacts',
-      label: 'Trusted Contacts',
-      icon: 'people',
-      action: 'navigate',
-      route: '/contacts',
-    },
-    {
-      id: 'settings',
-      label: 'Settings',
-      icon: 'settings',
-      action: 'message',
-    },
-    {
-      id: 'help',
-      label: 'Help and Support',
-      icon: 'help-outline',
-      action: 'message',
-    },
-    {
-      id: 'logout',
-      label: 'Logout',
-      icon: 'logout',
-      action: 'message',
-      isDanger: true,
-    },
+    { id: 'toolkit', label: 'Safety Toolkit', icon: 'security', action: 'navigate', route: '/safety-toolkit' },
+    { id: 'contacts', label: 'Trusted Contacts', icon: 'people', action: 'navigate', route: '/contacts' },
+    { id: 'profile', label: 'Safety Profile', icon: 'verified-user', action: 'navigate', route: '/onboarding' },
+    { id: 'settings', label: 'Settings', icon: 'settings', action: 'message' },
+    { id: 'help', label: 'Help and Support', icon: 'help-outline', action: 'message' },
+    { id: 'logout', label: 'Logout', icon: 'logout', action: 'message', isDanger: true },
   ];
 
   return (
@@ -234,6 +183,7 @@ export function DrawerMenu({
       onRequestClose={() => handleClose()}
       statusBarTranslucent
     >
+      <SafeAreaProvider>
       <View style={styles.modalRoot}>
         {/* Dark overlay backdrop that closes on tap */}
         <Animated.View style={[styles.backdrop, { opacity: backdropAnim }]}>
@@ -298,8 +248,9 @@ export function DrawerMenu({
                 const isSos = item.id === 'sos';
                 const isLogout = item.id === 'logout';
                 const showDivider =
-                  item.id === 'share_live' ||
-                  item.id === 'contacts' ||
+                  item.id === 'report' ||
+                  item.id === 'toolkit' ||
+                  item.id === 'profile' ||
                   item.id === 'help';
 
                 return (
@@ -357,11 +308,18 @@ export function DrawerMenu({
 
             {/* Footer */}
             <View style={styles.footer}>
-              <Text style={styles.footerText}>SafeSafar · v1.0.0</Text>
+              {/* Long-press (hidden): opens the raw SOS engine dev screen for testing */}
+              <Pressable
+                onLongPress={() => handleClose(() => router.push('/emergency-dev' as any))}
+                delayLongPress={1500}
+              >
+                <Text style={styles.footerText}>SafeSafar · v1.0.0</Text>
+              </Pressable>
             </View>
           </SafeAreaView>
         </Animated.View>
       </View>
+      </SafeAreaProvider>
     </Modal>
   );
 }

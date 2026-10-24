@@ -1,15 +1,13 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { MapProvider } from '../../src/context/MapContext';
 import { MapScreen } from '../../src/screens/MapScreen';
 
+// MapProvider lives in (tabs)/_layout.tsx so Home can start a route search too.
 export default function MapTabScreen() {
   return (
-    <MapProvider>
-      <View style={styles.container}>
-        <MapScreen />
-      </View>
-    </MapProvider>
+    <View style={styles.container}>
+      <MapScreen />
+    </View>
   );
 }
 
@@ -19,4 +17,3 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FA',
   },
 });
-

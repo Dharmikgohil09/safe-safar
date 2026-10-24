@@ -240,7 +240,7 @@ const getTripByTrackingToken = async (trackingToken) => {
   };
 };
 
-const updateTripLocation = async (tripId, userId, { coordinates, speed = 0, heading = 0, accuracy = 0 }) => {
+const updateTripLocation = async (tripId, userId, { coordinates, speed = 0, heading = 0, accuracy = 0, timestamp }) => {
   const trip = await Trip.findById(tripId);
   if (!trip) return null;
 
@@ -261,7 +261,7 @@ const updateTripLocation = async (tripId, userId, { coordinates, speed = 0, head
     speed,
     heading,
     accuracy,
-    timestamp: new Date()
+    timestamp: timestamp ? new Date(timestamp) : new Date()
   };
 
   await trip.save();

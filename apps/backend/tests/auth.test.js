@@ -275,16 +275,16 @@ describe('SafeSafar Complete Authentication API', () => {
   });
 
   describe('PATCH /api/auth/complete-profile', () => {
-    it('allows Google user without phone to attach valid 10-digit phone', async () => {
-      const googleUser = await User.create({
-        name: 'Google User',
-        email: 'google.user@example.com',
-        authProvider: 'google',
+    it('allows user without phone to attach valid 10-digit phone', async () => {
+      const testUser = await User.create({
+        name: 'SafeSafar User',
+        email: 'user.nophone@example.com',
+        authProvider: 'local',
         isEmailVerified: true,
       });
 
       const { generateAccessToken } = require('../src/utils/tokens');
-      const token = generateAccessToken(googleUser);
+      const token = generateAccessToken(testUser);
 
       const res = await request(app)
         .patch('/api/auth/complete-profile')

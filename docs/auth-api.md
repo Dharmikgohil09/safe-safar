@@ -230,41 +230,8 @@ Retrieves the logged-in user profile on app startup.
 
 ---
 
-## 8. Continue with Google
-Exchanges and verifies Google `idToken` using Google's OAuth2 client. Creates a new user or links to an existing email account with `isEmailVerified = true`. If the mobile number is missing, `needsProfileCompletion = true` triggers the prompt for phone input.
-
-* **Method**: `POST`
-* **Endpoint**: `/api/auth/google`
-
-### Request Body
-```json
-{
-  "idToken": "<google_id_token>"
-}
-```
-
-### Response `200 OK`
-```json
-{
-  "success": true,
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6...",
-  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6...",
-  "needsProfileCompletion": true,
-  "user": {
-    "id": "6719543...",
-    "name": "Ananya Sharma",
-    "email": "ananya.sharma@gmail.com",
-    "phone": null,
-    "avatar": "https://lh3.googleusercontent.com/...",
-    "authProvider": "google"
-  }
-}
-```
-
----
-
-## 9. Complete Profile (Add Phone)
-Adds an Indian 10-digit mobile number for users who authenticated via Google Sign-In.
+## 8. Complete Profile (Add Phone)
+Adds or updates an Indian 10-digit mobile number for a user profile.
 
 * **Method**: `PATCH`
 * **Endpoint**: `/api/auth/complete-profile`
@@ -288,14 +255,14 @@ Adds an Indian 10-digit mobile number for users who authenticated via Google Sig
     "email": "ananya.sharma@gmail.com",
     "phone": "9876543210",
     "avatar": "",
-    "authProvider": "google"
+    "authProvider": "local"
   }
 }
 ```
 
 ---
 
-## 10. Logout
+## 9. Logout
 Invalidates the refresh token in MongoDB Atlas and clears the local session.
 
 * **Method**: `POST`

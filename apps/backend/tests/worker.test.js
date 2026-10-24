@@ -14,8 +14,7 @@ const {
   processOverdueTrips,
   isWorkerRunning
 } = require('../src/modules/core/trips/tripExpiry.worker');
-const { registerUser } = require('../src/modules/core/auth/auth.service');
-const { setupTestDB } = require('./setup');
+const { setupTestDB, createTestUser } = require('./setup');
 
 describe('Trip Expiration Worker & Reports Routing', () => {
   setupTestDB();
@@ -27,13 +26,13 @@ describe('Trip Expiration Worker & Reports Routing', () => {
     clearTripExpiryHooks();
     stopTripExpiryWorker();
 
-    const authRes = await registerUser({
+    const authRes = await createTestUser({
       phone: '+919876543210',
       name: 'Worker Test User',
       pin: '1234'
     });
     userToken = authRes.token;
-    userId = authRes.user._id;
+    userId = authRes.user._id.toString();
   });
 
   afterEach(() => {
@@ -80,7 +79,7 @@ describe('Trip Expiration Worker & Reports Routing', () => {
       const reportId = createRes.body.data.id;
 
       // Register second user to confirm (author cannot confirm own report)
-      const secondUser = await registerUser({
+      const secondUser = await createTestUser({
         phone: '+919876543299',
         name: 'Second Confirmer',
         pin: '1234'

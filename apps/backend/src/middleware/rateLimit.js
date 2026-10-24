@@ -13,6 +13,7 @@ const loginLimiter = rateLimit({
     success: false,
     error: 'Too many login attempts. Please try again in 1 minute.',
   },
+  skip: () => process.env.NODE_ENV === 'test',
 });
 
 /**
@@ -28,6 +29,7 @@ const signupLimiter = rateLimit({
     success: false,
     error: 'Too many account creation attempts. Please try again later.',
   },
+  skip: () => process.env.NODE_ENV === 'test',
 });
 
 /**
@@ -43,6 +45,7 @@ const resendVerificationLimiter = rateLimit({
     success: false,
     error: 'Too many verification email requests. Please wait before requesting another.',
   },
+  skip: () => process.env.NODE_ENV === 'test',
 });
 
 module.exports = {

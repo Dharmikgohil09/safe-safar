@@ -1,7 +1,7 @@
 const request = require('supertest');
 const app = require('../src/app');
 const Trip = require('../src/models/trip.model');
-const { setupTestDB } = require('./setup');
+const { setupTestDB, createTestUser } = require('./setup');
 
 describe('Walk Me Home Trips API', () => {
   setupTestDB();
@@ -23,19 +23,19 @@ describe('Walk Me Home Trips API', () => {
   };
 
   beforeEach(async () => {
-    const resA = await request(app).post('/auth/register').send({
+    const userA = await createTestUser({
       phone: '+919876543210',
       name: 'User A',
       pin: '1234'
     });
-    userAToken = resA.body.data.token;
+    userAToken = userA.token;
 
-    const resB = await request(app).post('/auth/register').send({
+    const userB = await createTestUser({
       phone: '+919876543211',
       name: 'User B',
       pin: '5678'
     });
-    userBToken = resB.body.data.token;
+    userBToken = userB.token;
 
     const contactRes = await request(app)
       .post('/contacts')

@@ -177,7 +177,10 @@ export default function WalkMeHomeScreen() {
               coordinates: [originCoords[0] + 0.005, originCoords[1] + 0.005],
             },
             estimatedDurationMinutes: Math.max(1, Math.ceil(remainingSeconds / 60)),
-            emergencyContactIds: contacts.filter((c) => selectedContactIds[c.id]).map((c) => c.id),
+            emergencyContactIds: contacts
+              .filter((c) => selectedContactIds[c.id])
+              .map((c) => c.id)
+              .filter((id) => /^[0-9a-fA-F]{24}$/.test(id)),
           }),
         });
       } catch (netErr: any) {

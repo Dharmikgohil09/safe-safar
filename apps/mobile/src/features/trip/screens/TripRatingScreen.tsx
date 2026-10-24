@@ -99,7 +99,7 @@ export default function TripRatingScreen() {
             <View style={styles.confirmIconCircle}>
               <MaterialIcons name="check-circle" size={40} color={colors.safe} />
             </View>
-            <Text style={styles.confirmationTitle}>Thanks, rating noted for this demo.</Text>
+            <Text style={styles.confirmationTitle}>Thanks, rating noted.</Text>
             <Text style={styles.confirmationSubtitle}>
               Your feedback helps refine danger heatmaps and lighting corridors for the community.
             </Text>

@@ -1,5 +1,4 @@
-const jwt = require('jsonwebtoken');
-const config = require('../config/env');
+const { verifyAccessToken } = require('../utils/tokens');
 const User = require('../models/user.model');
 
 const requireAuth = async (req, res, next) => {
@@ -22,7 +21,7 @@ const requireAuth = async (req, res, next) => {
 
     let decoded;
     try {
-      decoded = jwt.verify(token, config.jwt.secret);
+      decoded = verifyAccessToken(token);
     } catch (jwtErr) {
       if (jwtErr.name === 'TokenExpiredError') {
         return res.status(401).json({
@@ -46,8 +45,10 @@ const requireAuth = async (req, res, next) => {
 
     req.user = {
       _id: user._id.toString(),
+      id: user._id.toString(),
       phone: user.phone,
-      name: user.name
+      name: user.name,
+      email: user.email
     };
 
     next();

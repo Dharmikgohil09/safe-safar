@@ -67,7 +67,11 @@ class WalkTelemetryService {
 
     // Generate unique tracking token
     const token = 'walk-' + Math.random().toString(36).substring(2, 9);
-    const trackerUrl = `https://safesafar-tracker.vercel.app/track/${token}`;
+    const trackerBaseUrl = (
+      process.env.EXPO_PUBLIC_TRACKER_URL ||
+      'https://safesafar-tracker.vercel.app'
+    ).replace(/\/+$/, '');
+    const trackerUrl = `${trackerBaseUrl}/track/${token}`;
 
     // 1. Retrieve trusted contacts
     const contacts = await getTripContacts();

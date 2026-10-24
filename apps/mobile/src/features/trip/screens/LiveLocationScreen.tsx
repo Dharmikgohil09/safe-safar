@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
   Linking,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -17,7 +18,7 @@ import { router } from 'expo-router';
 import { Card, PrimaryButton, StateView, useReduceMotion } from '../../../components/ui';
 import { colors, radius, spacing, typography } from '../../../theme';
 import { useTripContacts } from '../storage/useTripContacts';
-import { walkTelemetryService } from '../../../services/walkTelemetryService';
+import { tripLocationPublisher } from '../../../services/tripLocationPublisher';
 
 const DURATION_OPTIONS = ['15 min', '1 hour', '8 hours', 'Until I stop'];
 
@@ -63,35 +64,36 @@ export default function LiveLocationScreen() {
         }),
       ]).start();
     }
+    const pubStatus = tripLocationPublisher.getStatus();
+    const activeToken = pubStatus.trackingToken || 'safesafar-live-session-2026';
+    const trackerBaseUrl =
+      (process.env.EXPO_PUBLIC_TRACKER_URL || 'https://safesafar-tracker.vercel.app').replace(/\/+$/, '');
+    const trackerUrl = `${trackerBaseUrl}/track/${activeToken}`;
 
-    try {
-      const session = await walkTelemetryService.startWalkSession({
-        destinationName: 'Live Location Sharing',
-        routeName: 'Active Safe Tracking',
-      });
-
-      Alert.alert(
-        '📡 Live Sharing Active',
-        `Your real-time GPS telemetry is streaming to the SafeSafar Live Tracker.\n\nSMS alert with your tracking link has been dispatched to your trusted contacts.\n\nTracking Link:\n${session.trackerUrl}`,
-        [
-          {
-            text: '📤 Share Link (WhatsApp/SMS)',
-            onPress: () => walkTelemetryService.shareTrackingLink(),
+    Alert.alert(
+      '📡 Live Sharing Active',
+      `Your real-time GPS telemetry is streaming to the SafeSafar Live Tracker.\n\nTracking Link:\n${trackerUrl}`,
+      [
+        {
+          text: '📤 Share Link (WhatsApp/SMS)',
+          onPress: () => {
+            Share.share({
+              message: `SafeSafar Live Location: Track my journey in real-time:\n${trackerUrl}`,
+              url: trackerUrl,
+            }).catch(() => {});
           },
-          {
-            text: '🌐 Open Web Tracker',
-            onPress: () => {
-              Linking.openURL(session.trackerUrl).catch(() => {
-                Alert.alert('Tracker URL', session.trackerUrl);
-              });
-            },
+        },
+        {
+          text: '🌐 Open Web Tracker',
+          onPress: () => {
+            Linking.openURL(trackerUrl).catch(() => {
+              Alert.alert('Tracker URL', trackerUrl);
+            });
           },
-          { text: 'OK', style: 'default' },
-        ]
-      );
-    } catch (err) {
-      console.warn('[LiveLocation] Failed to start telemetry:', err);
-    }
+        },
+        { text: 'OK', style: 'default' },
+      ]
+    );
   };
 
   const toggleContact = (id: string) => {
@@ -164,29 +166,17 @@ export default function LiveLocationScreen() {
           </Text>
         </View>
 
-        {loading ? (
+        {loading || previewStatus === 'loading' ? (
           <StateView
             kind="loading"
             title="Loading contacts"
             message="Retrieving your trusted contacts..."
           />
-        ) : contacts.length === 0 ? (
+        ) : contacts.length === 0 || previewStatus === 'empty' ? (
           <StateView
             kind="empty"
             title="No trusted contacts yet"
             message="Add contacts in Trusted Contacts to share your location."
-          />
-        ) : previewStatus === 'loading' ? (
-          <StateView
-            kind="loading"
-            title="Loading contacts"
-            message="Retrieving your trusted contacts..."
-          />
-        ) : previewStatus === 'empty' ? (
-          <StateView
-            kind="empty"
-            title="No trusted contacts yet"
-            message="Add contacts to share your location."
           />
         ) : previewStatus === 'error' ? (
           <StateView

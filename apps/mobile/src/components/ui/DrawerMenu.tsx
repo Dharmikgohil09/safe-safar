@@ -3,6 +3,7 @@ import {
   AccessibilityInfo,
   Alert,
   Animated,
+  Image,
   Linking,
   Modal,
   Pressable,
@@ -15,7 +16,7 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
-import { mockUser } from '../../features/trip/mock/mockData';
+import { useAuth } from '../../context/AuthContext';
 import { colors, radius, spacing, typography } from '../../theme';
 import { ShieldLogo } from './ShieldLogo';
 
@@ -42,6 +43,17 @@ export function DrawerMenu({
   onClose,
   showMessage,
 }: DrawerMenuProps) {
+  const { user } = useAuth();
+  const initials = user?.name
+    ? user.name
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((p) => p[0])
+        .join('')
+        .toUpperCase()
+    : '';
   const [modalVisible, setModalVisible] = React.useState(visible);
   const [reduceMotion, setReduceMotion] = React.useState(false);
   const animX = React.useRef(new Animated.Value(-DRAWER_WIDTH)).current;
@@ -236,16 +248,24 @@ export function DrawerMenu({
 
               <View style={styles.userCard}>
                 <View style={styles.avatarCircle}>
-                  <Text style={styles.avatarText}>{mockUser.initials}</Text>
+                  {user?.avatar ? (
+                    <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+                  ) : initials ? (
+                    <Text style={styles.avatarText}>{initials}</Text>
+                  ) : (
+                    <MaterialIcons name="person" size={24} color={colors.primaryDark} />
+                  )}
                 </View>
-                <View style={styles.userInfo}>
-                  <Text style={styles.userName} numberOfLines={1}>
-                    {mockUser.name}
-                  </Text>
-                  <Text style={styles.userEmail} numberOfLines={1}>
-                    {mockUser.email}
-                  </Text>
-                </View>
+                {user ? (
+                  <View style={styles.userInfo}>
+                    <Text style={styles.userName} numberOfLines={1}>
+                      {user.name}
+                    </Text>
+                    <Text style={styles.userEmail} numberOfLines={1}>
+                      {user.email}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
             </View>
 
@@ -401,6 +421,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   avatarText: {
     fontSize: 16,

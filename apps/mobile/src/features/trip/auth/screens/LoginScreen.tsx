@@ -114,14 +114,27 @@ export default function LoginScreen({
     }
   };
 
+  const isGoogleLoadingRef = useRef(false);
+
   const handleGoogleSignIn = async () => {
+    // Ignore double taps
+    if (isGoogleLoadingRef.current || isGoogleLoading) {
+      console.log('[GoogleAuth] Sign-in already in progress, ignoring duplicate tap');
+      return;
+    }
+
+    isGoogleLoadingRef.current = true;
     setIsGoogleLoading(true);
     setErrors({});
 
     try {
-      const { idToken } = await promptGoogleSignIn();
+      console.log('[GoogleAuth:Login] Starting Google Sign-In...');
+      const { idToken, nonce } = await promptGoogleSignIn();
+      console.log('[GoogleAuth:Login] idToken acquired, invoking backend googleLogin...');
 
-      const res = await googleLogin(idToken);
+      const res = await googleLogin(idToken, nonce);
+      console.log('[GoogleAuth:Login] Backend response success:', res.success);
+
       if (res.success) {
         if (res.needsProfileCompletion) {
           setShowCompletePhone(true);
@@ -131,19 +144,34 @@ export default function LoginScreen({
           onClose();
         }
       } else {
+        console.warn('[GoogleAuth:Login] Backend rejected login:', res.error);
         setErrors({ general: res.error || 'Google Sign-In failed. Please try again.' });
       }
     } catch (err: any) {
-      if (err.code === statusCodes?.SIGN_IN_CANCELLED || err.code === 'SIGN_IN_CANCELLED') {
-        // User cancelled sign-in
-      } else if (err.code === statusCodes?.IN_PROGRESS) {
+      console.warn('[GoogleAuth:Login] Error caught:', err.code, err.message);
+      if (
+        err.code === statusCodes?.SIGN_IN_CANCELLED ||
+        err.code === 'SIGN_IN_CANCELLED' ||
+        err.message?.toLowerCase().includes('cancel')
+      ) {
+        // User cancelled sign-in - do not show alert
+      } else if (err.code === statusCodes?.IN_PROGRESS || err.code === 'IN_PROGRESS') {
         setErrors({ general: 'Google sign-in already in progress.' });
       } else if (err.code === statusCodes?.PLAY_SERVICES_NOT_AVAILABLE) {
         setErrors({ general: 'Google Play Services is not available or outdated on this device.' });
+      } else if (err.code === '10' || err.code === 10 || err.message?.includes('DEVELOPER_ERROR') || err.message?.includes('code 10')) {
+        setErrors({
+          general: 'Google Sign-In configuration error (Developer Error 10). Verify SHA-1 fingerprint and package name in Google Cloud Console.',
+        });
+      } else if (err.message?.includes('timed out') || err.message?.includes('timeout')) {
+        setErrors({ general: 'Google sign-in timed out. Please try again.' });
+      } else if (err.message?.includes('Network') || err.message?.includes('network')) {
+        setErrors({ general: 'Network connection failed. Please check your internet.' });
       } else {
         setErrors({ general: err.message || 'Google Sign-In failed.' });
       }
     } finally {
+      isGoogleLoadingRef.current = false;
       setIsGoogleLoading(false);
     }
   };

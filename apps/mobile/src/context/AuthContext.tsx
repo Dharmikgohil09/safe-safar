@@ -33,6 +33,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check existing session on app launch
   useEffect(() => {
+    let isMounted = true;
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setIsLoading(false);
+    }, 2500);
+
     async function loadUserSession() {
       try {
         const storedUser = await getAuthUser();
@@ -61,11 +66,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (err) {
         console.warn('[AuthContext] Error loading user session:', err);
       } finally {
-        setIsLoading(false);
+        clearTimeout(safetyTimer);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     }
 
     loadUserSession();
+
+    return () => {
+      isMounted = false;
+      clearTimeout(safetyTimer);
+    };
   }, []);
 
   /**

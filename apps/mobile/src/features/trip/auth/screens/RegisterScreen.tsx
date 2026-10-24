@@ -17,7 +17,10 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Card, PrimaryButton, ShieldLogo } from '../../../../components/ui';
 import { colors, radius, typography } from '../../../../theme';
 import { normalizePhone } from '../../../emergency';
-import { authService } from '../services/authService';
+import { useAuth } from '../../../../context/AuthContext';
+import CheckEmailModal from '../components/CheckEmailModal';
+import CompletePhoneModal from '../components/CompletePhoneModal';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import type { AuthValidationErrors, RegisterCredentials } from '../types';
 
 interface RegisterScreenProps {
@@ -31,17 +34,24 @@ export default function RegisterScreen({
   onNavigateToLogin,
   onClose,
 }: RegisterScreenProps) {
+  const { signup, googleLogin } = useAuth();
   const [data, setData] = useState<RegisterCredentials>({
     phone: '',
     pin: '',
     confirmPin: '',
     name: '',
+    email: '',
   });
+  const [email, setEmail] = useState('');
+  const [emailError, setEmailError] = useState<string | undefined>(undefined);
   const [showPin, setShowPin] = useState(false);
   const [showConfirmPin, setShowConfirmPin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errors, setErrors] = useState<AuthValidationErrors>({});
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [showCheckEmail, setShowCheckEmail] = useState(false);
+  const [showCompletePhone, setShowCompletePhone] = useState(false);
 
   // Entrance animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -64,34 +74,56 @@ export default function RegisterScreen({
 
   const validate = (): boolean => {
     const errs: AuthValidationErrors = {};
+    let isValid = true;
 
     if (!data.name.trim()) {
       errs.name = 'Full name is required.';
+      isValid = false;
     } else if (data.name.trim().length < 2) {
       errs.name = 'Please enter a valid full name.';
+      isValid = false;
+    }
+
+    const trimmedEmail = email.trim();
+    const atIndex = trimmedEmail.indexOf('@');
+    const dotAfterAtIndex = atIndex !== -1 ? trimmedEmail.indexOf('.', atIndex + 1) : -1;
+    if (!trimmedEmail) {
+      setEmailError('Email address is required.');
+      isValid = false;
+    } else if (atIndex <= 0 || dotAfterAtIndex === -1 || dotAfterAtIndex === trimmedEmail.length - 1) {
+      setEmailError('Please enter a valid email address.');
+      isValid = false;
+    } else {
+      setEmailError(undefined);
     }
 
     const norm = normalizePhone(data.phone);
     if (!data.phone.trim()) {
       errs.phone = 'Phone number is required.';
+      isValid = false;
     } else if (!norm) {
       errs.phone = 'Enter a valid 10-digit Indian phone number.';
+      isValid = false;
     }
 
     if (!data.pin) {
       errs.pin = 'Security PIN is required.';
-    } else if (data.pin.length < 4) {
-      errs.pin = 'PIN must be at least 4 digits.';
+      isValid = false;
+    } else if (data.pin.length !== 4) {
+      errs.pin = 'PIN must be exactly 4 digits.';
+      isValid = false;
     }
 
     if (!data.confirmPin) {
       errs.confirmPin = 'Please confirm your PIN.';
+      isValid = false;
     } else if (data.pin !== data.confirmPin) {
       errs.confirmPin = 'PIN codes do not match.';
+      isValid = false;
     }
 
     setErrors(errs);
-    return Object.keys(errs).length === 0;
+    return isValid && Object.keys(errs).length === 0;
   };
 
   const handleRegister = async () => {
@@ -100,20 +132,71 @@ export default function RegisterScreen({
     setErrors({});
 
     try {
-      const res = await authService.register(data);
+      const res = await signup({
+        name: data.name,
+        email: email.trim(),
+        phone: data.phone,
+        pin: data.pin,
+        confirmPin: data.confirmPin,
+      });
+
       if (res.success) {
-        if (onSuccess) {
-          onSuccess();
-        } else if (onClose) {
-          onClose();
-        }
+        setShowCheckEmail(true);
       } else {
-        setErrors({ general: res.error || 'Registration failed. Please try again.' });
+        if (res.field === 'email') {
+          setEmailError(res.error);
+        } else if (res.field === 'phone') {
+          setErrors({ phone: res.error });
+        } else if (res.field === 'password' || res.field === 'pin') {
+          setErrors({ pin: res.error });
+        } else {
+          setErrors({ general: res.error || 'Registration failed. Please try again.' });
+        }
       }
     } catch {
       setErrors({ general: 'Network error. Please check your connection and try again.' });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    setErrors({});
+
+    try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const signInResult = await GoogleSignin.signIn();
+      const idToken = signInResult.data?.idToken || (signInResult as any).idToken;
+
+      if (!idToken) {
+        throw new Error('Google Sign-In failed: No ID token returned.');
+      }
+
+      const res = await googleLogin(idToken);
+      if (res.success) {
+        if (res.needsProfileCompletion) {
+          setShowCompletePhone(true);
+        } else if (onSuccess) {
+          onSuccess();
+        } else if (onClose) {
+          onClose();
+        }
+      } else {
+        setErrors({ general: res.error || 'Google Sign-In failed. Please try again.' });
+      }
+    } catch (err: any) {
+      if (err.code === statusCodes.SIGN_IN_CANCELLED) {
+        // User cancelled
+      } else if (err.code === statusCodes.IN_PROGRESS) {
+        setErrors({ general: 'Google sign-in already in progress.' });
+      } else if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        setErrors({ general: 'Google Play Services is not available or outdated on this device.' });
+      } else {
+        setErrors({ general: err.message || 'Google Sign-In failed.' });
+      }
+    } finally {
+      setIsGoogleLoading(false);
     }
   };
 
@@ -224,6 +307,62 @@ export default function RegisterScreen({
                 </View>
                 {errors.name && <Text style={styles.fieldErrorText}>{errors.name}</Text>}
               </View>
+
+              {/* Email Address */}
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Email Address</Text>
+                <View
+                  style={[
+                    styles.inputContainer,
+                    focusedField === 'email' && styles.inputFocused,
+                  ]}
+                >
+                  <View style={styles.inputLeftIcon}>
+                    <MaterialIcons name="mail-outline" size={20} color={colors.textSecondary} />
+                  </View>
+                  <TextInput
+                    style={styles.inputWithIcon}
+                    placeholder="Enter your email"
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    value={data.email || email}
+                    onChangeText={(val) => {
+                      setData((prev: RegisterCredentials) => ({ ...prev, email: val }));
+                      setEmail(val);
+                      if (emailError) setEmailError(undefined);
+                    }}
+                    onFocus={() => setFocusedField('email')}
+                    onBlur={() => setFocusedField(null)}
+                    editable={!isLoading}
+                    accessibilityLabel="Email Address"
+                  />
+                </View>
+                {emailError && <Text style={styles.fieldErrorText}>{emailError}</Text>}
+              </View>
+
+              {/* Divider "OR" */}
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>OR</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              {/* Continue with Google */}
+              <TouchableOpacity
+                style={[styles.socialButton, { marginBottom: 16 }]}
+                onPress={handleGoogleSignIn}
+                disabled={isLoading || isGoogleLoading}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Continue with Google"
+              >
+                <MaterialIcons name="g-mobiledata" size={24} color={colors.textPrimary} />
+                <Text style={styles.socialButtonText}>
+                  {isGoogleLoading ? 'Connecting...' : 'Continue with Google'}
+                </Text>
+              </TouchableOpacity>
 
               {/* Mobile Phone Number */}
               <View style={styles.fieldGroup}>
@@ -367,42 +506,6 @@ export default function RegisterScreen({
                 disabled={isLoading}
                 accessibilityLabel="Create Account"
               />
-
-              {/* Divider "OR" */}
-              <View style={styles.dividerRow}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>OR</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              {/* Presentational Social Login Buttons */}
-              <View style={styles.socialButtonsContainer}>
-                <TouchableOpacity
-                  style={styles.socialButton}
-                  onPress={() =>
-                    Alert.alert('Google Sign-In', 'Social sign-in will be connected during backend integration.')
-                  }
-                  activeOpacity={0.8}
-                  accessibilityRole="button"
-                  accessibilityLabel="Continue with Google"
-                >
-                  <MaterialIcons name="g-mobiledata" size={24} color={colors.textPrimary} />
-                  <Text style={styles.socialButtonText}>Continue with Google</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.socialButton}
-                  onPress={() =>
-                    Alert.alert('Apple Sign-In', 'Social sign-in will be connected during backend integration.')
-                  }
-                  activeOpacity={0.8}
-                  accessibilityRole="button"
-                  accessibilityLabel="Continue with Apple"
-                >
-                  <MaterialIcons name="apple" size={20} color={colors.textPrimary} />
-                  <Text style={styles.socialButtonText}>Continue with Apple</Text>
-                </TouchableOpacity>
-              </View>
             </Card>
 
             {/* Footer Navigation */}
@@ -421,6 +524,31 @@ export default function RegisterScreen({
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <CheckEmailModal
+        visible={showCheckEmail}
+        email={email.trim()}
+        onVerified={() => {
+          setShowCheckEmail(false);
+          if (onSuccess) onSuccess();
+          else if (onClose) onClose();
+        }}
+        onClose={() => setShowCheckEmail(false)}
+      />
+
+      <CompletePhoneModal
+        visible={showCompletePhone}
+        onSuccess={() => {
+          setShowCompletePhone(false);
+          if (onSuccess) onSuccess();
+          else if (onClose) onClose();
+        }}
+        onDismiss={() => {
+          setShowCompletePhone(false);
+          if (onSuccess) onSuccess();
+          else if (onClose) onClose();
+        }}
+      />
     </SafeAreaView>
   );
 }

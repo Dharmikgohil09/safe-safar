@@ -49,6 +49,7 @@ export interface MapContextType {
   handleMapTap: (coords: LatLng) => Promise<void>;
   searchPlaces: (query: string) => Promise<PlaceSearchResult[]>;
   initialize: () => Promise<void>;
+  recenterCount: number;
   recenterOnUser: () => Promise<void>;
   clearDestination: () => void;
   calculateRoutes: (dest: LatLng, name: string) => Promise<void>;
@@ -120,8 +121,10 @@ export const MapProvider: React.FC<{
   const [mapStyle, setMapStyle] = useState<MapStyleType>('street');
   const [isNavigating, setIsNavigating] = useState<boolean>(false);
   const [navigationStep, setNavigationStep] = useState<string>('Head towards illuminated corridor');
+  const [recenterCount, setRecenterCount] = useState<number>(0);
 
   const recenterOnUser = async () => {
+    setRecenterCount((prev) => prev + 1);
     try {
       setIsLoading(true);
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -378,6 +381,7 @@ export const MapProvider: React.FC<{
         handleMapTap,
         searchPlaces,
         initialize,
+        recenterCount,
         recenterOnUser,
         clearDestination,
         calculateRoutes,

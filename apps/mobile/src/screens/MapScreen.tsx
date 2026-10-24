@@ -20,8 +20,8 @@ export const MapScreen: React.FC = () => {
       <MapViewComponent />
 
       {/* 2. Top Header HUD: Search Bar & Dead Zone Warning Banner */}
-      <View style={[styles.topHudSafeArea, { top: insets.top }]}>
-        <View style={styles.topHudContainer}>
+      <View style={[styles.topHudSafeArea, { top: insets.top }]} pointerEvents="box-none">
+        <View style={styles.topHudContainer} pointerEvents="box-none">
           <DestinationSearchBar />
           <DeadZoneWarningBanner alert={deadZoneAlert} />
         </View>
@@ -31,7 +31,7 @@ export const MapScreen: React.FC = () => {
       <MapLayerControls />
 
       {/* 4. Bottom Route Alternatives Carousel HUD */}
-      <View style={styles.bottomHudSafeArea}>
+      <View style={styles.bottomHudSafeArea} pointerEvents="box-none">
         <RouteSelectionPanel />
       </View>
     </View>

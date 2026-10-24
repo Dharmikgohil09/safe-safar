@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -81,6 +81,7 @@ export const MapViewComponent: React.FC = () => {
     isNavigating,
     navigationStep,
     isRealLocation,
+    recenterCount,
     recenterOnUser,
     clearDestination,
     setMapStyle,
@@ -90,10 +91,42 @@ export const MapViewComponent: React.FC = () => {
     handleMapTap,
   } = useMapState();
 
-  // Zoom & Pan state
+  // Zoom (levels 2 to 19) & Pan state
   const [zoomLevel, setZoomLevel] = useState<number>(14);
   const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
+
+  // Refs for 60fps pan/pinch gestures without recreating PanResponder
+  const panOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const zoomLevelRef = useRef<number>(14);
+  const mapCenterRef = useRef<LatLng>(userLocation);
+  const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const touchStartRef = useRef<{ x: number; y: number; time: number }>({ x: 0, y: 0, time: 0 });
+  const lastTapRef = useRef<{ time: number; x: number; y: number }>({ time: 0, x: 0, y: 0 });
+  const initialTouchDistanceRef = useRef<number | null>(null);
+  const isPinchingRef = useRef<boolean>(false);
+
+  // Sync refs with state
+  useEffect(() => {
+    panOffsetRef.current = panOffset;
+  }, [panOffset]);
+
+  useEffect(() => {
+    zoomLevelRef.current = zoomLevel;
+  }, [zoomLevel]);
+
+  useEffect(() => {
+    mapCenterRef.current = userLocation;
+  }, [userLocation]);
+
+  // Recenter when triggered externally (e.g. from MapLayerControls)
+  useEffect(() => {
+    if (recenterCount > 0) {
+      setPanOffset({ x: 0, y: 0 });
+      panOffsetRef.current = { x: 0, y: 0 };
+      setZoomLevel(15);
+      zoomLevelRef.current = 15;
+    }
+  }, [recenterCount]);
 
   // Selected landmark / report inspection sheets
   const [inspectedLandmark, setInspectedLandmark] = useState<Landmark | null>(null);
@@ -124,74 +157,182 @@ export const MapViewComponent: React.FC = () => {
     return { x, y };
   };
 
-  // Inverse projector: screen pixels to lat/lon (for map tap)
+  // Inverse projector: screen pixels to lat/lon (uses latest ref values)
   const unprojectFromPixels = (screenX: number, screenY: number): LatLng => {
-    const dX = screenX - SCREEN_WIDTH / 2 - panOffset.x;
-    const dY = screenY - SCREEN_HEIGHT / 2 - panOffset.y;
+    const currentPan = panOffsetRef.current;
+    const currentZoom = zoomLevelRef.current;
+    const center = mapCenterRef.current;
 
-    const centerTileX = lon2tile(mapCenter.longitude, zoomLevel);
-    const centerTileY = lat2tile(mapCenter.latitude, zoomLevel);
+    const dX = screenX - SCREEN_WIDTH / 2 - currentPan.x;
+    const dY = screenY - SCREEN_HEIGHT / 2 - currentPan.y;
+
+    const centerTileX = lon2tile(center.longitude, currentZoom);
+    const centerTileY = lat2tile(center.latitude, currentZoom);
 
     const ptTileX = centerTileX + dX / 256;
     const ptTileY = centerTileY + dY / 256;
 
     return {
-      latitude: tile2lat(ptTileY, zoomLevel),
-      longitude: tile2lon(ptTileX, zoomLevel),
+      latitude: tile2lat(ptTileY, currentZoom),
+      longitude: tile2lon(ptTileX, currentZoom),
     };
   };
-
-  const touchStartRef = useRef<{ x: number; y: number; time: number }>({ x: 0, y: 0, time: 0 });
 
   // Viewport visibility checker for high-performance culling
   const isVisible = (x: number, y: number, margin = 60) => {
     return x >= -margin && x <= SCREEN_WIDTH + margin && y >= -margin && y <= SCREEN_HEIGHT + margin;
   };
 
-  // Pan gesture responder with strict tap vs drag discrimination
+  // Smooth Zoom In: scales pan offset around center so focus point remains stationary
+  const handleZoomIn = useCallback(() => {
+    setZoomLevel((prevZoom) => {
+      if (prevZoom >= 19) return prevZoom;
+      const nextZoom = prevZoom + 1;
+      zoomLevelRef.current = nextZoom;
+      setPanOffset((prevPan) => {
+        const nextPan = { x: prevPan.x * 2, y: prevPan.y * 2 };
+        panOffsetRef.current = nextPan;
+        return nextPan;
+      });
+      return nextZoom;
+    });
+  }, []);
+
+  // Smooth Zoom Out: scales pan offset around center so focus point remains stationary
+  const handleZoomOut = useCallback(() => {
+    setZoomLevel((prevZoom) => {
+      if (prevZoom <= 2) return prevZoom;
+      const nextZoom = prevZoom - 1;
+      zoomLevelRef.current = nextZoom;
+      setPanOffset((prevPan) => {
+        const nextPan = { x: Math.round(prevPan.x / 2), y: Math.round(prevPan.y / 2) };
+        panOffsetRef.current = nextPan;
+        return nextPan;
+      });
+      return nextZoom;
+    });
+  }, []);
+
+  const handleRecenter = useCallback(async () => {
+    setPanOffset({ x: 0, y: 0 });
+    panOffsetRef.current = { x: 0, y: 0 };
+    setZoomLevel(15);
+    zoomLevelRef.current = 15;
+    await recenterOnUser();
+  }, [recenterOnUser]);
+
+  // Stable PanResponder: 60fps pan, pinch zoom, double tap zoom, single tap navigation
   const panResponder = useMemo(
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 3 || Math.abs(gesture.dy) > 3,
+        onStartShouldSetPanResponderCapture: () => false,
+        onMoveShouldSetPanResponder: (_, gesture) =>
+          Math.abs(gesture.dx) > 2 || Math.abs(gesture.dy) > 2 || gesture.numberActiveTouches > 1,
+        onMoveShouldSetPanResponderCapture: () => false,
+
         onPanResponderGrant: (_, gesture) => {
           touchStartRef.current = { x: gesture.x0, y: gesture.y0, time: Date.now() };
-          setDragStart({ x: panOffset.x, y: panOffset.y });
+          dragStartRef.current = { x: panOffsetRef.current.x, y: panOffsetRef.current.y };
+          initialTouchDistanceRef.current = null;
+          isPinchingRef.current = false;
         },
-        onPanResponderMove: (_, gesture) => {
-          if (dragStart) {
-            setPanOffset({
-              x: dragStart.x + gesture.dx,
-              y: dragStart.y + gesture.dy,
-            });
+
+        onPanResponderMove: (evt, gesture) => {
+          const touches = evt.nativeEvent.touches;
+
+          // Two-Finger Pinch to Zoom
+          if (touches && touches.length >= 2) {
+            isPinchingRef.current = true;
+            const t1 = touches[0];
+            const t2 = touches[1];
+            const dist = Math.hypot(t1.pageX - t2.pageX, t1.pageY - t2.pageY);
+
+            if (!initialTouchDistanceRef.current) {
+              initialTouchDistanceRef.current = dist;
+            } else {
+              const ratio = dist / initialTouchDistanceRef.current;
+              if (ratio >= 1.35) {
+                handleZoomIn();
+                initialTouchDistanceRef.current = dist;
+              } else if (ratio <= 0.72) {
+                handleZoomOut();
+                initialTouchDistanceRef.current = dist;
+              }
+            }
+            return;
+          }
+
+          // Single-Finger Smooth Pan
+          if (!isPinchingRef.current) {
+            const nextX = dragStartRef.current.x + gesture.dx;
+            const nextY = dragStartRef.current.y + gesture.dy;
+            panOffsetRef.current = { x: nextX, y: nextY };
+            setPanOffset({ x: nextX, y: nextY });
           }
         },
+
         onPanResponderRelease: (_, gesture) => {
-          setDragStart(null);
+          initialTouchDistanceRef.current = null;
+          isPinchingRef.current = false;
+
           const moveDist = Math.hypot(gesture.dx, gesture.dy);
           const duration = Date.now() - touchStartRef.current.time;
-          // ONLY trigger destination routing if it was a quick, stationary tap (NOT while panning)
-          if (moveDist < 6 && duration < 300) {
+
+          // Stationary quick tap
+          if (moveDist < 8 && duration < 300) {
+            const now = Date.now();
+            const timeSinceLastTap = now - lastTapRef.current.time;
+            const distFromLastTap = Math.hypot(
+              gesture.x0 - lastTapRef.current.x,
+              gesture.y0 - lastTapRef.current.y
+            );
+
+            // Double Tap to Zoom In
+            if (timeSinceLastTap < 350 && distFromLastTap < 35) {
+              handleZoomIn();
+              lastTapRef.current = { time: 0, x: 0, y: 0 };
+              return;
+            }
+
+            lastTapRef.current = { time: now, x: gesture.x0, y: gesture.y0 };
             const coords = unprojectFromPixels(gesture.x0, gesture.y0);
             handleMapTap(coords);
           }
         },
       }),
-    [dragStart, panOffset, zoomLevel, mapCenter]
+    [handleZoomIn, handleZoomOut, handleMapTap]
   );
 
-  // Compute slippy tile grid covering the viewport
+  // Web mouse wheel zoom support (React Native Web / Expo Web)
+  const handleWheel = (e: any) => {
+    if (Platform.OS === 'web' && e && e.nativeEvent) {
+      const delta = e.nativeEvent.deltaY;
+      if (delta < 0) {
+        handleZoomIn();
+      } else if (delta > 0) {
+        handleZoomOut();
+      }
+    }
+  };
+
+  // Slippy tile grid covering the visible viewport dynamically anywhere on Earth
   const visibleTiles = useMemo(() => {
     const centerTileX = lon2tile(mapCenter.longitude, zoomLevel);
     const centerTileY = lat2tile(mapCenter.latitude, zoomLevel);
 
-    const tilesAcross = Math.ceil(SCREEN_WIDTH / 256) + 2;
-    const tilesDown = Math.ceil(SCREEN_HEIGHT / 256) + 2;
+    // Shift view center in tile units according to current panOffset
+    const viewCenterTileX = centerTileX - panOffset.x / 256;
+    const viewCenterTileY = centerTileY - panOffset.y / 256;
 
-    const minTileX = Math.floor(centerTileX - tilesAcross / 2);
-    const maxTileX = Math.ceil(centerTileX + tilesAcross / 2);
-    const minTileY = Math.floor(centerTileY - tilesDown / 2);
-    const maxTileY = Math.ceil(centerTileY + tilesDown / 2);
+    // Buffer generously so tiles are ready ahead of finger movement
+    const tilesAcross = Math.ceil(SCREEN_WIDTH / 256) + 4;
+    const tilesDown = Math.ceil(SCREEN_HEIGHT / 256) + 4;
+
+    const minTileX = Math.floor(viewCenterTileX - tilesAcross / 2);
+    const maxTileX = Math.ceil(viewCenterTileX + tilesAcross / 2);
+    const minTileY = Math.floor(viewCenterTileY - tilesDown / 2);
+    const maxTileY = Math.ceil(viewCenterTileY + tilesDown / 2);
 
     const maxCoord = Math.pow(2, zoomLevel);
     const tiles: Array<{ key: string; x: number; y: number; left: number; top: number; url: string }> = [];
@@ -200,14 +341,18 @@ export const MapViewComponent: React.FC = () => {
 
     for (let tx = minTileX; tx <= maxTileX; tx++) {
       for (let ty = minTileY; ty <= maxTileY; ty++) {
+        // Tile Y cannot exceed valid Web Mercator range [0, 2^z - 1]
         if (ty < 0 || ty >= maxCoord) continue;
+
+        // Tile X wraps around the 360 degree meridian seamlessly
         const normalizedX = ((tx % maxCoord) + maxCoord) % maxCoord;
 
+        // Screen coordinate placement
         const left = SCREEN_WIDTH / 2 + (tx - centerTileX) * 256 + panOffset.x;
         const top = SCREEN_HEIGHT / 2 + (ty - centerTileY) * 256 + panOffset.y;
 
         tiles.push({
-          key: `${zoomLevel}_${normalizedX}_${ty}`,
+          key: `${zoomLevel}_${normalizedX}_${ty}_${tx}`,
           x: normalizedX,
           y: ty,
           left,
@@ -219,42 +364,34 @@ export const MapViewComponent: React.FC = () => {
     return tiles;
   }, [mapCenter, zoomLevel, panOffset, mapStyle]);
 
-  const handleZoomIn = () => {
-    setZoomLevel((prev) => Math.min(19, prev + 1));
-  };
-
-  const handleZoomOut = () => {
-    // Allows zooming out to level 4 to see entire states, countries, and any city!
-    setZoomLevel((prev) => Math.max(4, prev - 1));
-  };
-
-  const handleRecenter = async () => {
-    setPanOffset({ x: 0, y: 0 });
-    setZoomLevel(15);
-    await recenterOnUser();
-  };
-
   const userPix = projectToPixels(userLocation);
   const destPix = destination ? projectToPixels(destination) : null;
 
   return (
-    <View style={styles.container} {...panResponder.panHandlers}>
-      {/* 1. Real Slippy Raster Map Tile Layer (smooth panning without accidental taps) */}
-      <View style={styles.tileCanvas}>
-        {visibleTiles.map((tile) => (
-          <Image
-            key={tile.key}
-            source={{ uri: tile.url }}
-            style={[
-              styles.mapTile,
-              {
-                left: tile.left,
-                top: tile.top,
-              },
-            ]}
-            resizeMode="cover"
-          />
-        ))}
+    <View style={styles.container}>
+      {/* 1. Interactive Map Gesture Surface & Slippy Canvas */}
+      <View
+        style={StyleSheet.absoluteFillObject}
+        {...panResponder.panHandlers}
+        // @ts-ignore onWheel is supported on react-native-web
+        onWheel={handleWheel}
+      >
+        <View style={styles.tileCanvas} pointerEvents="none">
+          {visibleTiles.map((tile) => (
+            <Image
+              key={tile.key}
+              source={{ uri: tile.url }}
+              style={[
+                styles.mapTile,
+                {
+                  left: tile.left,
+                  top: tile.top,
+                },
+              ]}
+              resizeMode="cover"
+            />
+          ))}
+        </View>
 
         {/* 2. Dead Zones Layer (with viewport culling) */}
         {showDeadZones &&
@@ -540,15 +677,42 @@ export const MapViewComponent: React.FC = () => {
         ))}
       </View>
 
-      {/* 10. Floating Map Controls (Zoom +, Zoom -, Recenter) */}
-      <View style={styles.floatingControls}>
-        <TouchableOpacity style={styles.controlFab} onPress={handleZoomIn} activeOpacity={0.8}>
-          <Text style={styles.controlFabText}>+</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.controlFab} onPress={handleZoomOut} activeOpacity={0.8}>
-          <Text style={styles.controlFabText}>−</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.controlFab, styles.recenterFab]} onPress={handleRecenter} activeOpacity={0.8}>
+      {/* 10. Floating Map Zoom & Recenter Controls (Left Side, Unobstructed) */}
+      <View style={styles.floatingControls} pointerEvents="box-none">
+        <View style={styles.zoomPill}>
+          <TouchableOpacity
+            style={styles.controlFab}
+            onPress={handleZoomIn}
+            activeOpacity={0.7}
+            accessibilityLabel="Zoom In"
+          >
+            <Text style={styles.controlFabText}>+</Text>
+          </TouchableOpacity>
+
+          <View style={styles.zoomDivider} />
+
+          <View style={styles.zoomBadge}>
+            <Text style={styles.zoomBadgeText}>{zoomLevel}z</Text>
+          </View>
+
+          <View style={styles.zoomDivider} />
+
+          <TouchableOpacity
+            style={styles.controlFab}
+            onPress={handleZoomOut}
+            activeOpacity={0.7}
+            accessibilityLabel="Zoom Out"
+          >
+            <Text style={styles.controlFabText}>−</Text>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity
+          style={styles.recenterFab}
+          onPress={handleRecenter}
+          activeOpacity={0.8}
+          accessibilityLabel="Recenter Map"
+        >
           <Text style={styles.controlFabIcon}>🎯</Text>
         </TouchableOpacity>
       </View>
@@ -846,31 +1010,67 @@ const styles = StyleSheet.create({
   },
   floatingControls: {
     position: 'absolute',
-    right: 12,
+    left: 16,
     bottom: 230,
-    zIndex: 12,
+    zIndex: 25,
+    alignItems: 'center',
+  },
+  zoomPill: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 22,
+    shadowColor: '#000',
+    shadowOpacity: 0.22,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    overflow: 'hidden',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   controlFab: {
+    width: 42,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  zoomDivider: {
+    width: 28,
+    height: 1,
+    backgroundColor: '#E2E8F0',
+  },
+  zoomBadge: {
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  zoomBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#64748B',
+  },
+  controlFabText: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#0F172A',
+    lineHeight: 24,
+  },
+  recenterFab: {
     width: 44,
     height: 44,
     borderRadius: 22,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
     shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  controlFabText: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#1E293B',
-    lineHeight: 24,
-  },
-  recenterFab: {
-    backgroundColor: '#FFFFFF',
+    shadowOpacity: 0.22,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 5,
     borderWidth: 1.5,
     borderColor: '#3B82F6',
   },

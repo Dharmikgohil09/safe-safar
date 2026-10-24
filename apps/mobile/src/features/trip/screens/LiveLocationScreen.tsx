@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -29,7 +29,7 @@ export default function LiveLocationScreen() {
   const { contacts, loading } = useTripContacts();
   const [selectedContactIds, setSelectedContactIds] = useState<Record<string, boolean>>({});
 
-  React.useEffect(() => {
+  useEffect(() => {
     const initial: Record<string, boolean> = {};
     contacts.forEach((c) => {
       initial[c.id] = true;
@@ -103,7 +103,7 @@ export default function LiveLocationScreen() {
     }));
   };
 
-  const selectedCount = Object.values(selectedContactIds).filter(Boolean).length;
+  const selectedCount = contacts.filter((c) => selectedContactIds[c.id]).length;
 
   return (
     <SafeAreaView style={styles.safeArea}>

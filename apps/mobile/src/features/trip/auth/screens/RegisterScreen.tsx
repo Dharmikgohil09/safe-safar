@@ -36,7 +36,9 @@ export default function RegisterScreen({
     pin: '',
     confirmPin: '',
     name: '',
+    email: '',
   });
+  const [email, setEmail] = useState('');
   const [showPin, setShowPin] = useState(false);
   const [showConfirmPin, setShowConfirmPin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -225,6 +227,56 @@ export default function RegisterScreen({
                 {errors.name && <Text style={styles.fieldErrorText}>{errors.name}</Text>}
               </View>
 
+              {/* Email Address */}
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Email Address</Text>
+                <View
+                  style={[
+                    styles.inputContainer,
+                    focusedField === 'email' && styles.inputFocused,
+                  ]}
+                >
+                  <View style={styles.inputLeftIcon}>
+                    <MaterialIcons name="mail-outline" size={20} color={colors.textSecondary} />
+                  </View>
+                  <TextInput
+                    style={styles.inputWithIcon}
+                    placeholder="Enter your email"
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    value={email}
+                    onChangeText={setEmail}
+                    onFocus={() => setFocusedField('email')}
+                    onBlur={() => setFocusedField(null)}
+                    editable={!isLoading}
+                    accessibilityLabel="Email Address"
+                  />
+                </View>
+              </View>
+
+              {/* Divider "OR" */}
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>OR</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              {/* Continue with Google */}
+              <TouchableOpacity
+                style={[styles.socialButton, { marginBottom: 16 }]}
+                onPress={() =>
+                  Alert.alert('Google sign-in', 'Google sign-in will be connected later.')
+                }
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Continue with Google"
+              >
+                <MaterialIcons name="g-mobiledata" size={24} color={colors.textPrimary} />
+                <Text style={styles.socialButtonText}>Continue with Google</Text>
+              </TouchableOpacity>
+
               {/* Mobile Phone Number */}
               <View style={styles.fieldGroup}>
                 <Text style={styles.label}>Mobile Phone Number</Text>
@@ -367,42 +419,6 @@ export default function RegisterScreen({
                 disabled={isLoading}
                 accessibilityLabel="Create Account"
               />
-
-              {/* Divider "OR" */}
-              <View style={styles.dividerRow}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>OR</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              {/* Presentational Social Login Buttons */}
-              <View style={styles.socialButtonsContainer}>
-                <TouchableOpacity
-                  style={styles.socialButton}
-                  onPress={() =>
-                    Alert.alert('Google Sign-In', 'Social sign-in will be connected during backend integration.')
-                  }
-                  activeOpacity={0.8}
-                  accessibilityRole="button"
-                  accessibilityLabel="Continue with Google"
-                >
-                  <MaterialIcons name="g-mobiledata" size={24} color={colors.textPrimary} />
-                  <Text style={styles.socialButtonText}>Continue with Google</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.socialButton}
-                  onPress={() =>
-                    Alert.alert('Apple Sign-In', 'Social sign-in will be connected during backend integration.')
-                  }
-                  activeOpacity={0.8}
-                  accessibilityRole="button"
-                  accessibilityLabel="Continue with Apple"
-                >
-                  <MaterialIcons name="apple" size={20} color={colors.textPrimary} />
-                  <Text style={styles.socialButtonText}>Continue with Apple</Text>
-                </TouchableOpacity>
-              </View>
             </Card>
 
             {/* Footer Navigation */}

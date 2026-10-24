@@ -20,7 +20,7 @@ import { normalizePhone } from '../../../emergency';
 import { useAuth } from '../../../../context/AuthContext';
 import CheckEmailModal from '../components/CheckEmailModal';
 import CompletePhoneModal from '../components/CompletePhoneModal';
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { GoogleSignin, statusCodes, isGoogleSigninSupported } from '../../../../services/googleAuth';
 import type { AuthValidationErrors, RegisterCredentials } from '../types';
 
 interface RegisterScreenProps {

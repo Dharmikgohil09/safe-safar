@@ -20,20 +20,8 @@ import { normalizePhone } from '../../../emergency';
 import { useAuth } from '../../../../context/AuthContext';
 import CheckEmailModal from '../components/CheckEmailModal';
 import CompletePhoneModal from '../components/CompletePhoneModal';
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { GoogleSignin, statusCodes, isGoogleSigninSupported } from '../../../../services/googleAuth';
 import type { AuthCredentials, AuthValidationErrors } from '../types';
-
-const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '';
-try {
-  if (webClientId) {
-    GoogleSignin.configure({
-      webClientId,
-      offlineAccess: false,
-    });
-  }
-} catch {
-  // Ignored in non-native or unsupported environments
-}
 
 interface LoginScreenProps {
   onSuccess?: () => void;

@@ -25,7 +25,7 @@ export default function TripRatingScreen() {
   const [note, setNote] = useState<string>('');
   const [isSaved, setIsSaved] = useState<boolean>(false);
 
-  const displayedSummary = `${fromLocation} to ${toLocation}, 25 min`;
+  const displayedSummary = `${fromLocation} to ${toLocation}`;
 
   const handleSaveRating = () => {
     setIsSaved(true);

@@ -251,7 +251,9 @@ const updateTripLocation = async (tripId, userId, { coordinates, speed = 0, head
   }
 
   if (trip.status !== 'active') {
-    return trip;
+    const error = new Error(`Cannot update location for trip with status: ${trip.status}`);
+    error.statusCode = 400;
+    throw error;
   }
 
   trip.lastKnownLocation = {

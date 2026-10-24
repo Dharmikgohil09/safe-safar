@@ -557,8 +557,26 @@ async function googleAuth(req, res) {
       });
       payload = ticket.getPayload();
     } catch (gErr) {
-      console.warn('[GoogleAuth] Token verification failed:', gErr.message);
-      return res.status(401).json({ success: false, error: 'Google authentication failed: ' + gErr.message });
+      // Fallback: verify via Google UserInfo endpoint (supports OAuth access tokens and web flow tokens)
+      try {
+        const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${idToken}` },
+        });
+        if (userInfoRes.ok) {
+          const uData = await userInfoRes.json();
+          payload = {
+            email: uData.email,
+            name: uData.name,
+            picture: uData.picture,
+            sub: uData.sub,
+          };
+        } else {
+          throw new Error('HTTP ' + userInfoRes.status);
+        }
+      } catch (uiErr) {
+        console.warn('[GoogleAuth] Token verification failed:', gErr.message, uiErr.message);
+        return res.status(401).json({ success: false, error: 'Google authentication failed: ' + gErr.message });
+      }
     }
 
     const { email, name, picture, sub: googleId } = payload;

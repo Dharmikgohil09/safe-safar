@@ -75,13 +75,17 @@ export function createTrackerSocketConnection(
       reconnectionDelayMax: 5000,
       timeout: 10000,
       auth: {
-        token, // Pass token in connection auth handshake
+        trackingToken: token, // Sent for backend viewer handshake authentication
+      },
+      query: {
+        trackingToken: token,
       },
     });
 
     socket.on('connect', () => {
       callbacks.onStatusChange('connected');
-      // Subscribe to room
+      // Subscribe to trip room using backend viewer contract
+      socket?.emit('trip:join', { trackingToken: token });
       socket?.emit('join-session', { token });
       resetStaleTimer();
     });
@@ -95,14 +99,40 @@ export function createTrackerSocketConnection(
 
     socket.on('connect_error', (error) => {
       console.warn('[SafeSafar Socket] Connection error:', error.message);
-      callbacks.onStatusChange('reconnecting', 'Attempting to reconnect to live safety stream...');
+      if (error.message.includes('Invalid tracking token') || error.message.includes('Authentication failed')) {
+        callbacks.onStatusChange('invalid-token', error.message);
+      } else {
+        callbacks.onStatusChange('reconnecting', 'Attempting to reconnect to live safety stream...');
+      }
     });
 
     socket.on('reconnect_failed', () => {
       callbacks.onStatusChange('error', 'Unable to reach tracking server. Please check internet connection.');
     });
 
-    // Listen for initial session info
+    // Backend viewer room joined acknowledgement
+    socket.on('trip:joined', (info: unknown) => {
+      console.log('[SafeSafar Socket] Successfully joined trip room:', info);
+    });
+
+    // Backend trip error
+    socket.on('trip:error', (err?: { message?: string }) => {
+      console.warn('[SafeSafar Socket] Trip error:', err?.message);
+      if (err?.message?.includes('Invalid') || err?.message?.includes('not found')) {
+        callbacks.onStatusChange('invalid-token', err.message);
+      }
+    });
+
+    // Backend live location broadcast
+    socket.on('trip:location_broadcast', (payload: unknown) => {
+      const valid = validateAndParseLocation(payload);
+      if (valid) {
+        resetStaleTimer();
+        callbacks.onLocationUpdate(valid);
+      }
+    });
+
+    // Listen for initial session info (legacy or custom emitted)
     socket.on('session:data', (data: unknown) => {
       if (data && typeof data === 'object') {
         const session = data as TrackingSession;
@@ -149,7 +179,7 @@ export function createTrackerSocketConnection(
       }
     });
 
-    // Real-time SOS triggers from Kristal's emergency backend
+    // Real-time SOS triggers
     socket.on('sos:active', () => {
       callbacks.onSosStateChange?.('active');
     });
@@ -163,6 +193,10 @@ export function createTrackerSocketConnection(
     });
 
     // Listen for session end or error
+    socket.on('trip:ended', (info?: { status?: string }) => {
+      callbacks.onStatusChange('ended', info?.status ? `Session ${info.status}` : 'Tracking session has ended.');
+    });
+
     socket.on('session:ended', (info?: { status?: string }) => {
       callbacks.onStatusChange('ended', info?.status ? `Session ${info.status}` : 'Tracking session has ended.');
     });
@@ -182,6 +216,7 @@ export function createTrackerSocketConnection(
       }
       if (socket) {
         try {
+          socket.emit('trip:leave', { trackingToken: token });
           socket.emit('leave-session', { token });
           socket.removeAllListeners();
           socket.disconnect();

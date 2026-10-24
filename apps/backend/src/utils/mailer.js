@@ -180,8 +180,12 @@ async function sendVerificationEmail({ to, name, rawToken }) {
   const pass = getCleanAppPassword();
 
   if (provider === 'gmail' && !pass && !process.env.SMTP_HOST) {
-    console.log(`[Mailer] EMAIL_APP_PASSWORD not configured. Instant dev verification link generated: ${verifyUrl}`);
-    return { success: true, devLink: verifyUrl };
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[Mailer] EMAIL_APP_PASSWORD not configured. Instant dev verification link generated: ${verifyUrl}`);
+      return { success: true, devLink: verifyUrl };
+    }
+    console.error(`[Mailer Error] EMAIL_APP_PASSWORD is not configured in production.`);
+    return { success: false, error: 'Email service is not configured', errorCode: 'ENOCREDENTIALS' };
   }
 
   try {

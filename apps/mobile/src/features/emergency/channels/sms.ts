@@ -25,16 +25,23 @@ function mapsLink(ctx: SosContext): string {
   return `https://maps.google.com/?q=${ctx.coords.lat.toFixed(5)},${ctx.coords.lng.toFixed(5)}`;
 }
 
+function trackerLink(token: string): string {
+  const base = (process.env.EXPO_PUBLIC_TRACKER_URL || 'http://localhost:3000').replace(/\/+$/, '');
+  return `${base}/track/${token}`;
+}
+
 export function buildSosText(ctx: SosContext, kind: 'alert' | 'update' | 'clear'): string {
   const who = ascii(ctx.userName ?? '') || 'Your contact';
+  const liveTracker = ctx.trackingToken ? ` Live track: ${trackerLink(ctx.trackingToken)}` : '';
+
   switch (kind) {
     case 'alert':
-      return `SOS from SafeSafar: ${who} needs help. Location: ${mapsLink(ctx)}`;
+      return `SOS from SafeSafar: ${who} needs help. Location: ${mapsLink(ctx)}.${liveTracker}`;
     case 'update': {
       const d = new Date(ctx.coords?.ts ?? Date.now());
       const hh = String(d.getHours()).padStart(2, '0');
       const mm = String(d.getMinutes()).padStart(2, '0');
-      return `SafeSafar update: ${who} location ${mapsLink(ctx)} (${hh}:${mm})`;
+      return `SafeSafar update: ${who} location ${mapsLink(ctx)} (${hh}:${mm}).${liveTracker}`;
     }
     case 'clear':
       return `SafeSafar: ${who} is safe now. The SOS has ended.`;

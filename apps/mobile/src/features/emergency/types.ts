@@ -22,6 +22,7 @@ export interface SosContext {
   contacts: Contact[];
   coords: Coords | null;
   userName?: string;
+  trackingToken?: string;
 }
 
 /**

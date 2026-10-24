@@ -38,16 +38,6 @@ export default function LiveLocationScreen() {
   }, [contacts]);
 
   const [selectedDuration, setSelectedDuration] = useState<string>('1 hour');
-  const [previewStatus, setPreviewStatus] = useState<'ready' | 'loading' | 'empty' | 'error'>('ready');
-
-  const cyclePreviewStatus = () => {
-    setPreviewStatus((prev) => {
-      if (prev === 'ready') return 'loading';
-      if (prev === 'loading') return 'empty';
-      if (prev === 'empty') return 'error';
-      return 'ready';
-    });
-  };
 
   const showMessage = async (feature: string) => {
     if (!reduceMotion && feature === 'Live location sharing preview') {
@@ -150,41 +140,23 @@ export default function LiveLocationScreen() {
                 <Text style={styles.badgeCountText}>{selectedCount} Selected</Text>
               </View>
             </View>
-            {__DEV__ && (
-              <TouchableOpacity
-                onPress={cyclePreviewStatus}
-                style={styles.previewChip}
-                accessibilityRole="button"
-                accessibilityLabel="Preview states"
-              >
-                <Text style={styles.previewChipText}>Preview: {previewStatus}</Text>
-              </TouchableOpacity>
-            )}
           </View>
           <Text style={styles.sectionSubtitle}>
             Choose trusted guardians who will receive your location
           </Text>
         </View>
 
-        {loading || previewStatus === 'loading' ? (
+        {loading ? (
           <StateView
             kind="loading"
             title="Loading contacts"
             message="Retrieving your trusted contacts..."
           />
-        ) : contacts.length === 0 || previewStatus === 'empty' ? (
+        ) : contacts.length === 0 ? (
           <StateView
             kind="empty"
             title="No trusted contacts yet"
             message="Add contacts in Trusted Contacts to share your location."
-          />
-        ) : previewStatus === 'error' ? (
-          <StateView
-            kind="error"
-            title="Unable to load contacts"
-            message="Could not load your contact list. Please try again."
-            actionLabel="Retry"
-            onAction={() => setPreviewStatus('ready')}
           />
         ) : (
           <View style={styles.contactsList}>
@@ -531,18 +503,5 @@ const styles = StyleSheet.create({
   },
   shareButton: {
     height: 50,
-  },
-  previewChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: '#FEF3C7',
-    borderWidth: 1,
-    borderColor: '#F59E0B',
-  },
-  previewChipText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#B45309',
   },
 });

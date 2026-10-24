@@ -17,16 +17,6 @@ import { mockRoutes, MockRoute } from '../mock/mockData';
 
 export default function SafeRouteScreen() {
   const [selectedRouteId, setSelectedRouteId] = useState<string>(mockRoutes[0].id);
-  const [previewStatus, setPreviewStatus] = useState<'ready' | 'loading' | 'empty' | 'error'>('ready');
-
-  const cyclePreviewStatus = () => {
-    setPreviewStatus((prev) => {
-      if (prev === 'ready') return 'loading';
-      if (prev === 'loading') return 'empty';
-      if (prev === 'empty') return 'error';
-      return 'ready';
-    });
-  };
 
   const showMessage = (feature: string) => {
     Alert.alert(feature, 'This feature will be connected during development.');
@@ -111,41 +101,17 @@ export default function SafeRouteScreen() {
         <View style={styles.sectionHeader}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <Text style={styles.sectionTitle}>Available Routes</Text>
-            {__DEV__ && (
-              <TouchableOpacity
-                onPress={cyclePreviewStatus}
-                style={styles.previewChip}
-                accessibilityRole="button"
-                accessibilityLabel="Preview states"
-              >
-                <Text style={styles.previewChipText}>Preview: {previewStatus}</Text>
-              </TouchableOpacity>
-            )}
           </View>
           <Text style={styles.sectionSubtitle}>
             Select a route scored by real-time safety metrics
           </Text>
         </View>
 
-        {previewStatus === 'loading' ? (
-          <StateView
-            kind="loading"
-            title="Finding safe corridors"
-            message="Evaluating street illumination and historical safety factors..."
-          />
-        ) : previewStatus === 'empty' ? (
+        {mockRoutes.length === 0 ? (
           <StateView
             kind="empty"
             title="No routes available"
             message="No verified safe routes found for this transit corridor."
-          />
-        ) : previewStatus === 'error' ? (
-          <StateView
-            kind="error"
-            title="Routing calculation failed"
-            message="Unable to score safety factors. Please retry."
-            actionLabel="Retry"
-            onAction={() => setPreviewStatus('ready')}
           />
         ) : (
           mockRoutes.map((route: MockRoute, index: number) => {
@@ -660,18 +626,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: colors.primary,
-  },
-  previewChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: '#FEF3C7',
-    borderWidth: 1,
-    borderColor: '#F59E0B',
-  },
-  previewChipText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#B45309',
   },
 });

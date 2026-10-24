@@ -183,7 +183,7 @@ class TripLocationPublisher {
       if (this.currentSession) {
         this.socket.emit('trip:leave', { tripId: this.currentSession.tripId });
       }
-      this.socket.removeAllListeners();
+      (this.socket as any).removeAllListeners?.();
       this.socket.disconnect();
       this.socket = null;
     }

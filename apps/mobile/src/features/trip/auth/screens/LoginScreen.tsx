@@ -20,7 +20,7 @@ import { normalizePhone } from '../../../emergency';
 import { useAuth } from '../../../../context/AuthContext';
 import CheckEmailModal from '../components/CheckEmailModal';
 import CompletePhoneModal from '../components/CompletePhoneModal';
-import { GoogleSignin, statusCodes, isGoogleSigninSupported } from '../../../../services/googleAuth';
+import { promptGoogleSignIn, statusCodes } from '../../../../services/googleAuth';
 import type { AuthCredentials, AuthValidationErrors } from '../types';
 
 interface LoginScreenProps {
@@ -119,13 +119,7 @@ export default function LoginScreen({
     setErrors({});
 
     try {
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      const signInResult = await GoogleSignin.signIn();
-      const idToken = signInResult.data?.idToken || (signInResult as any).idToken;
-
-      if (!idToken) {
-        throw new Error('Google Sign-In failed: No ID token returned.');
-      }
+      const { idToken } = await promptGoogleSignIn();
 
       const res = await googleLogin(idToken);
       if (res.success) {
@@ -140,11 +134,11 @@ export default function LoginScreen({
         setErrors({ general: res.error || 'Google Sign-In failed. Please try again.' });
       }
     } catch (err: any) {
-      if (err.code === statusCodes.SIGN_IN_CANCELLED) {
+      if (err.code === statusCodes?.SIGN_IN_CANCELLED || err.code === 'SIGN_IN_CANCELLED') {
         // User cancelled sign-in
-      } else if (err.code === statusCodes.IN_PROGRESS) {
+      } else if (err.code === statusCodes?.IN_PROGRESS) {
         setErrors({ general: 'Google sign-in already in progress.' });
-      } else if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+      } else if (err.code === statusCodes?.PLAY_SERVICES_NOT_AVAILABLE) {
         setErrors({ general: 'Google Play Services is not available or outdated on this device.' });
       } else {
         setErrors({ general: err.message || 'Google Sign-In failed.' });

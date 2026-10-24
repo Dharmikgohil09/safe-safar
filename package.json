@@ -4,7 +4,8 @@
   "description": "SafeSafar - Android-First Personal Safety Platform Monorepo",
   "private": true,
   "scripts": {
-    "start": "npm --prefix apps/mobile start",
+    "start": "npm --prefix apps/backend start",
+    "build": "npm --prefix apps/backend install",
     "mobile:start": "npm --prefix apps/mobile start",
     "mobile:test": "npm --prefix apps/mobile test",
     "tracker:dev": "npm --prefix apps/tracker run dev",

@@ -17,6 +17,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router, useFocusEffect } from 'expo-router';
 import { Card, DarkHeader, DrawerMenu, PrimaryButton, ShieldLogo } from '../../../components/ui';
 import { colors, radius, typography } from '../../../theme';
+import { tripLocationPublisher } from '../../../services/tripLocationPublisher';
 import { useMapState } from '../../../context/MapContext';
 import type { PlaceSearchResult } from '../../../services/geocodingService';
 import { getContacts } from '../../emergency';
@@ -104,7 +105,11 @@ export default function HomeScreen() {
   };
 
   const openTracker = () => {
-    const url = 'http://10.236.91.75:3000/track/safesafar-live-session-2026';
+    const pubStatus = tripLocationPublisher.getStatus();
+    const token = pubStatus.trackingToken || 'safesafar-live-session-2026';
+    const trackerBaseUrl =
+      process.env.EXPO_PUBLIC_TRACKER_URL || 'https://safesafar-tracker.vercel.app';
+    const url = `${trackerBaseUrl.replace(/\/+$/, '')}/track/${token}`;
     Linking.openURL(url).catch(() => Alert.alert('Tracker URL', url));
   };
 

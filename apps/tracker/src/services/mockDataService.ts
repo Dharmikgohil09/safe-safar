@@ -29,6 +29,21 @@ const MOCK_ROUTE: [number, number, number][] = [
   [28.5875, 77.2185, 210], // Lodhi Estate / Destination arrival point
 ];
 
+export const DEMO_TOKENS = new Set([
+  'safesafar-live-session-2026',
+  'sos-active',
+  'sos-resolved',
+  'expired-token',
+  'no-destination',
+  'no-timestamp',
+  'invalid-token',
+]);
+
+export function isDemoToken(token: string | null | undefined): boolean {
+  if (!token || typeof token !== 'string') return false;
+  return DEMO_TOKENS.has(token.trim().toLowerCase());
+}
+
 export function getMockSession(token: string): TrackingSession {
   // Test special tokens for simulating different states during IEEE judging / QA
   if (token === 'invalid-token') {

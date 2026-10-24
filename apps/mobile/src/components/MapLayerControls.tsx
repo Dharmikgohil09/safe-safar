@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { useMapState } from '../context/MapContext';
 import { NearestSafeModal } from './NearestSafeModal';
-import { DemoControlModal } from './DemoControlModal';
 
 interface MapLayerControlsProps {
   onRecenter?: () => void;
@@ -27,7 +26,6 @@ export const MapLayerControls: React.FC<MapLayerControlsProps> = ({ onRecenter }
   } = useMapState();
 
   const [safeModalVisible, setSafeModalVisible] = useState(false);
-  const [demoModalVisible, setDemoModalVisible] = useState(false);
   const [layersModalVisible, setLayersModalVisible] = useState(false);
 
   return (
@@ -42,16 +40,7 @@ export const MapLayerControls: React.FC<MapLayerControlsProps> = ({ onRecenter }
           <Text style={styles.fabIcon}>🛡️</Text>
         </TouchableOpacity>
 
-        {/* 2. Hackathon Demo Controller (Purple Robot) */}
-        <TouchableOpacity
-          style={[styles.fab, styles.demoFab]}
-          onPress={() => setDemoModalVisible(true)}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.fabIcon}>🤖</Text>
-        </TouchableOpacity>
-
-        {/* 3. Map Layers Overlay Filter */}
+        {/* 2. Map Layers Overlay Filter */}
         <TouchableOpacity
           style={[styles.fab, styles.layersFab]}
           onPress={() => setLayersModalVisible(true)}
@@ -134,7 +123,6 @@ export const MapLayerControls: React.FC<MapLayerControlsProps> = ({ onRecenter }
 
       {/* Modals */}
       <NearestSafeModal visible={safeModalVisible} onClose={() => setSafeModalVisible(false)} />
-      <DemoControlModal visible={demoModalVisible} onClose={() => setDemoModalVisible(false)} />
     </>
   );
 };
@@ -162,9 +150,6 @@ const styles = StyleSheet.create({
   },
   safeFab: {
     backgroundColor: '#1E88E5',
-  },
-  demoFab: {
-    backgroundColor: '#7B1FA2',
   },
   layersFab: {
     backgroundColor: '#FFFFFF',

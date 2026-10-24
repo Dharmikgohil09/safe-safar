@@ -5,6 +5,35 @@ const path = require('path');
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
+const parseCorsOrigins = () => {
+  const localDefaults = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:8081',
+    'http://127.0.0.1:8081',
+    'http://localhost:8082',
+    'http://127.0.0.1:8082'
+  ];
+
+  // Regex matching LAN private IP origins on ports 3000, 8081, 8082 for local mobile/hotspot testing
+  const lanOriginRegex = /^http:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+):(3000|8081|8082)$/;
+
+  const envOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',').map(s => s.trim()).filter(Boolean)
+    : [];
+
+  // Filter out wildcard '*' to prevent invalid wildcard origin with credentialed requests
+  const validEnvOrigins = envOrigins.filter(o => o !== '*');
+
+  if (process.env.NODE_ENV === 'production') {
+    return validEnvOrigins.length > 0 ? validEnvOrigins : localDefaults;
+  }
+
+  // Development/Test: union of explicit local origins, configured origins, and LAN regex
+  const explicitOrigins = Array.from(new Set([...localDefaults, ...validEnvOrigins]));
+  return [...explicitOrigins, lanOriginRegex];
+};
+
 const config = {
   env: process.env.NODE_ENV || 'development',
   isProduction: process.env.NODE_ENV === 'production',
@@ -16,7 +45,7 @@ const config = {
     expiresIn: process.env.JWT_EXPIRES_IN || '7d'
   },
   cors: {
-    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',').map(s => s.trim()) : '*'
+    origin: parseCorsOrigins()
   },
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000, // 15 mins
@@ -24,5 +53,9 @@ const config = {
     authMax: parseInt(process.env.AUTH_RATE_LIMIT_MAX_REQUESTS, 10) || 15
   }
 };
+
+if (config.isProduction && (!process.env.JWT_SECRET || process.env.JWT_SECRET.includes('default_jwt_secret'))) {
+  throw new Error('[FATAL SECURITY] In production, JWT_SECRET must be explicitly configured with a secure random key!');
+}
 
 module.exports = config;

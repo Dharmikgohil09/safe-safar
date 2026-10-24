@@ -13,15 +13,17 @@ const verifyPin = async (pin, hashedPin) => {
   return await bcrypt.compare(pin, hashedPin);
 };
 
+const { ACCESS_SECRET } = require('../../../utils/tokens');
+
 const generateToken = (userId, phone) => {
   return jwt.sign(
     { userId, phone },
-    config.jwt.secret,
-    { expiresIn: config.jwt.expiresIn }
+    ACCESS_SECRET,
+    { expiresIn: config.jwt?.expiresIn || '15m' }
   );
 };
 
-const registerUser = async ({ phone, name, pin, emergencyNote }) => {
+const registerUser = async ({ phone, name, pin, emergencyNote, email }) => {
   const normalizedPhone = phone.trim();
 
   // Check if user already exists
@@ -33,11 +35,16 @@ const registerUser = async ({ phone, name, pin, emergencyNote }) => {
   }
 
   const hashedPin = await hashPin(pin);
+  const cleanPhoneDigits = normalizedPhone.replace(/\D/g, '');
+  const userEmail = email ? email.trim().toLowerCase() : `user_${cleanPhoneDigits || Date.now()}@safesafar.internal`;
 
   const newUser = await User.create({
     phone: normalizedPhone,
     name: name.trim(),
+    email: userEmail,
+    isEmailVerified: true,
     pin: hashedPin,
+    passwordHash: hashedPin,
     emergencyNote: emergencyNote ? emergencyNote.trim() : ''
   });
 

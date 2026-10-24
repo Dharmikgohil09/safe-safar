@@ -41,6 +41,15 @@ const arrived = async (req, res, next) => {
     const { id } = req.params;
     const trip = await tripsService.arriveTrip(req.user._id, id);
 
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`trip:${id}`).emit('trip:ended', {
+        tripId: id,
+        status: 'arrived',
+        arrivedAt: trip.arrivedAt
+      });
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Trip safely completed. You have arrived!',

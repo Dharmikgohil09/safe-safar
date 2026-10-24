@@ -2,9 +2,8 @@ const http = require('http');
 const ioClient = require('socket.io-client');
 const app = require('../src/app');
 const { initializeSocketIO } = require('../src/modules/core/socket/socket.handler');
-const { registerUser } = require('../src/modules/core/auth/auth.service');
 const { createTrip } = require('../src/modules/core/trips/trips.service');
-const { setupTestDB } = require('./setup');
+const { setupTestDB, createTestUser } = require('./setup');
 
 describe('Socket.io Real-Time Tracking Protocol', () => {
   setupTestDB();
@@ -36,15 +35,15 @@ describe('Socket.io Real-Time Tracking Protocol', () => {
   });
 
   beforeEach(async () => {
-    const userA = await registerUser({
+    const userA = await createTestUser({
       phone: '+919876543210',
       name: 'Owner User',
       pin: '1234'
     });
     userToken = userA.token;
-    userId = userA.user._id;
+    userId = userA.user._id.toString();
 
-    const userB = await registerUser({
+    const userB = await createTestUser({
       phone: '+919876543211',
       name: 'Other User',
       pin: '5678'

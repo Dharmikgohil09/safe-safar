@@ -10,7 +10,7 @@ const BASE_URL = (process.env.EXPO_PUBLIC_API_URL || 'https://safe-safar.onrende
 // Create Axios instance
 export const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 15000,
+  timeout: 35000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -69,9 +69,11 @@ export async function getAuthUser(): Promise<any | null> {
   }
 }
 
-// Request Interceptor: Attach Access Token
+// Request Interceptor: Attach Access Token and Debug Log
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
+    const fullUrl = `${config.baseURL || ''}${config.url || ''}`;
+    console.log(`[API Request] ${config.method?.toUpperCase()} ${fullUrl}`);
     const token = await getAccessToken();
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -81,7 +83,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor: Auto-Refresh on 401
+// Response Interceptor: Auto-Refresh on 401 & Network Error Handling
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (value?: any) => void;
@@ -100,13 +102,26 @@ const processQueue = (error: any, token: string | null = null) => {
 };
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log(`[API Response] ${response.status} ${response.config.url}`);
+    return response;
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const targetUrl = `${error.config?.baseURL || ''}${error.config?.url || ''}`;
+
+    // Handle offline / sleeping Render server (no response received)
+    if (!error.response) {
+      const friendlyMsg = `Cannot reach server at ${targetUrl || 'SafeSafar API'}. If the server was idle, wait 30-40 seconds and try again.`;
+      console.warn(`[API Network Error] ${friendlyMsg} (${error.message})`);
+      error.message = friendlyMsg;
+      return Promise.reject(error);
+    }
+
+    console.warn(`[API Error] ${error.response.status} ${error.config?.url}:`, error.response.data);
 
     // Don't loop on refresh/login endpoints
     if (
-      !error.response ||
       error.response.status !== 401 ||
       originalRequest.url?.includes('/auth/login') ||
       originalRequest.url?.includes('/auth/refresh') ||

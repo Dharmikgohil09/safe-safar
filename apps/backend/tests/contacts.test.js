@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../src/app');
-const { setupTestDB } = require('./setup');
+const { setupTestDB, createTestUser } = require('./setup');
 
 describe('Trusted Contacts API', () => {
   setupTestDB();
@@ -10,20 +10,20 @@ describe('Trusted Contacts API', () => {
 
   beforeEach(async () => {
     // Register User A
-    const resA = await request(app).post('/auth/register').send({
+    const userA = await createTestUser({
       phone: '+919876543210',
       name: 'User A',
       pin: '1234'
     });
-    userAToken = resA.body.data.token;
+    userAToken = userA.token;
 
     // Register User B
-    const resB = await request(app).post('/auth/register').send({
+    const userB = await createTestUser({
       phone: '+919876543211',
       name: 'User B',
       pin: '5678'
     });
-    userBToken = resB.body.data.token;
+    userBToken = userB.token;
   });
 
   describe('POST /contacts', () => {

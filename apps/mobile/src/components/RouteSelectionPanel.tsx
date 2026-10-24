@@ -12,14 +12,25 @@ import { getRouteColor, getSafetyTier } from '../models/RouteOption';
 import { formatDistance, formatDuration } from '../utils/geo';
 import { SafetyBadge } from './SafetyBadge';
 import { RouteDetailModal } from './RouteDetailModal';
+import { openRouteInGoogleMaps } from '../services/googleMapsService';
 
 export const RouteSelectionPanel: React.FC = () => {
-  const { routes, selectedRoute, selectRoute } = useMapState();
+  const { routes, selectedRoute, selectRoute, userLocation, destination } = useMapState();
   const [inspectingRoute, setInspectingRoute] = useState<RouteOption | null>(null);
 
   if (routes.length === 0) {
     return null;
   }
+
+  const handleOpenGoogleMaps = (route: RouteOption) => {
+    selectRoute(route);
+    openRouteInGoogleMaps({
+      route,
+      origin: userLocation,
+      destination,
+      travelMode: 'walking',
+    });
+  };
 
   return (
     <View style={styles.container}>
@@ -75,21 +86,70 @@ export const RouteSelectionPanel: React.FC = () => {
                 {route.explanation}
               </Text>
 
-              {/* Inspect Button */}
-              <TouchableOpacity
-                style={styles.inspectButton}
-                onPress={() => {
-                  selectRoute(route);
-                  setInspectingRoute(route);
-                }}
-              >
-                <Text style={[styles.inspectText, { color }]}>View Safety Factors</Text>
-                <Text style={[styles.arrowIcon, { color }]}>›</Text>
-              </TouchableOpacity>
+              {/* Card Footer: View Safety Factors & Google Maps button */}
+              <View style={styles.cardFooterRow}>
+                <TouchableOpacity
+                  style={styles.inspectButton}
+                  onPress={() => {
+                    selectRoute(route);
+                    setInspectingRoute(route);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="View Safety Factors"
+                >
+                  <Text style={[styles.inspectText, { color }]}>Safety Factors</Text>
+                  <Text style={[styles.arrowIcon, { color }]}>›</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.gmapsCardButton,
+                    isSelected && { backgroundColor: color, borderColor: color },
+                  ]}
+                  onPress={() => handleOpenGoogleMaps(route)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open ${route.name} in Google Maps`}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.gmapsCardIcon}>🗺️</Text>
+                  <Text
+                    style={[
+                      styles.gmapsCardText,
+                      isSelected && styles.gmapsCardTextSelected,
+                    ]}
+                  >
+                    Google Maps
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </TouchableOpacity>
           );
         })}
       </ScrollView>
+
+      {/* Selected Route Quick Launch Banner */}
+      {selectedRoute && (
+        <View style={styles.selectedRouteBarContainer}>
+          <TouchableOpacity
+            style={[
+              styles.selectedRouteGmapsButton,
+              { backgroundColor: getRouteColor(getSafetyTier(selectedRoute.safetyScore)) },
+            ]}
+            onPress={() => handleOpenGoogleMaps(selectedRoute)}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={`Open selected safe route ${selectedRoute.name} in Google Maps`}
+          >
+            <Text style={styles.selectedRouteGmapsIcon}>🗺️</Text>
+            <Text style={styles.selectedRouteGmapsText}>
+              Open in Google Maps
+            </Text>
+            <Text style={styles.selectedRouteGmapsSubtext} numberOfLines={1}>
+              • {selectedRoute.name}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Route Detail Modal */}
       <RouteDetailModal
@@ -128,13 +188,13 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   card: {
-    width: 280,
+    width: 290,
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
     padding: 12,
     marginRight: 12,
     justifyContent: 'space-between',
-    minHeight: 145,
+    minHeight: 155,
     shadowOffset: { width: 0, height: 3 },
     shadowRadius: 8,
     elevation: 3,
@@ -173,11 +233,18 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     lineHeight: 15,
   },
+  cardFooterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingTop: 4,
+  },
   inspectButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-end',
-    marginTop: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 2,
   },
   inspectText: {
     fontWeight: 'bold',
@@ -187,5 +254,60 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     marginLeft: 3,
+  },
+  gmapsCardButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: '#F5F5F5',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  gmapsCardIcon: {
+    fontSize: 12,
+    marginRight: 4,
+  },
+  gmapsCardText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#424242',
+  },
+  gmapsCardTextSelected: {
+    color: '#FFFFFF',
+  },
+  selectedRouteBarContainer: {
+    paddingHorizontal: 14,
+    marginTop: 8,
+  },
+  selectedRouteGmapsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  selectedRouteGmapsIcon: {
+    fontSize: 16,
+    marginRight: 8,
+  },
+  selectedRouteGmapsText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 13.5,
+  },
+  selectedRouteGmapsSubtext: {
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '600',
+    fontSize: 12,
+    marginLeft: 6,
+    maxWidth: 150,
   },
 });

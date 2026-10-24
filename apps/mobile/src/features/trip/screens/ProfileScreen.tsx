@@ -31,6 +31,17 @@ export default function ProfileScreen() {
     }
   };
 
+  const openHelp = () => {
+    Alert.alert(
+      'Help and Support',
+      'Need help with SafeSafar? Call our customer care team on 8780888428. For an emergency, use the SOS button or call 112 immediately.',
+      [
+        { text: 'Close', style: 'cancel' },
+        { text: 'Call 8780888428', onPress: () => Linking.openURL('tel:8780888428').catch(() => {}) },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
@@ -158,26 +169,6 @@ export default function ProfileScreen() {
         </View>
 
         <Card style={styles.menuCard}>
-          {/* App Settings */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => router.push('/app-settings')}
-            style={styles.menuRow}
-            accessibilityRole="button"
-            accessibilityLabel="App Settings"
-          >
-            <View style={[styles.menuIconCircle, styles.iconBgSoft]}>
-              <MaterialIcons name="settings" size={20} color={colors.primary} />
-            </View>
-            <View style={styles.menuTextGroup}>
-              <Text style={styles.menuLabel}>App Settings</Text>
-              <Text style={styles.menuSubLabel}>Units, night theme, and offline maps</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
-          </TouchableOpacity>
-
-          <View style={styles.menuDivider} />
-
           {/* Notifications */}
           <TouchableOpacity
             activeOpacity={0.7}
@@ -241,7 +232,7 @@ export default function ProfileScreen() {
           {/* Help and Support */}
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => showMessage('Help and Support')}
+            onPress={openHelp}
             style={styles.menuRow}
             accessibilityRole="button"
             accessibilityLabel="Help and Support"

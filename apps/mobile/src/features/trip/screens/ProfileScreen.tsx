@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   Alert,
+  Linking,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -20,6 +21,14 @@ export default function ProfileScreen() {
 
   const showMessage = (feature: string) => {
     Alert.alert(feature, 'This feature will be connected during development.');
+  };
+
+  const handleOpenNotifications = async () => {
+    try {
+      await Linking.openSettings();
+    } catch {
+      Alert.alert('Notifications', 'Open your phone settings and allow SafeSafar notifications.');
+    }
   };
 
   return (
@@ -152,7 +161,7 @@ export default function ProfileScreen() {
           {/* App Settings */}
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => showMessage('App Settings')}
+            onPress={() => router.push('/app-settings')}
             style={styles.menuRow}
             accessibilityRole="button"
             accessibilityLabel="App Settings"
@@ -172,7 +181,7 @@ export default function ProfileScreen() {
           {/* Notifications */}
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => showMessage('Notifications')}
+            onPress={handleOpenNotifications}
             style={styles.menuRow}
             accessibilityRole="button"
             accessibilityLabel="Notifications"

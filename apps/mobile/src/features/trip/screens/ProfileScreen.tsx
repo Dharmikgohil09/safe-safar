@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Alert,
   Linking,
@@ -18,7 +18,6 @@ import { useAuth } from '../../../context/AuthContext';
 
 export default function ProfileScreen() {
   const { user, logout, isLoading: authLoading } = useAuth();
-  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const showMessage = (feature: string) => {
     Alert.alert(feature, 'This feature will be connected during development.');
@@ -77,18 +76,6 @@ export default function ProfileScreen() {
           <Text style={styles.headerSubtitle}>Safety Settings & Personal Account</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          {__DEV__ && (
-            <TouchableOpacity
-              onPress={() => setIsLoading((prev) => !prev)}
-              style={styles.previewChip}
-              accessibilityRole="button"
-              accessibilityLabel="Preview states"
-            >
-              <Text style={styles.previewChipText}>
-                {isLoading ? 'Loading' : 'Ready'}
-              </Text>
-            </TouchableOpacity>
-          )}
           <TouchableOpacity
             onPress={() => showMessage('Settings')}
             style={styles.settingsIconButton}
@@ -102,7 +89,7 @@ export default function ProfileScreen() {
 
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {/* User Card */}
-        {isLoading || authLoading ? (
+        {authLoading ? (
           <StateView
             kind="loading"
             title="Loading profile"
@@ -525,18 +512,5 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textMuted,
     fontWeight: '500',
-  },
-  previewChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: '#FEF3C7',
-    borderWidth: 1,
-    borderColor: '#F59E0B',
-  },
-  previewChipText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#B45309',
   },
 });

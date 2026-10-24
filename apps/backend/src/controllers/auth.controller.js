@@ -761,6 +761,63 @@ function renderVerifyResultHtml({ success, title, message }) {
 </html>`;
 }
 
+function googleWebCallback(req, res) {
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SafeSafar - Google Sign-In</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0A192F; color: #FFFFFF; text-align: center; }
+    .box { padding: 32px; border-radius: 16px; background: #112240; box-shadow: 0 10px 30px rgba(0,0,0,0.4); max-width: 360px; }
+    .spinner { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.2); border-top-color: #10B981; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    h2 { font-size: 18px; margin: 0 0 8px; font-weight: 600; }
+    p { font-size: 13px; color: #94A3B8; margin: 0; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="spinner"></div>
+    <h2>Connecting to SafeSafar...</h2>
+    <p>Returning to app</p>
+  </div>
+  <script>
+    (function() {
+      var hash = window.location.hash.substring(1);
+      var search = window.location.search.substring(1);
+      var params = new URLSearchParams(hash || search);
+      var idToken = params.get('id_token') || params.get('access_token');
+      var error = params.get('error') || params.get('error_description');
+
+      function forward() {
+        if (idToken) {
+          window.location.replace('safesafar://auth-callback#id_token=' + encodeURIComponent(idToken));
+        } else if (error) {
+          window.location.replace('safesafar://auth-callback?error=' + encodeURIComponent(error));
+        }
+      }
+
+      forward();
+      // Retry in case URL hash was filled asynchronously
+      setTimeout(function() {
+        if (!idToken) {
+          var retryParams = new URLSearchParams(window.location.hash.substring(1) || window.location.search.substring(1));
+          var retryToken = retryParams.get('id_token') || retryParams.get('access_token');
+          if (retryToken) {
+            window.location.replace('safesafar://auth-callback#id_token=' + encodeURIComponent(retryToken));
+          }
+        }
+      }, 250);
+    })();
+  </script>
+</body>
+</html>`;
+
+  return res.send(html);
+}
+
 module.exports = {
   signup,
   verifyEmail,
@@ -771,5 +828,6 @@ module.exports = {
   logout,
   me,
   googleAuth,
+  googleWebCallback,
   completeProfile,
 };

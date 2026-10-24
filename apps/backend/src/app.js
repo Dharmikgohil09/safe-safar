@@ -73,6 +73,7 @@ app.use('/trips', tripsRouter);
 
 // Teammate Module Mount Points
 app.use('/routes', routesRouter);
+app.use('/api/reports', createReportsRouter({ requireAuth }));
 app.use('/reports', createReportsRouter({ requireAuth }));
 app.use('/sos', sosRouter);
 

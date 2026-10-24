@@ -25,7 +25,21 @@ const authLimiter = rateLimit({
   skip: () => config.isTest
 });
 
+const reportLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // 10 reports per hour
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => (req.user?._id || req.user?.id || req.ip).toString(),
+  message: {
+    success: false,
+    error: 'Too many reports submitted. Maximum 10 reports per hour allowed.'
+  },
+  skip: () => config.isTest
+});
+
 module.exports = {
   generalLimiter,
-  authLimiter
+  authLimiter,
+  reportLimiter
 };

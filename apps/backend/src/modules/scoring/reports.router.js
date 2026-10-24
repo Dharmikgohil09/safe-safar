@@ -6,6 +6,7 @@ const {
   reportIdParamSchema,
   validateRequest
 } = require('./reports.validation');
+const { reportLimiter } = require('../../middleware/rateLimiter.middleware');
 
 /**
  * Creates and returns the reports Express router.
@@ -22,10 +23,14 @@ function createReportsRouter({ requireAuth }) {
 
   const router = express.Router();
 
-  // POST / (auth required)
+  // GET /nearby?lat=&lng=&radius= (public, no auth required)
+  router.get('/nearby', reportsController.getNearbyReports);
+
+  // POST / (auth required, rate-limited to 10 reports/hour)
   router.post(
     '/',
     requireAuth,
+    reportLimiter,
     validateRequest({ body: createReportBodySchema }),
     reportsController.createReport
   );

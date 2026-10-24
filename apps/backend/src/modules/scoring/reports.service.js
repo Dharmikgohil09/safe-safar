@@ -23,7 +23,10 @@ class ServiceError extends Error {
  * @returns {boolean}
  */
 function isReportActive(report) {
-  if (!report || !Array.isArray(report.confirmations)) {
+  if (!report) {
+    return false;
+  }
+  if (!Array.isArray(report.confirmations)) {
     return false;
   }
   const reporterId = report.reporterId ? String(report.reporterId) : null;
@@ -59,19 +62,25 @@ function toReportDto(report, now = new Date()) {
   const dto = {
     _id: String(doc._id),
     reportId: String(doc._id),
-    type: doc.type,
-    description: doc.note || '',
+    category: doc.category || doc.type || 'other',
+    type: doc.type || doc.category || 'other',
+    description: doc.description || doc.note || '',
+    note: doc.note || doc.description || '',
+    address: doc.address || '',
+    status: doc.status || 'active',
     location: {
       type: doc.location?.type || 'Point',
       coordinates: doc.location?.coordinates || [0, 0]
     },
+    coordinates: doc.location?.coordinates ? [...doc.location.coordinates] : [0, 0],
+    reporter: doc.reporter ? String(doc.reporter) : (doc.reporterId || null),
+    reporterId: doc.reporterId || (doc.reporter ? String(doc.reporter) : ''),
     confirmationCount,
     confirmationsCount: confirmationCount,
     isActive: active,
     weight,
     createdAt: doc.createdAt,
     id: String(doc._id),
-    coordinates: doc.location?.coordinates ? [...doc.location.coordinates] : [0, 0],
     confirmations: confirmationCount,
     verified: active
   };
@@ -86,21 +95,80 @@ function toReportDto(report, now = new Date()) {
 /**
  * Creates a new report submitted by userId.
  *
- * @param {string} userId - Reporter user ID
- * @param {Object} input - { type, location, description }
+ * @param {string|ObjectId} userId - Reporter user ID
+ * @param {Object} input - { category, type, location, latitude, longitude, description, note, address }
  * @returns {Promise<Object>} Safe report DTO
  */
 async function createReport(userId, input) {
-  const report = new Report({
-    type: input.type,
-    location: input.location,
-    note: input.description,
-    reporterId: String(userId),
-    confirmations: []
-  });
+  const category = input.category || input.type || 'other';
+  const description = (input.description || input.note || '').trim();
+  const address = (input.address || '').trim();
 
+  let location;
+  if (input.location && Array.isArray(input.location.coordinates)) {
+    location = {
+      type: 'Point',
+      coordinates: input.location.coordinates
+    };
+  } else if (input.latitude !== undefined && input.longitude !== undefined) {
+    location = {
+      type: 'Point',
+      coordinates: [input.longitude, input.latitude] // GeoJSON [lng, lat]
+    };
+  } else {
+    throw new ServiceError('Valid location coordinates [longitude, latitude] required', 400);
+  }
+
+  const reportData = {
+    category,
+    type: category,
+    location,
+    description,
+    note: description,
+    address,
+    status: 'pending',
+    confirmations: []
+  };
+
+  if (mongoose.isValidObjectId(userId)) {
+    reportData.reporter = new mongoose.Types.ObjectId(userId);
+    reportData.reporterId = String(userId);
+  } else {
+    reportData.reporterId = String(userId);
+  }
+
+  const report = new Report(reportData);
   await report.save();
   return toReportDto(report);
+}
+
+/**
+ * Gets nearby safety reports for a given coordinate and radius
+ * Uses 2dsphere $geoNear aggregation
+ *
+ * @param {Object} options - { lat, lng, radius, limit }
+ * @returns {Promise<Array<Object>>}
+ */
+async function getNearbyReports({ lat, lng, radius = 1000, limit = 50 }) {
+  const now = new Date();
+  const pipeline = [
+    {
+      $geoNear: {
+        near: {
+          type: 'Point',
+          coordinates: [lng, lat] // [lng, lat]
+        },
+        key: 'location',
+        spherical: true,
+        distanceField: 'distanceMeters',
+        maxDistance: radius
+      }
+    },
+    { $limit: limit }
+  ];
+
+  const results = await Report.aggregate(pipeline);
+  return results.map((r) => toReportDto(r, now));
 }
 
 /**
@@ -222,5 +290,6 @@ module.exports = {
   toReportDto,
   createReport,
   confirmReport,
-  listReports
+  listReports,
+  getNearbyReports
 };

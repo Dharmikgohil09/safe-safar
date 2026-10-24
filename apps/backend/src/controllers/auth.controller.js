@@ -538,7 +538,7 @@ async function me(req, res) {
  */
 async function googleAuth(req, res) {
   try {
-    const { idToken } = req.body;
+    const { idToken, nonce } = req.body;
     if (!idToken) {
       return res.status(400).json({ success: false, error: 'Google ID token required.' });
     }
@@ -556,6 +556,12 @@ async function googleAuth(req, res) {
         audience: audience.length > 0 ? audience : undefined,
       });
       payload = ticket.getPayload();
+
+      // Verify nonce if provided in browser flow
+      if (nonce && payload && payload.nonce && payload.nonce !== nonce) {
+        console.warn('[GoogleAuth] Nonce mismatch detected in token verification');
+        return res.status(401).json({ success: false, error: 'Google authentication failed: nonce mismatch.' });
+      }
     } catch (gErr) {
       // Fallback: verify via Google UserInfo endpoint (supports OAuth access tokens and web flow tokens)
       try {
@@ -774,9 +780,10 @@ function googleWebCallback(req, res) {
     .spinner { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.2); border-top-color: #10B981; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
     @keyframes spin { to { transform: rotate(360deg); } }
     h2 { font-size: 18px; margin: 0 0 8px; font-weight: 600; }
-    p { font-size: 13px; color: #94A3B8; margin: 0 0 20px; }
-    .btn { display: inline-block; background: #10B981; color: #0A192F; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 16px; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4); transition: transform 0.1s; }
+    p { font-size: 13px; color: #94A3B8; margin: 0 0 20px; line-height: 1.5; }
+    .btn { display: inline-block; background: #10B981; color: #0A192F; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 16px; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4); transition: transform 0.1s; cursor: pointer; }
     .btn:active { transform: scale(0.97); }
+    .intent-link { display: block; margin-top: 14px; font-size: 12px; color: #64748B; text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -785,6 +792,7 @@ function googleWebCallback(req, res) {
     <h2 id="title">Connecting to SafeSafar...</h2>
     <p id="desc">Returning to app</p>
     <a id="btn" class="btn" style="display:none;" href="#">Open SafeSafar App</a>
+    <a id="intentBtn" class="intent-link" style="display:none;" href="#">Open via Android Intent</a>
   </div>
   <script>
     (function() {
@@ -800,6 +808,7 @@ function googleWebCallback(req, res) {
       }
 
       var btn = document.getElementById('btn');
+      var intentBtn = document.getElementById('intentBtn');
       var title = document.getElementById('title');
       var desc = document.getElementById('desc');
       var spinner = document.getElementById('spinner');
@@ -809,10 +818,20 @@ function googleWebCallback(req, res) {
         if (tokens.idToken) {
           var sep = (base.indexOf('#') !== -1 || base.indexOf('?') !== -1) ? '&' : '#';
           var finalUrl = base + sep + 'id_token=' + encodeURIComponent(tokens.idToken);
+          var intentUrl = 'intent://auth-callback#id_token=' + encodeURIComponent(tokens.idToken) + '#Intent;scheme=safesafar;package=com.codecraft.safesafar;end;';
+
           btn.href = finalUrl;
           btn.style.display = 'inline-block';
+
+          if (base.indexOf('safesafar://') === 0) {
+            intentBtn.href = intentUrl;
+            intentBtn.style.display = 'block';
+          }
+
           if (title) title.textContent = 'Account Verified!';
-          if (desc) desc.textContent = 'Redirecting to SafeSafar... Tap below if app does not open automatically.';
+          if (desc) desc.textContent = 'Returning to app... Tap the button below if SafeSafar did not open automatically.';
+
+          // Automatic navigation
           window.location.href = finalUrl;
           return true;
         } else if (tokens.error) {
@@ -821,7 +840,7 @@ function googleWebCallback(req, res) {
           if (desc) desc.textContent = tokens.error;
           var errUrl = base + (base.indexOf('?') !== -1 ? '&' : '?') + 'error=' + encodeURIComponent(tokens.error);
           btn.href = errUrl;
-          btn.textContent = 'Back to App';
+          btn.textContent = 'Back to SafeSafar';
           btn.style.display = 'inline-block';
           window.location.href = errUrl;
           return true;

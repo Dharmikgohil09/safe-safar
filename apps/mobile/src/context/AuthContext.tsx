@@ -17,7 +17,7 @@ interface AuthContextType {
   setNeedsProfileCompletion: (val: boolean) => void;
   login: (identifier: string, pin: string) => Promise<AuthResponse>;
   signup: (data: RegisterCredentials) => Promise<AuthResponse>;
-  googleLogin: (idToken: string) => Promise<AuthResponse>;
+  googleLogin: (idToken: string, nonce?: string) => Promise<AuthResponse>;
   completeProfile: (phone: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   resendVerification: (email: string) => Promise<{ success: boolean; message?: string; error?: string }>;
@@ -153,9 +153,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /**
    * Google ID Token Sign-In
    */
-  const googleLogin = async (idToken: string): Promise<AuthResponse> => {
+  const googleLogin = async (idToken: string, nonce?: string): Promise<AuthResponse> => {
     try {
-      const res = await api.post('/api/auth/google', { idToken });
+      const res = await api.post('/api/auth/google', { idToken, nonce });
 
       if (res.data?.success) {
         const { accessToken, refreshToken, user: gUser, needsProfileCompletion: needsPhone } = res.data;

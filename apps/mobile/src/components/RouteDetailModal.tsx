@@ -15,6 +15,7 @@ import { formatDistance, formatDuration } from '../utils/geo';
 import { SafetyBadge } from './SafetyBadge';
 import { useMapState } from '../context/MapContext';
 import { walkTelemetryService } from '../services/walkTelemetryService';
+import { openRouteInGoogleMaps } from '../services/googleMapsService';
 
 interface RouteDetailModalProps {
   route: RouteOption | null;
@@ -25,10 +26,19 @@ interface RouteDetailModalProps {
 export const RouteDetailModal: React.FC<RouteDetailModalProps> = ({ route, visible, onClose }) => {
   if (!route) return null;
 
-  const { startNavigation } = useMapState();
+  const { startNavigation, userLocation, destination } = useMapState();
   const tier = getSafetyTier(route.safetyScore);
   const routeColor = getRouteColor(tier);
   const factors = route.safetyFactors;
+
+  const handleOpenGoogleMaps = () => {
+    openRouteInGoogleMaps({
+      route,
+      origin: userLocation,
+      destination,
+      travelMode: 'walking',
+    });
+  };
 
   const handleStartWalk = () => {
     onClose();
@@ -163,6 +173,18 @@ export const RouteDetailModal: React.FC<RouteDetailModalProps> = ({ route, visib
             >
               <Text style={styles.walkIcon}>🚶</Text>
               <Text style={styles.startWalkText}>Start Walk Me Home on this Route</Text>
+            </TouchableOpacity>
+
+            {/* Open in Google Maps Button */}
+            <TouchableOpacity
+              style={styles.googleMapsButton}
+              onPress={handleOpenGoogleMaps}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Open this safe route in Google Maps"
+            >
+              <Text style={styles.googleMapsIcon}>🗺️</Text>
+              <Text style={styles.googleMapsText}>Open in Google Maps</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.closeButton} onPress={onClose}>
@@ -329,6 +351,31 @@ const styles = StyleSheet.create({
   },
   startWalkText: {
     color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  googleMapsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 48,
+    borderRadius: 14,
+    marginTop: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#4285F4',
+    shadowColor: '#4285F4',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  googleMapsIcon: {
+    fontSize: 18,
+    marginRight: 8,
+  },
+  googleMapsText: {
+    color: '#1A73E8',
     fontWeight: 'bold',
     fontSize: 14,
   },

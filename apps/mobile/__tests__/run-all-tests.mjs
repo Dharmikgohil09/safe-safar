@@ -1,6 +1,14 @@
 import test, { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import {
+  buildGoogleMapsDirectionsUrl,
+  selectIntermediateWaypoints,
+  normalizeCoordinate,
+  GOOGLE_MAPS_DIRECTIONS_BASE_URL,
+  DEFAULT_MAX_WAYPOINTS,
+  MAX_SAFE_URL_LENGTH,
+} from '../src/utils/googleMapsUrl.ts';
 
 // Helper math and formatters
 function degreesToRadians(degrees) {
@@ -382,3 +390,228 @@ describe('SafeSafar React Native - GeocodingService & Search Tests', () => {
   });
 });
 
+describe('SafeSafar - Google Maps Integration & URL Generator Tests', () => {
+  const sampleOrigin = { latitude: 21.1648, longitude: 72.7848 };
+  const sampleDestination = { latitude: 21.1963, longitude: 72.7952 };
+
+  it('Correct URL construction with base URL, endpoints, and walking mode', () => {
+    const route = {
+      routeId: 'safe_route_1',
+      name: 'Athwa Boulevard Safe Corridor',
+      safetyScore: 92,
+      coordinates: [
+        sampleOrigin,
+        { latitude: 21.175, longitude: 72.789 },
+        sampleDestination,
+      ],
+    };
+
+    const url = buildGoogleMapsDirectionsUrl({
+      route,
+      origin: sampleOrigin,
+      destination: sampleDestination,
+      travelMode: 'walking',
+    });
+
+    assert.ok(url.startsWith(GOOGLE_MAPS_DIRECTIONS_BASE_URL));
+    assert.ok(url.includes('api=1'));
+    assert.ok(url.includes(`origin=${encodeURIComponent('21.1648,72.7848')}`));
+    assert.ok(url.includes(`destination=${encodeURIComponent('21.1963,72.7952')}`));
+    assert.ok(url.includes('travelmode=walking'));
+    assert.ok(url.includes(`waypoints=${encodeURIComponent('21.175,72.789')}`));
+  });
+
+  it('Correct origin and destination extraction from route coordinates when omitted in params', () => {
+    const route = {
+      routeId: 'route_auto_endpoints',
+      name: 'Auto Endpoints Route',
+      safetyScore: 85,
+      coordinates: [
+        { latitude: 21.15, longitude: 72.77 },
+        { latitude: 21.16, longitude: 72.78 },
+        { latitude: 21.18, longitude: 72.80 },
+      ],
+    };
+
+    const url = buildGoogleMapsDirectionsUrl({ route });
+
+    assert.ok(url.includes(`origin=${encodeURIComponent('21.15,72.77')}`));
+    assert.ok(url.includes(`destination=${encodeURIComponent('21.18,72.8')}`));
+  });
+
+  it('Correct waypoint order: preserves strictly sequential progression along the route', () => {
+    // A path with bends moving progressively north
+    const coordinates = [
+      { latitude: 21.10, longitude: 72.70 },
+      { latitude: 21.12, longitude: 72.75 }, // bend 1
+      { latitude: 21.14, longitude: 72.71 }, // bend 2
+      { latitude: 21.16, longitude: 72.76 }, // bend 3
+      { latitude: 21.18, longitude: 72.72 }, // bend 4
+      { latitude: 21.20, longitude: 72.77 },
+    ];
+
+    const waypoints = selectIntermediateWaypoints(coordinates, { maxWaypoints: 4 });
+
+    assert.ok(waypoints.length > 0 && waypoints.length <= 4);
+    // Verify latitudes strictly increase, preserving progression from south to north
+    for (let i = 0; i < waypoints.length - 1; i++) {
+      assert.ok(
+        waypoints[i].latitude < waypoints[i + 1].latitude,
+        `Expected waypoint ${i} lat (${waypoints[i].latitude}) < waypoint ${i + 1} lat (${waypoints[i + 1].latitude})`
+      );
+    }
+  });
+
+  it('Correct handling of different coordinate formats (named fields and GeoJSON arrays)', () => {
+    // 1. LatLng named fields
+    const c1 = normalizeCoordinate({ latitude: 21.1648, longitude: 72.7848 });
+    assert.deepEqual(c1, { latitude: 21.1648, longitude: 72.7848 });
+
+    // 2. Short named fields ({ lat, lng })
+    const c2 = normalizeCoordinate({ lat: 21.1648, lng: 72.7848 });
+    assert.deepEqual(c2, { latitude: 21.1648, longitude: 72.7848 });
+
+    // 3. GeoJSON [longitude, latitude] array format
+    const c3 = normalizeCoordinate([72.7848, 21.1648]);
+    assert.deepEqual(c3, { latitude: 21.1648, longitude: 72.7848 });
+
+    // 4. Numeric string inputs
+    const c4 = normalizeCoordinate({ latitude: '21.1648', longitude: '72.7848' });
+    assert.deepEqual(c4, { latitude: 21.1648, longitude: 72.7848 });
+  });
+
+  it('URL encoding: properly encodes pipe separators and coordinates', () => {
+    const route = {
+      routeId: 'encoded_test',
+      name: 'Encoding Route',
+      safetyScore: 88,
+      coordinates: [
+        { latitude: 21.16, longitude: 72.78 },
+        { latitude: 21.17, longitude: 72.82 }, // bend
+        { latitude: 21.18, longitude: 72.80 }, // bend
+        { latitude: 21.19, longitude: 72.85 },
+      ],
+    };
+
+    const url = buildGoogleMapsDirectionsUrl({ route });
+
+    // Pipe separator '|' must be encoded as '%7C'
+    assert.ok(!url.includes('|'), 'URL must not contain raw pipe characters');
+    assert.ok(url.includes('%7C'), 'Waypoints should be joined with encoded pipe %7C');
+    // Commas should be encoded as %2C
+    assert.ok(!url.includes('origin=21.16,72.78'), 'Comma in coordinates must be percent-encoded');
+    assert.ok(url.includes('origin=21.16%2C72.78'));
+  });
+
+  it('Routes with no geometry fall back gracefully without waypoints', () => {
+    const routeWithoutGeometry = {
+      routeId: 'no_geom',
+      name: 'Route without geometry',
+      safetyScore: 70,
+      coordinates: [],
+    };
+
+    const url = buildGoogleMapsDirectionsUrl({
+      route: routeWithoutGeometry,
+      origin: sampleOrigin,
+      destination: sampleDestination,
+    });
+
+    assert.ok(url.length > 0);
+    assert.ok(url.includes('origin='));
+    assert.ok(url.includes('destination='));
+    assert.ok(!url.includes('waypoints='), 'Should not have waypoints parameter when geometry is empty');
+  });
+
+  it('Invalid or missing coordinates are safely rejected without throwing', () => {
+    // Missing / null / undefined / NaN coordinates
+    assert.equal(normalizeCoordinate(null), null);
+    assert.equal(normalizeCoordinate(undefined), null);
+    assert.equal(normalizeCoordinate({ latitude: NaN, longitude: 72 }), null);
+    assert.equal(normalizeCoordinate({ latitude: 21, longitude: Infinity }), null);
+    assert.equal(normalizeCoordinate({ latitude: 120, longitude: 72 }), null); // Lat > 90
+    assert.equal(normalizeCoordinate({ latitude: 21, longitude: -200 }), null); // Lng < -180
+
+    // selectIntermediateWaypoints with messy coordinates
+    const messyCoords = [
+      null,
+      { latitude: 21.16, longitude: 72.78 },
+      { latitude: 'not_a_number', longitude: 72.80 },
+      { latitude: 21.17, longitude: 72.81 },
+      undefined,
+      { latitude: 21.19, longitude: 72.82 },
+    ];
+    const waypoints = selectIntermediateWaypoints(messyCoords);
+    assert.ok(Array.isArray(waypoints));
+
+    // When endpoints are completely missing, buildGoogleMapsDirectionsUrl returns empty string
+    const emptyUrl = buildGoogleMapsDirectionsUrl({ route: null });
+    assert.equal(emptyUrl, '');
+  });
+
+  it('Routes that exceed waypoint limits are capped at maxWaypoints', () => {
+    // 30 coordinates along a path with zigzag bends
+    const denseCoordinates = [];
+    for (let i = 0; i <= 30; i++) {
+      const lat = 21.10 + i * 0.003;
+      const lng = 72.70 + (i % 2 === 0 ? 0.005 : -0.005);
+      denseCoordinates.push({ latitude: lat, longitude: lng });
+    }
+
+    const waypoints = selectIntermediateWaypoints(denseCoordinates, { maxWaypoints: DEFAULT_MAX_WAYPOINTS });
+    assert.ok(waypoints.length <= DEFAULT_MAX_WAYPOINTS, `Waypoints count (${waypoints.length}) must be <= ${DEFAULT_MAX_WAYPOINTS}`);
+  });
+
+  it('Respects URL length limits and prunes waypoints to fit', () => {
+    const route = {
+      routeId: 'long_url_test',
+      name: 'Long URL Route',
+      safetyScore: 80,
+      coordinates: [
+        { latitude: 21.10, longitude: 72.70 },
+        { latitude: 21.11, longitude: 72.75 },
+        { latitude: 21.12, longitude: 72.72 },
+        { latitude: 21.13, longitude: 72.76 },
+        { latitude: 21.14, longitude: 72.73 },
+        { latitude: 21.15, longitude: 72.77 },
+        { latitude: 21.16, longitude: 72.74 },
+        { latitude: 21.20, longitude: 72.80 },
+      ],
+    };
+
+    // Set maxUrlLength artificially low to verify pruning
+    const maxLen = 220;
+    const url = buildGoogleMapsDirectionsUrl({ route, maxUrlLength: maxLen });
+    assert.ok(url.length <= maxLen, `URL length (${url.length}) must be <= ${maxLen}`);
+  });
+
+  it('Walking mode is explicitly enabled by default for safe transit', () => {
+    const url = buildGoogleMapsDirectionsUrl({
+      origin: sampleOrigin,
+      destination: sampleDestination,
+    });
+    assert.ok(url.includes('travelmode=walking'));
+  });
+
+  it('Button / Opener handler executes successfully with generated URL', async () => {
+    let capturedUrl = '';
+    const mockOpener = async (url) => {
+      capturedUrl = url;
+      return true;
+    };
+
+    const route = {
+      routeId: 'button_test',
+      name: 'Test Button Action',
+      safetyScore: 95,
+      coordinates: [sampleOrigin, sampleDestination],
+    };
+
+    const url = buildGoogleMapsDirectionsUrl({ route });
+    const success = await mockOpener(url);
+
+    assert.equal(success, true);
+    assert.equal(capturedUrl, url);
+    assert.ok(capturedUrl.includes('travelmode=walking'));
+  });
+});

@@ -19,7 +19,7 @@ import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { Card, PrimaryButton, StateView, useReduceMotion } from '../../../components/ui';
-import { colors, radius, spacing, typography } from '../../../theme';
+import { colors, radius, typography } from '../../../theme';
 import { apiFetch } from '../../../lib/api';
 import { getAccessToken } from '../../../services/api';
 import { authService } from '../auth/services/authService';
@@ -29,7 +29,6 @@ import {
   DEFAULT_DESTINATION,
 } from '../mock/walkMeHomeMock';
 import { useTripContacts, type TripContact } from '../storage/useTripContacts';
-import { walkTelemetryService } from '../../../services/walkTelemetryService';
 
 function formatTime(totalSeconds: number): string {
   const mins = Math.floor(totalSeconds / 60);
@@ -505,16 +504,6 @@ export default function WalkMeHomeScreen() {
                 onPress={handleStartJourney}
                 icon={<MaterialIcons name="directions-walk" size={20} color={colors.primaryDark} />}
               />
-            )}
-            {isRunning && (
-              <TouchableOpacity
-                style={[styles.outlineButton, { borderColor: colors.accent, marginBottom: spacing.sm }]}
-                onPress={() => walkTelemetryService.shareTrackingLink()}
-                activeOpacity={0.8}
-              >
-                <MaterialIcons name="share" size={20} color={colors.accent} />
-                <Text style={[styles.outlineButtonText, { color: colors.accent }]}>Share Live Tracking Link</Text>
-              </TouchableOpacity>
             )}
             <TouchableOpacity
               style={[styles.outlineButton, !isRunning && styles.outlineButtonSecondary]}

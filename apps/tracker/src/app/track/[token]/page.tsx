@@ -18,7 +18,12 @@ import {
 } from '../../../types/tracker';
 import { config } from '../../../config/env';
 import { createTrackerSocketConnection, TrackerConnectionHandle } from '../../../services/socketAdapter';
-import { createMockEmitter, getMockSession, MockLocationEmitter } from '../../../services/mockDataService';
+import {
+  createMockEmitter,
+  getMockSession,
+  isDemoToken,
+  MockLocationEmitter,
+} from '../../../services/mockDataService';
 import { isValidTokenFormat, validateAndParseLocation } from '../../../services/validation';
 import { getNumericTimestamp } from '../../../utils/geo';
 
@@ -123,8 +128,9 @@ export default function TrackPage() {
     setConnectionStatus('connecting');
     setErrorMessage(null);
 
-    // MODE A: Mock Telemetry
-    if (config.isMockMode) {
+    // MODE A: Mock Telemetry (if globally enabled OR if accessing a designated demo token)
+    const isMock = config.isMockMode || isDemoToken(token);
+    if (isMock) {
       try {
         const mockSess = getMockSession(token);
 
@@ -342,7 +348,7 @@ export default function TrackPage() {
 
   // Mock Control Toggles
   const handleTogglePause = () => {
-    if (!config.isMockMode || !mockEmitterRef.current) return;
+    if (!mockEmitterRef.current) return;
     if (isCompleted || mockEmitterRef.current.isCompleted?.()) return;
     if (isPaused) {
       if (mockEmitterRef.current.resume) {
@@ -368,7 +374,7 @@ export default function TrackPage() {
   const handleManualRefresh = () => {
     if (socketHandleRef.current) {
       socketHandleRef.current.reconnect();
-    } else if (config.isMockMode && mockEmitterRef.current) {
+    } else if (mockEmitterRef.current) {
       if (mockEmitterRef.current.isCompleted?.()) return;
       if (mockEmitterRef.current.resume) {
         mockEmitterRef.current.resume((p) => handleLocationUpdate(p));
@@ -380,7 +386,7 @@ export default function TrackPage() {
     }
   };
 
-  const isMockSession = Boolean(session ? session.isMock : config.isMockMode);
+  const isMockSession = Boolean(session ? session.isMock : (config.isMockMode || isDemoToken(token)));
 
   // State condition screens
   if (connectionStatus === 'invalid-token') {

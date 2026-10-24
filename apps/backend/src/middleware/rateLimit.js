@@ -1,5 +1,7 @@
 const rateLimit = require('express-rate-limit');
 
+const isTest = process.env.NODE_ENV === 'test';
+
 /**
  * Login Rate Limiter:
  * 5 attempts per minute per IP
@@ -7,6 +9,7 @@ const rateLimit = require('express-rate-limit');
 const loginLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
   max: 5,
+  skip: () => isTest,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -22,6 +25,7 @@ const loginLimiter = rateLimit({
 const signupLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 10,
+  skip: () => isTest,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -37,6 +41,7 @@ const signupLimiter = rateLimit({
 const resendVerificationLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 3,
+  skip: () => isTest,
   standardHeaders: true,
   legacyHeaders: false,
   message: {

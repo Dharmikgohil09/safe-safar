@@ -17,8 +17,23 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Card, PrimaryButton, ShieldLogo } from '../../../../components/ui';
 import { colors, radius, typography } from '../../../../theme';
 import { normalizePhone } from '../../../emergency';
-import { authService } from '../services/authService';
+import { useAuth } from '../../../../context/AuthContext';
+import CheckEmailModal from '../components/CheckEmailModal';
+import CompletePhoneModal from '../components/CompletePhoneModal';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import type { AuthCredentials, AuthValidationErrors } from '../types';
+
+const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '';
+try {
+  if (webClientId) {
+    GoogleSignin.configure({
+      webClientId,
+      offlineAccess: false,
+    });
+  }
+} catch {
+  // Ignored in non-native or unsupported environments
+}
 
 interface LoginScreenProps {
   onSuccess?: () => void;
@@ -31,11 +46,16 @@ export default function LoginScreen({
   onNavigateToRegister,
   onClose,
 }: LoginScreenProps) {
+  const { login, googleLogin } = useAuth();
   const [credentials, setCredentials] = useState<AuthCredentials>({ phone: '', pin: '' });
   const [showPin, setShowPin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errors, setErrors] = useState<AuthValidationErrors>({});
   const [focusedField, setFocusedField] = useState<'phone' | 'pin' | null>(null);
+  const [showCheckEmail, setShowCheckEmail] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState('');
+  const [showCompletePhone, setShowCompletePhone] = useState(false);
 
   // Entrance animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -58,8 +78,9 @@ export default function LoginScreen({
 
   const validate = (): boolean => {
     const errs: AuthValidationErrors = {};
-    const norm = normalizePhone(credentials.phone);
-    if (!credentials.phone.trim()) {
+    const rawPhone = credentials.phone || '';
+    const norm = normalizePhone(rawPhone);
+    if (!rawPhone.trim()) {
       errs.phone = 'Phone number is required.';
     } else if (!norm) {
       errs.phone = 'Enter a valid 10-digit Indian phone number.';
@@ -81,24 +102,69 @@ export default function LoginScreen({
     setErrors({});
 
     try {
-      const res = await authService.login(credentials);
+      const rawPhone = credentials.phone || '';
+      const cleanPhone = normalizePhone(rawPhone) || rawPhone.trim();
+      const res = await login(cleanPhone, credentials.pin);
       if (res.success) {
-        if (onSuccess) {
+        if (res.needsProfileCompletion) {
+          setShowCompletePhone(true);
+        } else if (onSuccess) {
           onSuccess();
         } else if (onClose) {
           onClose();
         }
+      } else if (res.isUnverified) {
+        setUnverifiedEmail(res.email || rawPhone);
+        setShowCheckEmail(true);
       } else {
         setErrors({ general: res.error || 'Invalid credentials. Please try again.' });
       }
-    } catch {
-      setErrors({ general: 'Network error. Please check your connection and try again.' });
+    } catch (err: any) {
+      setErrors({ general: err.message || 'Network error. Please check your connection and try again.' });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const isMock = authService.isUsingMock();
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    setErrors({});
+
+    try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const signInResult = await GoogleSignin.signIn();
+      const idToken = signInResult.data?.idToken || (signInResult as any).idToken;
+
+      if (!idToken) {
+        throw new Error('Google Sign-In failed: No ID token returned.');
+      }
+
+      const res = await googleLogin(idToken);
+      if (res.success) {
+        if (res.needsProfileCompletion) {
+          setShowCompletePhone(true);
+        } else if (onSuccess) {
+          onSuccess();
+        } else if (onClose) {
+          onClose();
+        }
+      } else {
+        setErrors({ general: res.error || 'Google Sign-In failed. Please try again.' });
+      }
+    } catch (err: any) {
+      if (err.code === statusCodes.SIGN_IN_CANCELLED) {
+        // User cancelled sign-in
+      } else if (err.code === statusCodes.IN_PROGRESS) {
+        setErrors({ general: 'Google sign-in already in progress.' });
+      } else if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        setErrors({ general: 'Google Play Services is not available or outdated on this device.' });
+      } else {
+        setErrors({ general: err.message || 'Google Sign-In failed.' });
+      }
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -143,16 +209,6 @@ export default function LoginScreen({
               </View>
               <Text style={styles.brandTitle}>SafeSafar</Text>
               <Text style={styles.subtitle}>Safer Routes. Brighter Journeys.</Text>
-
-              {isMock && (
-                <View style={styles.mockBadge}>
-                  <MaterialIcons name="info-outline" size={13} color={colors.accent} />
-                  <Text style={styles.mockBadgeText}>
-                    Demo Mode · Try: <Text style={styles.boldText}>9876543210</Text> | PIN:{' '}
-                    <Text style={styles.boldText}>1234</Text>
-                  </Text>
-                </View>
-              )}
             </View>
 
             {/* Segmented Tab Row */}
@@ -286,22 +342,25 @@ export default function LoginScreen({
                 <View style={styles.dividerLine} />
               </View>
 
-              {/* Presentational Social Login Buttons */}
+              {/* Social Login Buttons */}
               <View style={styles.socialButtonsContainer}>
                 <TouchableOpacity
                   style={styles.socialButton}
-                  onPress={() => Alert.alert('Google Sign-In', 'Social sign-in will be connected during backend integration.')}
+                  onPress={handleGoogleSignIn}
+                  disabled={isLoading || isGoogleLoading}
                   activeOpacity={0.8}
                   accessibilityRole="button"
                   accessibilityLabel="Continue with Google"
                 >
                   <MaterialIcons name="g-mobiledata" size={24} color={colors.textPrimary} />
-                  <Text style={styles.socialButtonText}>Continue with Google</Text>
+                  <Text style={styles.socialButtonText}>
+                    {isGoogleLoading ? 'Connecting...' : 'Continue with Google'}
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.socialButton}
-                  onPress={() => Alert.alert('Apple Sign-In', 'Social sign-in will be connected during backend integration.')}
+                  onPress={() => Alert.alert('Apple Sign-In', 'Apple sign-in will be enabled in a future release.')}
                   activeOpacity={0.8}
                   accessibilityRole="button"
                   accessibilityLabel="Continue with Apple"
@@ -328,6 +387,31 @@ export default function LoginScreen({
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <CheckEmailModal
+        visible={showCheckEmail}
+        email={unverifiedEmail}
+        onVerified={() => {
+          setShowCheckEmail(false);
+          if (onSuccess) onSuccess();
+          else if (onClose) onClose();
+        }}
+        onClose={() => setShowCheckEmail(false)}
+      />
+
+      <CompletePhoneModal
+        visible={showCompletePhone}
+        onSuccess={() => {
+          setShowCompletePhone(false);
+          if (onSuccess) onSuccess();
+          else if (onClose) onClose();
+        }}
+        onDismiss={() => {
+          setShowCompletePhone(false);
+          if (onSuccess) onSuccess();
+          else if (onClose) onClose();
+        }}
+      />
     </SafeAreaView>
   );
 }

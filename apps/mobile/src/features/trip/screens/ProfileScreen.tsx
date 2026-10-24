@@ -13,13 +13,37 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
 import { Card, StateView } from '../../../components/ui';
 import { colors, radius, spacing, typography } from '../../../theme';
-import { mockUser } from '../mock/mockData';
+import { useAuth } from '../../../context/AuthContext';
 
 export default function ProfileScreen() {
+  const { user, logout, isLoading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const showMessage = (feature: string) => {
     Alert.alert(feature, 'This feature will be connected during development.');
+  };
+
+  const displayName = user?.name || 'SafeSafar User';
+  const displayEmail = user?.email || (user?.phone ? `+91 ${user.phone}` : 'No email linked');
+  const initials = (displayName.split(' ').map((n: string) => n[0]).join('').slice(0, 2) || 'SS').toUpperCase();
+
+  const handleLogout = () => {
+    Alert.alert('Log Out', 'Are you sure you want to log out of your SafeSafar account?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Log Out',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await logout();
+            router.replace('/auth');
+          } catch (err) {
+            console.warn('[ProfileScreen] Logout error:', err);
+            router.replace('/auth');
+          }
+        },
+      },
+    ]);
   };
 
   return (
@@ -58,7 +82,7 @@ export default function ProfileScreen() {
 
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {/* User Card */}
-        {isLoading ? (
+        {isLoading || authLoading ? (
           <StateView
             kind="loading"
             title="Loading profile"
@@ -68,17 +92,24 @@ export default function ProfileScreen() {
           <Card style={styles.profileCard}>
             <View style={styles.profileTopRow}>
               <View style={styles.avatarCircle}>
-                <Text style={styles.avatarText}>{mockUser.initials}</Text>
+                <Text style={styles.avatarText}>{initials}</Text>
               </View>
               <View style={styles.profileDetails}>
                 <View style={styles.nameRow}>
-                  <Text style={styles.userName}>{mockUser.name}</Text>
+                  <Text style={styles.userName}>{displayName}</Text>
                   <MaterialIcons name="verified" size={18} color={colors.accent} />
                 </View>
-                <Text style={styles.userEmail}>{mockUser.email}</Text>
+                <Text style={styles.userEmail}>{displayEmail}</Text>
+                {user?.phone && (
+                  <Text style={[styles.userEmail, { marginTop: 2, color: colors.textSecondary }]}>
+                    📞 +91 {user.phone}
+                  </Text>
+                )}
                 <View style={styles.badgeRow}>
                   <View style={styles.verifiedBadge}>
-                    <Text style={styles.verifiedBadgeText}>SafeSafar Verified</Text>
+                    <Text style={styles.verifiedBadgeText}>
+                      {user?.authProvider === 'google' ? 'Google Account' : 'SafeSafar Verified'}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -272,7 +303,7 @@ export default function ProfileScreen() {
         <Card style={styles.logoutCard}>
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => showMessage('Logout')}
+            onPress={handleLogout}
             style={styles.logoutRow}
             accessibilityRole="button"
             accessibilityLabel="Log Out"

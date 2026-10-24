@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: radius.xl,
+    borderRadius: radius.cardLarge,
     padding: 28,
     width: '100%',
     maxWidth: 380,
@@ -210,18 +210,18 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    ...typography.h3,
+    ...typography.heading,
     color: colors.textPrimary,
     marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
-    ...typography.bodySecondary,
+    ...typography.body,
     color: colors.textSecondary,
     textAlign: 'center',
   },
   emailHighlight: {
-    ...typography.bodyPrimary,
+    ...typography.body,
     color: colors.accent,
     fontWeight: '700',
     marginTop: 4,
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(16, 185, 129, 0.08)',
     borderWidth: 1,
     borderColor: 'rgba(16, 185, 129, 0.25)',
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     paddingVertical: 10,
     paddingHorizontal: 16,
     marginBottom: 16,
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
   resendButton: {
     paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     borderColor: colors.accent,
     width: '100%',
@@ -272,9 +272,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   resendText: {
-    ...typography.button,
-    color: colors.accent,
     fontSize: 14,
+    fontWeight: '700',
+    color: colors.accent,
   },
   resendTextDisabled: {
     color: colors.textMuted,

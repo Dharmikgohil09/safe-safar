@@ -53,6 +53,17 @@ app.get('/', (req, res) => {
   });
 });
 
+// Health check endpoints
+const { getDBStatus } = require('./config/database');
+app.get('/api/health', (req, res) => {
+  const db = getDBStatus();
+  const ok = db === 'connected';
+  res.status(ok ? 200 : 503).json({
+    ok,
+    db,
+  });
+});
+
 // Core Modules
 app.use('/health', healthRouter);
 app.use('/api/auth', authRouter);

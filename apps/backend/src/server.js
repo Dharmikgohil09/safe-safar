@@ -4,11 +4,15 @@ const config = require('./config/env');
 const { connectDB, disconnectDB } = require('./config/database');
 const { initializeSocketIO } = require('./modules/core/socket/socket.handler');
 const { startTripExpiryWorker, stopTripExpiryWorker } = require('./modules/core/trips/tripExpiry.worker');
+const { verifyMailerTransport } = require('./utils/mailer');
 
 const startServer = async () => {
   try {
     // 1. Establish MongoDB Connection
     await connectDB();
+
+    // Verify Mailer Transport
+    await verifyMailerTransport();
 
     // 2. Initialize HTTP & Socket.io Servers
     const server = http.createServer(app);

@@ -143,18 +143,26 @@ async function signup(req, res) {
       });
     }
 
-    // Send verification email via Nodemailer
-    await sendVerificationEmail({
+    // Send verification email
+    const mailResult = await sendVerificationEmail({
       to: email,
       name,
       rawToken: rawVerificationToken,
     });
 
+    const emailSent = Boolean(mailResult && mailResult.success);
+
     return res.status(201).json({
       success: true,
-      message: 'Account created! Please check your email to verify your account.',
+      message: emailSent
+        ? 'Account created! Please check your email to verify your account.'
+        : 'Account created, but could not send verification email. Please tap Resend in the app.',
       email,
       requiresVerification: true,
+      emailSent,
+      ...(mailResult && mailResult.errorCode ? { mailErrorCode: mailResult.errorCode } : {}),
+      ...(mailResult && mailResult.error ? { mailError: mailResult.error } : {}),
+      ...(mailResult && mailResult.devLink ? { devLink: mailResult.devLink } : {}),
     });
   } catch (err) {
     console.error('[Auth:Signup Error]', err);
@@ -292,15 +300,23 @@ async function resendVerification(req, res) {
     user.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await user.save();
 
-    await sendVerificationEmail({
+    const mailResult = await sendVerificationEmail({
       to: user.email,
       name: user.name,
       rawToken,
     });
 
+    const emailSent = Boolean(mailResult && mailResult.success);
+
     return res.status(200).json({
       success: true,
-      message: 'A fresh verification email has been sent. Please check your inbox.',
+      message: emailSent
+        ? 'A fresh verification email has been sent. Please check your inbox.'
+        : 'Could not send verification email. Please tap Resend again in a few moments.',
+      emailSent,
+      ...(mailResult && mailResult.errorCode ? { mailErrorCode: mailResult.errorCode } : {}),
+      ...(mailResult && mailResult.error ? { mailError: mailResult.error } : {}),
+      ...(mailResult && mailResult.devLink ? { devLink: mailResult.devLink } : {}),
     });
   } catch (err) {
     console.error('[Auth:ResendVerification Error]', err);

@@ -116,8 +116,8 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.surface,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
+    borderTopLeftRadius: radius.cardLarge,
+    borderTopRightRadius: radius.cardLarge,
     padding: 28,
     alignItems: 'center',
     borderTopWidth: 1,
@@ -133,13 +133,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: {
-    ...typography.h3,
+    ...typography.heading,
     color: colors.textPrimary,
     marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
-    ...typography.bodySecondary,
+    ...typography.body,
     color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 20,
@@ -148,10 +148,10 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surfaceHover || '#1F2937',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     paddingHorizontal: 12,
     height: 52,
     width: '100%',
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
     borderRightColor: colors.border,
   },
   prefixText: {
-    ...typography.bodyPrimary,
+    ...typography.body,
     color: colors.textPrimary,
     marginLeft: 4,
     fontWeight: '600',
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: colors.accent,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     height: 50,
     width: '100%',
     alignItems: 'center',
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   submitText: {
-    ...typography.button,
+    fontSize: 15,
     color: '#FFFFFF',
     fontWeight: '700',
   },

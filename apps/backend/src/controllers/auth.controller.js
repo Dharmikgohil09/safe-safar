@@ -761,6 +761,93 @@ function renderVerifyResultHtml({ success, title, message }) {
 </html>`;
 }
 
+function googleWebCallback(req, res) {
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SafeSafar - Google Sign-In</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0A192F; color: #FFFFFF; text-align: center; }
+    .box { padding: 36px 24px; border-radius: 16px; background: #112240; box-shadow: 0 10px 30px rgba(0,0,0,0.4); max-width: 360px; width: 90%; }
+    .spinner { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.2); border-top-color: #10B981; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    h2 { font-size: 18px; margin: 0 0 8px; font-weight: 600; }
+    p { font-size: 13px; color: #94A3B8; margin: 0 0 20px; }
+    .btn { display: inline-block; background: #10B981; color: #0A192F; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 16px; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4); transition: transform 0.1s; }
+    .btn:active { transform: scale(0.97); }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div id="spinner" class="spinner"></div>
+    <h2 id="title">Connecting to SafeSafar...</h2>
+    <p id="desc">Returning to app</p>
+    <a id="btn" class="btn" style="display:none;" href="#">Open SafeSafar App</a>
+  </div>
+  <script>
+    (function() {
+      function getTokens() {
+        var hashStr = window.location.hash ? window.location.hash.substring(1) : '';
+        var searchStr = window.location.search ? window.location.search.substring(1) : '';
+        var hashParams = new URLSearchParams(hashStr);
+        var searchParams = new URLSearchParams(searchStr);
+        var idToken = hashParams.get('id_token') || searchParams.get('id_token') || hashParams.get('access_token') || searchParams.get('access_token');
+        var error = hashParams.get('error') || searchParams.get('error') || hashParams.get('error_description') || searchParams.get('error_description');
+        var state = hashParams.get('state') || searchParams.get('state');
+        return { idToken: idToken, error: error, state: state };
+      }
+
+      var btn = document.getElementById('btn');
+      var title = document.getElementById('title');
+      var desc = document.getElementById('desc');
+      var spinner = document.getElementById('spinner');
+
+      function route(tokens) {
+        var base = tokens.state ? decodeURIComponent(tokens.state) : 'safesafar://auth-callback';
+        if (tokens.idToken) {
+          var sep = (base.indexOf('#') !== -1 || base.indexOf('?') !== -1) ? '&' : '#';
+          var finalUrl = base + sep + 'id_token=' + encodeURIComponent(tokens.idToken);
+          btn.href = finalUrl;
+          btn.style.display = 'inline-block';
+          if (title) title.textContent = 'Account Verified!';
+          if (desc) desc.textContent = 'Redirecting to SafeSafar... Tap below if app does not open automatically.';
+          window.location.href = finalUrl;
+          return true;
+        } else if (tokens.error) {
+          if (spinner) spinner.style.display = 'none';
+          if (title) { title.textContent = 'Sign-In Error'; title.style.color = '#EF4444'; }
+          if (desc) desc.textContent = tokens.error;
+          var errUrl = base + (base.indexOf('?') !== -1 ? '&' : '?') + 'error=' + encodeURIComponent(tokens.error);
+          btn.href = errUrl;
+          btn.textContent = 'Back to App';
+          btn.style.display = 'inline-block';
+          window.location.href = errUrl;
+          return true;
+        }
+        return false;
+      }
+
+      var info = getTokens();
+      if (!route(info)) {
+        setTimeout(function() {
+          var retryInfo = getTokens();
+          if (!route(retryInfo)) {
+            btn.style.display = 'inline-block';
+            btn.href = retryInfo.state ? decodeURIComponent(retryInfo.state) : 'safesafar://auth-callback';
+            if (desc) desc.textContent = 'Tap below to return to SafeSafar.';
+          }
+        }, 300);
+      }
+    })();
+  </script>
+</body>
+</html>`;
+
+  return res.send(html);
+}
+
 module.exports = {
   signup,
   verifyEmail,
@@ -771,5 +858,6 @@ module.exports = {
   logout,
   me,
   googleAuth,
+  googleWebCallback,
   completeProfile,
 };

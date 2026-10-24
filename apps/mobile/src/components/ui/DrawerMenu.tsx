@@ -3,6 +3,7 @@ import {
   AccessibilityInfo,
   Alert,
   Animated,
+  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -140,6 +141,17 @@ export function DrawerMenu({
 
   const handleItemPress = (item: DrawerItem) => {
     handleClose(() => {
+      if (item.id === 'help') {
+        Alert.alert(
+          'Help and Support',
+          'Need help with SafeSafar? Call our customer care team on 8780888428. For an emergency, use the SOS button or call 112 immediately.',
+          [
+            { text: 'Close', style: 'cancel' },
+            { text: 'Call 8780888428', onPress: () => Linking.openURL('tel:8780888428').catch(() => {}) },
+          ]
+        );
+        return;
+      }
       if (item.action === 'navigate' && item.route) {
         router.push(item.route as any);
       } else if (item.action === 'message') {
@@ -170,7 +182,6 @@ export function DrawerMenu({
     { id: 'toolkit', label: 'Safety Toolkit', icon: 'security', action: 'navigate', route: '/safety-toolkit' },
     { id: 'contacts', label: 'Trusted Contacts', icon: 'people', action: 'navigate', route: '/contacts' },
     { id: 'profile', label: 'Safety Profile', icon: 'verified-user', action: 'navigate', route: '/onboarding' },
-    { id: 'settings', label: 'Settings', icon: 'settings', action: 'message' },
     { id: 'help', label: 'Help and Support', icon: 'help-outline', action: 'message' },
     { id: 'logout', label: 'Logout', icon: 'logout', action: 'message', isDanger: true },
   ];

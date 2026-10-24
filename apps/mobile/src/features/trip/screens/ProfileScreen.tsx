@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   Alert,
+  Linking,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -21,6 +22,24 @@ export default function ProfileScreen() {
 
   const showMessage = (feature: string) => {
     Alert.alert(feature, 'This feature will be connected during development.');
+  };
+  const handleOpenNotifications = async () => {
+    try {
+      await Linking.openSettings();
+    } catch {
+      Alert.alert('Notifications', 'Open your phone settings and allow SafeSafar notifications.');
+    }
+  };
+
+  const openHelp = () => {
+    Alert.alert(
+      'Help and Support',
+      'Need help with SafeSafar? Call our customer care team on 8780888428. For an emergency, use the SOS button or call 112 immediately.',
+      [
+        { text: 'Close', style: 'cancel' },
+        { text: 'Call 8780888428', onPress: () => Linking.openURL('tel:8780888428').catch(() => { }) },
+      ]
+    );
   };
 
   const displayName = user?.name || 'SafeSafar User';
@@ -46,6 +65,7 @@ export default function ProfileScreen() {
     ]);
   };
 
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
@@ -70,7 +90,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           )}
           <TouchableOpacity
-          onPress={() => showMessage('Settings')}
+            onPress={() => showMessage('Settings')}
             style={styles.settingsIconButton}
             accessibilityRole="button"
             accessibilityLabel="Open settings"
@@ -116,7 +136,7 @@ export default function ProfileScreen() {
             </View>
 
             <TouchableOpacity
-            onPress={() => showMessage('Edit Profile')}
+              onPress={() => showMessage('Edit Profile')}
               style={styles.editButton}
               accessibilityRole="button"
               accessibilityLabel="Edit profile"
@@ -180,30 +200,10 @@ export default function ProfileScreen() {
         </View>
 
         <Card style={styles.menuCard}>
-          {/* App Settings */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => showMessage('App Settings')}
-            style={styles.menuRow}
-            accessibilityRole="button"
-            accessibilityLabel="App Settings"
-          >
-            <View style={[styles.menuIconCircle, styles.iconBgSoft]}>
-              <MaterialIcons name="settings" size={20} color={colors.primary} />
-            </View>
-            <View style={styles.menuTextGroup}>
-              <Text style={styles.menuLabel}>App Settings</Text>
-              <Text style={styles.menuSubLabel}>Units, night theme, and offline maps</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
-          </TouchableOpacity>
-
-          <View style={styles.menuDivider} />
-
           {/* Notifications */}
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => showMessage('Notifications')}
+            onPress={handleOpenNotifications}
             style={styles.menuRow}
             accessibilityRole="button"
             accessibilityLabel="Notifications"
@@ -263,7 +263,7 @@ export default function ProfileScreen() {
           {/* Help and Support */}
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => showMessage('Help and Support')}
+            onPress={openHelp}
             style={styles.menuRow}
             accessibilityRole="button"
             accessibilityLabel="Help and Support"

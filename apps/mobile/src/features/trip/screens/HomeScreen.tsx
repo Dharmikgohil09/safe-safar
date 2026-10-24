@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Keyboard,
   Linking,
   ScrollView,
@@ -17,6 +18,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router, useFocusEffect } from 'expo-router';
 import { Card, DarkHeader, DrawerMenu, PrimaryButton, ShieldLogo } from '../../../components/ui';
 import { colors, radius, typography } from '../../../theme';
+import { useAuth } from '../../../context/AuthContext';
 import { tripLocationPublisher } from '../../../services/tripLocationPublisher';
 import { useMapState } from '../../../context/MapContext';
 import type { PlaceSearchResult } from '../../../services/geocodingService';
@@ -29,8 +31,20 @@ const QUICK_PICKS = [
 ];
 
 export default function HomeScreen() {
+  const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const { searchPlaces, calculateRoutes, isLoading } = useMapState();
+
+  const initials = user?.name
+    ? user.name
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((p) => p[0])
+        .join('')
+        .toUpperCase()
+    : '';
 
   const [guardianCount, setGuardianCount] = useState<number | null>(null);
   const [query, setQuery] = useState('');
@@ -139,20 +153,18 @@ export default function HomeScreen() {
         rightSlot={
           <View style={styles.headerActions}>
             <TouchableOpacity
-              onPress={() => showMessage('Notifications')}
-              style={styles.iconButton}
-              accessibilityRole="button"
-              accessibilityLabel="Notifications"
-            >
-              <MaterialIcons name="notifications-none" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-            <TouchableOpacity
               onPress={() => router.push('/(tabs)/profile')}
               style={styles.avatarCircle}
               accessibilityRole="button"
               accessibilityLabel="Open profile"
             >
-              <Text style={styles.avatarText}>HB</Text>
+              {user?.avatar ? (
+                <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+              ) : initials ? (
+                <Text style={styles.avatarText}>{initials}</Text>
+              ) : (
+                <MaterialIcons name="person" size={20} color={colors.primaryDark} />
+              )}
             </TouchableOpacity>
           </View>
         }
@@ -441,6 +453,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   avatarText: {
     fontSize: 14,

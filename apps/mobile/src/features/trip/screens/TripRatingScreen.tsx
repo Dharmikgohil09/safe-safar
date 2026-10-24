@@ -16,13 +16,16 @@ import { colors, radius, spacing, typography } from '../../../theme';
 import {
   RATING_OPTIONS,
   RatingOption,
-  SAMPLE_TRIP_SUMMARY,
 } from '../mock/tripRatingMock';
 
 export default function TripRatingScreen() {
+  const [fromLocation, setFromLocation] = useState<string>('SVNIT');
+  const [toLocation, setToLocation] = useState<string>('Adajan');
   const [selectedRating, setSelectedRating] = useState<RatingOption>('Felt safe');
   const [note, setNote] = useState<string>('');
   const [isSaved, setIsSaved] = useState<boolean>(false);
+
+  const displayedSummary = `${fromLocation} to ${toLocation}`;
 
   const handleSaveRating = () => {
     setIsSaved(true);
@@ -59,8 +62,33 @@ export default function TripRatingScreen() {
             </View>
             <View style={styles.summaryTextGroup}>
               <Text style={styles.summarySectionLabel}>COMPLETED TRIP</Text>
-              <Text style={styles.summaryTitle}>{SAMPLE_TRIP_SUMMARY}</Text>
+              <Text style={styles.summaryTitle}>{displayedSummary}</Text>
               <Text style={styles.summarySubtitle}>Safe route navigation ended</Text>
+            </View>
+          </View>
+
+          <View style={styles.inputsRow}>
+            <View style={styles.inputCol}>
+              <Text style={styles.inputLabel}>From</Text>
+              <TextInput
+                style={styles.summaryInput}
+                value={fromLocation}
+                onChangeText={setFromLocation}
+                placeholder="From location"
+                placeholderTextColor={colors.textMuted}
+                accessibilityLabel="From location"
+              />
+            </View>
+            <View style={styles.inputCol}>
+              <Text style={styles.inputLabel}>To</Text>
+              <TextInput
+                style={styles.summaryInput}
+                value={toLocation}
+                onChangeText={setToLocation}
+                placeholder="To location"
+                placeholderTextColor={colors.textMuted}
+                accessibilityLabel="To location"
+              />
             </View>
           </View>
         </Card>
@@ -71,7 +99,7 @@ export default function TripRatingScreen() {
             <View style={styles.confirmIconCircle}>
               <MaterialIcons name="check-circle" size={40} color={colors.safe} />
             </View>
-            <Text style={styles.confirmationTitle}>Thanks, rating noted for this demo.</Text>
+            <Text style={styles.confirmationTitle}>Thanks, rating noted.</Text>
             <Text style={styles.confirmationSubtitle}>
               Your feedback helps refine danger heatmaps and lighting corridors for the community.
             </Text>
@@ -246,6 +274,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textMuted,
     marginTop: 2,
+  },
+  inputsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  inputCol: {
+    flex: 1,
+  },
+  inputLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textMuted,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  summaryInput: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.card,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 13,
+    color: colors.textPrimary,
   },
   sectionCard: {
     padding: 16,

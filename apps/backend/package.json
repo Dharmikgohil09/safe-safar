@@ -16,7 +16,7 @@
     "socketio",
     "mongodb"
   ],
-  "author": "Dharmik Gohil <dharmikgohil138@gmail.com>",
+  "author": "Codecraft",
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^2.4.3",

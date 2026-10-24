@@ -5,10 +5,28 @@ node_modules/
 
 # Environment variables
 .env
+.env.*
+!.env.example
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Keystores, Certificates & Cloud Credentials
+*.keystore
+*.jks
+*.p12
+*.pem
+*.key
+google-services.json
+GoogleService-Info.plist
+*serviceAccount*.json
+*service-account*.json
+
+# Expo & Mobile Build
+.expo/
+apps/mobile/android/
+apps/mobile/ios/
 
 # Logs
 logs

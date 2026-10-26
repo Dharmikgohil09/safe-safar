@@ -1,0 +1,22 @@
+{
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://safe-safar.onrender.com",
+        "EXPO_PUBLIC_MAPBOX_TOKEN": "pk.eyJ1IjoiZGhhcm1pazA5IiwiYSI6ImNtdmpxM3FtMjBpZTIyenNjOHp3dG00ZnYifQ.WMi8RducwylzH6OQL5MXyg",
+        "EXPO_PUBLIC_DEMO_MODE": "true"
+      }
+    }
+  }
+}
